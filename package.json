@@ -7,23 +7,25 @@
     "build": "next build",
     "start": "next start --hostname 0.0.0.0",
     "typecheck": "tsc --noEmit",
-    "check:auth": "node scripts/check-auth.cjs"
+    "check:auth": "node scripts/check-auth.cjs",
+    "check:credits": "node scripts/check-credits.cjs"
   },
   "dependencies": {
+    "@supabase/ssr": "0.8.0",
+    "@supabase/supabase-js": "2.99.2",
     "next": "16.3.8",
     "react": "19.2.0",
     "react-dom": "19.2.0",
-    "@supabase/ssr": "0.8.0",
-    "@supabase/supabase-js": "2.99.2",
     "server-only": "0.0.1"
   },
   "devDependencies": {
-    "typescript": "5.9.3",
+    "@electric-sql/pglite": "0.5.8",
+    "@tailwindcss/postcss": "4.1.18",
     "@types/node": "24.10.0",
     "@types/react": "19.2.2",
     "@types/react-dom": "19.2.2",
     "tailwindcss": "4.1.18",
-    "@tailwindcss/postcss": "4.1.18"
+    "typescript": "5.9.3"
   },
   "engines": {
     "node": ">=22.0.0"

@@ -1,3 +1,4 @@
+import { getCreditSnapshot } from '@/lib/credits/snapshot';
 import { redirect } from 'next/navigation';
 import { VideoWorkspace } from '@/components/video-workspace';
 import { createClient } from '@/lib/supabase/server';
@@ -12,5 +13,6 @@ export default async function Page() {
     if (!error) user = data.user;
   } catch { /* Fail closed if verification is unavailable. */ }
   if (!user) redirect('/login');
-  return <VideoWorkspace accountEmail={user.email || ''} />;
+  const credits = await getCreditSnapshot(supabase);
+  return <VideoWorkspace accountEmail={user.email || ''} initialCredits={credits} />;
 }

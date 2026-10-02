@@ -2,8 +2,21 @@
 import { useActionState, useRef, useState } from 'react';
 import { logout } from '@/app/auth/actions';
 import type { AuthState } from '@/lib/auth/input';
+import { parseSnapshot, type CreditSnapshot } from '@/lib/credits/types';
 import { PRODUCT } from '@/lib/config';
-export function VideoWorkspace({ accountEmail }: { accountEmail: string }) {
+export function VideoWorkspace({ accountEmail, initialCredits }: { accountEmail: string; initialCredits: CreditSnapshot }) {
+  const [credits, setCredits] = useState(initialCredits);
+  const [refreshing, setRefreshing] = useState(false);
+  const creditDialog = useRef<HTMLDialogElement>(null);
+  async function refreshCredits() {
+    if (refreshing) return;
+    setRefreshing(true);
+    try {
+      const response = await fetch('/api/credits', { cache: 'no-store' });
+      setCredits(response.ok ? parseSnapshot(await response.json()) : { status: 'unavailable' });
+    } catch { setCredits({ status: 'unavailable' }); }
+    finally { setRefreshing(false); }
+  }
   const [logoutState, logoutAction, logoutPending] = useActionState<AuthState, FormData>(logout, {});
   const profile = useRef<HTMLDialogElement>(null);
   const [mode, setMode] = useState('text');
@@ -19,11 +32,11 @@ export function VideoWorkspace({ accountEmail }: { accountEmail: string }) {
     <aside className="sidebar" aria-label="Main navigation">
       <a href="/" className="brand"><span className="brand-mark">R</span>RADAS<span className="brand-dot">.</span></a>
       <div className="nav-group"><span className="eyebrow">WORKSPACE</span><a href="/" className="nav-item active" aria-current="page"><span aria-hidden="true">▣</span>Create Video</a></div>
-      <div className="nav-group"><span className="eyebrow">ACCOUNT</span><button className="nav-item" onClick={() => setNotice('Akaun baharu bermula dengan 0 credit. Top up akan tersedia dalam fasa bayaran.')}><span aria-hidden="true">◈</span>Credits</button><button className="nav-item" onClick={topUp}><span aria-hidden="true">＋</span>Top Up</button></div>
+      <div className="nav-group"><span className="eyebrow">ACCOUNT</span><button className="nav-item" onClick={() => creditDialog.current?.showModal()}><span aria-hidden="true">◈</span>Credits</button><button className="nav-item" onClick={topUp}><span aria-hidden="true">＋</span>Top Up</button></div>
       <div className="sidebar-bottom"><div className="package-card"><span className="eyebrow">MULA DENGAN RM5</span><strong>60 video credits</strong><p>Top up bila perlu.</p><button onClick={topUp}>Top Up Credits</button></div><button className="nav-item" onClick={() => profile.current?.showModal()}>Profile</button><form action={logoutAction}><button className="nav-item" type="submit" disabled={logoutPending}>{logoutPending ? "Logging out…" : "Logout"}</button></form></div>
     </aside>
     <main>
-      <header className="topbar"><span>Create Video</span><div className="header-actions"><span className="balance">Credits: <strong>0</strong></span><button className="primary small" onClick={topUp}>Top Up</button></div></header>
+      <header className="topbar"><span>Create Video</span><div className="header-actions"><span className="balance">Credits: <strong>{credits.status === 'ready' ? credits.balance : '—'}</strong></span><button className="primary small" onClick={topUp}>Top Up</button></div></header>
       <div className="mobile-account"><button onClick={() => profile.current?.showModal()}>Profile</button><form action={logoutAction}><button type="submit" disabled={logoutPending}>{logoutPending ? "Logging out…" : "Logout"}</button></form></div>
       <div className="workspace">
         <div className="page-heading"><div><span className="eyebrow">AI VIDEO GENERATOR</span><h1>Create Video<span>.</span></h1><p>Dari idea ke video. Generate, preview, download.</p></div><span className="duration-badge">10 saat / video</span></div>
@@ -35,7 +48,7 @@ export function VideoWorkspace({ accountEmail }: { accountEmail: string }) {
             <fieldset><legend>Orientation</legend><div className="choices"><button type="button" aria-pressed={orientation === 'portrait'} className={orientation === 'portrait' ? 'selected' : ''} onClick={() => setOrientation('portrait')}><span className="ratio portrait"/>Portrait <span className="muted">9:16</span></button><button type="button" aria-pressed={orientation === 'landscape'} className={orientation === 'landscape' ? 'selected' : ''} onClick={() => setOrientation('landscape')}><span className="ratio landscape"/>Landscape <span className="muted">16:9</span></button></div></fieldset>
             <fieldset><legend>Resolution</legend><div className="choices"><button type="button" aria-pressed={resolution === '720'} className={resolution === '720' ? 'selected' : ''} onClick={() => setResolution('720')}>720p <span className="muted">HD</span></button><button type="button" aria-pressed={resolution === '1080'} className={resolution === '1080' ? 'selected' : ''} onClick={() => setResolution('1080')}>1080p <span className="muted">Full HD</span></button></div></fieldset>
             <div className="prompt-label"><label htmlFor="prompt">{mode === 'image' ? 'Motion prompt' : 'Describe your video'}</label><span className="muted">{prompt.length}/2000</span></div><textarea id="prompt" maxLength={2000} value={prompt} onChange={e => setPrompt(e.target.value)} placeholder={mode === 'image' ? 'Terangkan pergerakan subjek dan kamera…' : 'Contoh: Seorang creator memperkenalkan produk di studio dengan cahaya lembut…'} />
-            <button className="primary generate" disabled>Generate Video <span>· {PRODUCT.creditsPerGeneration} Credit</span></button><p className="phase-note">Generation akan tersedia selepas credit diaktifkan.</p>
+            <button className="primary generate" disabled>Generate Video <span>· {PRODUCT.creditsPerGeneration} Credit</span></button><p className="phase-note">{credits.status === 'unavailable' ? 'Baki credit belum tersedia. Cuba semak semula di Credits.' : credits.balance === 0 ? 'Baki 0 credit. Top up dan generation akan dibuka dalam fasa seterusnya.' : 'Generation akan dibuka dalam fasa seterusnya.'}</p>
           </section>
           <section className="preview panel" aria-label="Video preview"><div className="panel-heading"><span className="step">02</span><h2>Preview</h2><span className="preview-meta">{orientation === 'portrait' ? '9:16' : '16:9'} · {resolution}p</span></div><div className="preview-stage"><div className={`empty-frame ${orientation}`}><span className="play-icon" aria-hidden="true">▷</span></div><h3>Your generated video<br/>will appear here</h3><p>Preview hasil video sebelum download.</p></div><div className="preview-footer"><span aria-hidden="true">↓</span><p>Download terus selepas generate.<br/><span>Video hilang daripada paparan apabila refresh atau logout.</span></p></div></section>
         </div>
@@ -43,6 +56,14 @@ export function VideoWorkspace({ accountEmail }: { accountEmail: string }) {
         <footer className="workspace-footer"><span>RADAS AI VIDEO</span><span>RM5 / 60 credits · 1 credit / generation</span></footer>
       </div>
     </main>
+    <dialog ref={creditDialog} className="credit-dialog" aria-labelledby="credit-title">
+      <div className="modal-heading"><span className="eyebrow">ACCOUNT</span><button aria-label="Close credits" onClick={() => creditDialog.current?.close()}>×</button></div>
+      <h2 id="credit-title">Credits</h2>
+      <p className="credit-total" aria-live="polite">{credits.status === 'ready' ? `${credits.balance} credits` : 'Baki belum tersedia'}</p>
+      <p>1 credit = 1 video generation.</p>
+      {credits.status === 'unavailable' ? <p role="alert">Baki gagal dibaca. Sila cuba semula.</p> : credits.transactions.length === 0 ? <p>Belum ada transaksi credit.</p> : <div className="ledger-scroll"><table className="credit-ledger"><caption>20 transaksi terkini</caption><thead><tr><th>Tarikh</th><th>Transaksi</th><th>Credit</th><th>Baki</th></tr></thead><tbody>{credits.transactions.map(t => <tr key={t.id}><td>{new Date(t.createdAt).toLocaleString('en-MY', { timeZone: 'Asia/Kuala_Lumpur', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</td><td>{t.type === 'topup' ? 'Top up' : t.type === 'debit' ? 'Video generation' : 'Refund'}</td><td>{t.amount > 0 ? '+' : ''}{t.amount}</td><td>{t.balanceAfter}</td></tr>)}</tbody></table></div>}
+      <div className="credit-actions"><button className="primary" onClick={refreshCredits} disabled={refreshing}>{refreshing ? 'Menyemak…' : 'Semak baki'}</button><button onClick={() => { creditDialog.current?.close(); topUp(); }}>Top Up</button></div>
+    </dialog>
     <dialog ref={profile} aria-labelledby="profile-title"><div className="modal-heading"><span className="eyebrow">ACCOUNT</span><button aria-label="Close profile" onClick={() => profile.current?.close()}>×</button></div><h2 id="profile-title">Profile</h2><p className="profile-email">{accountEmail}</p><button className="primary" onClick={() => profile.current?.close()}>Tutup</button></dialog>
     <dialog ref={dialog} aria-labelledby="topup-title" onClick={e => { if (e.target === e.currentTarget) dialog.current?.close(); }}><div className="modal-heading"><span className="eyebrow">VIDEO CREDITS</span><button aria-label="Close top up" onClick={() => dialog.current?.close()}>×</button></div><h2 id="topup-title">Top Up Credits</h2><div className="pricing"><strong>RM{PRODUCT.packagePriceMYR}</strong><span>{PRODUCT.packageCredits} video credits</span></div><p>1 credit = 1 video generation.</p><p className="payment-note">Pembayaran QRPay belum tersedia. Tiada bayaran diambil pada peringkat ini.</p><button className="primary" onClick={() => dialog.current?.close()}>Tutup</button></dialog>
   </div>;
