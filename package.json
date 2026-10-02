@@ -16,7 +16,11 @@
     "check:safety": "node scripts/check-credit-safety.cjs",
     "check:storage": "node scripts/check-storage.cjs",
     "setup:storage": "node scripts/setup-video-storage.cjs",
-    "check:history": "node scripts/check-history.cjs"
+    "check:history": "node scripts/check-history.cjs",
+    "check:cleanup": "node scripts/check-cleanup.cjs",
+    "cleanup:check": "node scripts/run-cleanup.cjs --check",
+    "cleanup:once": "node scripts/run-cleanup.cjs --run",
+    "check:cleanup:runtime": "node scripts/check-cleanup-runtime.cjs"
   },
   "dependencies": {
     "@supabase/ssr": "0.8.0",
