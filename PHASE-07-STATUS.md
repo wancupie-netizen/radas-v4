@@ -7,4 +7,4 @@
 - Owned known-job reconciliation after refresh/expiry without exposing history or expired output.
 - Build, SQL/route safety and browser checks passed with isolated mocks; no live migration/account/video/credit changed.
 - Multi-session PostgreSQL testing pending before launch (runtime could not launch a non-root PostgreSQL process).
-- Pending owner's local patch checks, SQL install/verification and acceptance. No automatic commit/push.
+- Owner acceptance passed: login works, wallet 0, Generate disabled; all 14 live SQL checks true. Pushed main: 0b3f71d61dbd24bb6f1dd2a51806838e945c42f6. Paid video not tested.

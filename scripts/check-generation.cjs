@@ -4,6 +4,7 @@ const fs = require('node:fs'); const path = require('node:path'); const Module =
 const ts = require('typescript'); const { PGlite } = require('@electric-sql/pglite'); const { randomUUID } = require('node:crypto');
 const uid = '11111111-1111-4111-8111-111111111111'; const other = '22222222-2222-4222-8222-222222222222';
 const migration = fs.readdirSync('supabase/migrations').find(name => name.endsWith('_generation_flow.sql'));
+const {installStorage,mockStorage,mp4}=require('./storage-fixture.cjs');const storage=mockStorage();
 const cache = new Map(); let db; let authUser = uid; let rpcFailures = 0; let submitKind = 'ok'; let providerStatus = 'processing';
 let loseResponse = '';
 let credit = 3; let posts = 0; let providerReads = 0; let jobCounter = 0; const jobs = new Set();
@@ -16,8 +17,9 @@ function load(file) {
   const native=Module.createRequire(file);
   module.require=name=> {
     if(name==='server-only') return {};
-    if(name==='@supabase/supabase-js') return {createClient:()=>({rpc:async(name,args)=>{
+    if(name==='@supabase/supabase-js') return {createClient:()=>({storage,rpc:async(name,args)=>{
       try {
+        if(name==='radas_v4_video_object_operation')return {data:(await db.query('select public.radas_v4_video_object_operation($1,$2,$3,$4) as result',[args.p_action,args.p_user_id,args.p_id,args.p_size])).rows[0].result,error:null};
         assert.equal(name,'radas_v4_generation_operation');
         if(args.p_action==='transition' && rpcFailures>0){rpcFailures--;throw new Error('transport');}
         const data=await operation(args.p_action,args.p_user_id,args.p_id,args.p_data);
@@ -51,6 +53,7 @@ function request(f,origin='http://localhost:3000') {return new Request('http://l
   await db.exec(fs.readFileSync('supabase/migrations/'+migration,'utf8'));
   const safetyMigration=fs.readdirSync('supabase/migrations').find(name=>name.endsWith('_credit_safety.sql'));
   await db.exec(fs.readFileSync('supabase/migrations/'+safetyMigration,'utf8'));
+  await installStorage(db);
   for(const role of ['anon','authenticated']) {
     await actor(role,uid);await assert.rejects(operation('reserve',uid,randomUUID(),spec),/permission denied/);
     await assert.rejects(db.exec('select * from radas_v4.generations'),/permission denied/);
@@ -99,7 +102,7 @@ function request(f,origin='http://localhost:3000') {return new Request('http://l
       return reply({ok:true,job_id:job,status:'queued',credit_cost:.15,credit_balance:2,est_seconds:60},202);
     }
     const match=/^\/api\/v1\/jobs\/(fixture-\d+)(\/download)?$/.exec(p);assert.ok(match);assert.ok(jobs.has(match[1]));
-    if(match[2])return new Response(Buffer.from('fixture-mp4'),{headers:{'content-type':'video/mp4'}});
+    if(match[2])return new Response(mp4,{headers:{'content-type':'video/mp4'}});
     return reply({ok:true,job:{id:match[1],mode:'t2v',status:providerStatus,progress:'private@email',error:'private'}});
   };
   const POST=load('src/app/api/generations/route.ts').POST;
@@ -126,10 +129,10 @@ function request(f,origin='http://localhost:3000') {return new Request('http://l
   g=await (await get(id)).json();assert.equal(g.status,'processing');
   await db.exec('reset role');await db.query("update radas_v4.generations set last_polled_at=clock_timestamp()-interval '5 seconds' where id=$1",[id]);await actor('service_role');
   providerStatus='done';g=await (await get(id)).json();assert.equal(g.status,'done');assert.equal(g.refunded,false);
-  response=await video(id);assert.equal(response.status,200);assert.equal(await response.text(),'fixture-mp4');
+  response=await video(id);assert.equal(response.status,200);assert.deepEqual(Buffer.from(await response.arrayBuffer()),mp4);
   const cancelled = new AbortController(); cancelled.abort();
   response = await VIDEO(new Request('http://localhost:3000/api/generations/'+id+'/video',{signal:cancelled.signal}),{params:Promise.resolve({id})});
-  await assert.rejects(response.text(),/video_unavailable/);
+  assert.equal(response.status,503);
   await db.exec('reset role');await db.query("update radas_v4.generations set expires_at=created_at+interval '1 second',created_at=clock_timestamp()-interval '13 hours' where id=$1",[id]);
   // Set expiry explicitly, retaining a valid created/expiry interval.
   await db.query("update radas_v4.generations set expires_at=created_at+interval '12 hours' where id=$1",[id]);await actor('service_role');assert.equal((await video(id)).status,410);

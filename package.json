@@ -13,7 +13,9 @@
     "check:nexabot": "node scripts/check-nexabot.cjs",
     "check:nexabot:credit": "node scripts/check-nexabot-credit.cjs",
     "check:generation": "node scripts/check-generation.cjs",
-    "check:safety": "node scripts/check-credit-safety.cjs"
+    "check:safety": "node scripts/check-credit-safety.cjs",
+    "check:storage": "node scripts/check-storage.cjs",
+    "setup:storage": "node scripts/setup-video-storage.cjs"
   },
   "dependencies": {
     "@supabase/ssr": "0.8.0",
