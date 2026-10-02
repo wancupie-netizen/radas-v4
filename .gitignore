@@ -5,3 +5,4 @@ out/
 !.env.example
 *.tsbuildinfo
 .vercel/
+supabase/.temp/

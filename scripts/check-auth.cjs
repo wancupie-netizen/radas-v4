@@ -77,6 +77,10 @@ async function runAuthTests(testRoot) {
     r=await request('/auth/callback?next=https://example.com');assert.ok(r.headers.get('location').includes('/login?confirmation=failed'));
     assert.equal((await request('/api/credits')).status,401);
     assert.equal((await request('/api/credits',{method:'POST',body:JSON.stringify({balance:999})})).status,405);
+    for (const endpoint of ['/api/generations', '/api/generations/11111111-1111-4111-8111-111111111111', '/api/generations/11111111-1111-4111-8111-111111111111/video']) {
+      const anonymous = await request(endpoint, endpoint === '/api/generations' ? {method:'POST'} : {});
+      assert.equal(anonymous.status,401); assert.match(anonymous.headers.get('cache-control'),/no-store/);
+    }
     console.log('PASS anonymous workspace denial, safe callback failure and credit API mutation denial');
     r=await submit('/login',{email:'test@example.com',password:'wrongpass'});assert.equal(r.status,200);assert.match(await r.text(),/Login gagal/);
     assert.equal((await request('/')).status,307);

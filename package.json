@@ -11,7 +11,8 @@
     "check:credits": "node scripts/check-credits.cjs",
     "check:generator": "node scripts/check-generator.cjs",
     "check:nexabot": "node scripts/check-nexabot.cjs",
-    "check:nexabot:credit": "node scripts/check-nexabot-credit.cjs"
+    "check:nexabot:credit": "node scripts/check-nexabot-credit.cjs",
+    "check:generation": "node scripts/check-generation.cjs"
   },
   "dependencies": {
     "@supabase/ssr": "0.8.0",
@@ -19,7 +20,8 @@
     "next": "16.3.8",
     "react": "19.2.0",
     "react-dom": "19.2.0",
-    "server-only": "0.0.1"
+    "server-only": "0.0.1",
+    "sharp": "0.35.5"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.8",

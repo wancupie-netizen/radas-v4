@@ -6,6 +6,7 @@
 - Provider identity/progress/error fields removed; unsafe download redirects denied.
 - Mock checks cover payloads, validation, errors, timeouts, status, credits and downloads.
 - Build and adapter checks required by patch installer.
-- Pending owner's read-only API credit check and local acceptance.
+- Owner's read-only connection check passed: NEXABOT_CONNECTION=PASS, PROVIDER_CREDIT=0, CREDIT_READY=false.
+- Phase 05 committed/pushed as 3db47945e04641ac470fad7b4650ce75a9562354.
 - No live video generated, no SQL, no public provider routes, no credit debit.
 - Generate stays disabled pending Phase 06. Live 10-second duration and CDN behavior remain unverified.

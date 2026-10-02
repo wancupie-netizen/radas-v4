@@ -14,5 +14,5 @@ export default async function Page() {
   } catch { /* Fail closed if verification is unavailable. */ }
   if (!user) redirect('/login');
   const credits = await getCreditSnapshot(supabase);
-  return <VideoWorkspace accountEmail={user.email || ''} initialCredits={credits} />;
+  return <VideoWorkspace accountEmail={user.email || ''} initialCredits={credits} generationEnabled={process.env.RADAS_GENERATION_ENABLED === 'true'} />;
 }
