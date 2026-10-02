@@ -2,8 +2,10 @@
 
 import Image from 'next/image';
 import { GenerationResult } from './generation-result';
+import { RecentHistory } from './recent-history';
+import { pruneRecent, rememberRecent, type RecentDetails, type RecentVideo } from '@/lib/history/recent';
 import { parseGeneration, type Generation } from '@/lib/generations/types';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { PRODUCT } from '@/lib/config';
 import type { CreditSnapshot } from '@/lib/credits/types';
 import { VIDEO_INPUT, validateImageFile, validatePrompt, type VideoMode, type VideoOrientation, type VideoResolution } from '@/lib/video/input';
@@ -11,6 +13,28 @@ import { VIDEO_INPUT, validateImageFile, validatePrompt, type VideoMode, type Vi
 type SourceImage = { file: File; url: string; width: number; height: number };
 
 export function VideoStudio({ credits, generationEnabled, onCreditsChanged }: { credits: CreditSnapshot; generationEnabled: boolean; onCreditsChanged: () => Promise<void> }) {
+  const [history, setHistory] = useState<RecentVideo[]>([]);
+  const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null);
+  const details = useRef<RecentDetails | null>(null);
+  const previewPanel = useRef<HTMLElement>(null);
+  const rememberCompletion = useCallback((next: Generation) => {
+    const snapshot = details.current;
+    if (snapshot) setHistory(previous => rememberRecent(previous, next, snapshot, Date.now()));
+  }, []);
+  useEffect(() => {
+    if (history.length === 0) return;
+    let timer: ReturnType<typeof setTimeout>;
+    const prune = () => setHistory(previous => pruneRecent(previous, Date.now()));
+    function tick() { prune(); schedule(); }
+    function schedule() {
+      const remaining = Math.min(...history.map(item => Date.parse(item.generation.expiresAt))) - Date.now();
+      timer = setTimeout(tick, Math.min(60_000, Math.max(100, remaining + 20)));
+    }
+    schedule();
+    const visible = () => { if (document.visibilityState === 'visible') prune(); };
+    document.addEventListener('visibilitychange', visible);
+    return () => { clearTimeout(timer); document.removeEventListener('visibilitychange', visible); };
+  }, [history]);
   const [generation, setGeneration] = useState<Generation | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [flowError, setFlowError] = useState('');
@@ -31,7 +55,16 @@ export function VideoStudio({ credits, generationEnabled, onCreditsChanged }: { 
   const selection = useRef(0);
   const prompt = prompts[mode];
   const promptError = touched[mode] ? validatePrompt(prompt) : null;
-  const ratio = orientation === 'portrait' ? '9:16' : '16:9';
+  const selectedHistory = history.find(item => item.id === selectedHistoryId);
+  const previewGeneration = selectedHistory?.generation ?? generation;
+  const previewDetails = selectedHistory ?? (generation ? details.current : null);
+  const ratio = (previewDetails?.orientation ?? orientation) === 'portrait' ? '9:16' : '16:9';
+  const previewResolution = previewDetails?.resolution ?? resolution;
+  function selectHistory(id: string) {
+    const item = history.find(video => video.id === id);
+    if (!item || Date.parse(item.generation.expiresAt) <= Date.now()) { setHistory(previous => pruneRecent(previous, Date.now())); return; }
+    setSelectedHistoryId(id); previewPanel.current?.scrollIntoView({ block: 'nearest' });
+  }
 
   useEffect(() => () => { selection.current += 1; }, []);
   const refreshCredits = useRef(onCreditsChanged);
@@ -48,7 +81,7 @@ export function VideoStudio({ credits, generationEnabled, onCreditsChanged }: { 
         if (!response.ok) throw new Error('poll_failed');
         const data = await response.json(); const next = parseGeneration(data);
         if (!alive) return;
-        setGeneration(next);
+        setGeneration(next); rememberCompletion(next);
         if (data.pollUnavailable) throw new Error('provider_poll_failed');
         failures = 0; setFlowError('');
         if (['done', 'failed', 'rejected', 'unknown'].includes(next.status)) { void refreshCredits.current(); return; }
@@ -60,7 +93,7 @@ export function VideoStudio({ credits, generationEnabled, onCreditsChanged }: { 
     }
     timer = setTimeout(poll, 1000);
     return () => { alive = false; clearTimeout(timer); controller.abort(); };
-  }, [generation?.id, generation?.status, pollAttempt]);
+  }, [generation?.id, generation?.status, pollAttempt, rememberCompletion]);
 
   async function generate() {
     if (submittingNow.current || !generationEnabled || (generation && !['done', 'failed', 'rejected'].includes(generation.status))) return;
@@ -74,7 +107,7 @@ export function VideoStudio({ credits, generationEnabled, onCreditsChanged }: { 
       if (mode === 'image' && image) form.set('image', image.file);
       pending.current = { id, form };
     }
-    submittingNow.current = true; setSubmitting(true); setFlowError(''); setGeneration(null);
+    submittingNow.current = true; setSubmitting(true); setFlowError(''); setGeneration(null); setSelectedHistoryId(null);
     try {
       const response = await fetch('/api/generations', { method: 'POST', body: pending.current.form, signal: AbortSignal.timeout(45_000) });
       if (response.status === 401) { window.location.assign('/login'); return; }
@@ -85,13 +118,17 @@ export function VideoStudio({ credits, generationEnabled, onCreditsChanged }: { 
         setFlowError(messages[data.error] || 'Respons belum dapat dipastikan. Klik semak request semula menggunakan rujukan yang sama.');
         return;
       }
-      const next = parseGeneration(data); setGeneration(next); pending.current = null;
+      const next = parseGeneration(data);
+      const form = pending.current.form;
+      details.current = { id: next.id, prompt: String(form.get('prompt')).trim(), mode: form.get('mode') as VideoMode,
+        orientation: form.get('orientation') as VideoOrientation, resolution: form.get('resolution') as VideoResolution };
+      setGeneration(next); rememberCompletion(next); pending.current = null;
       await refreshCredits.current();
     } catch { setFlowError('Respons belum dapat dipastikan. Klik semak request semula menggunakan rujukan yang sama.'); }
     finally { submittingNow.current = false; setSubmitting(false); }
   }
 
-  function again() { setGeneration(null); pending.current = null; setFlowError(''); }
+  function again() { setSelectedHistoryId(null); details.current = null; setGeneration(null); pending.current = null; setFlowError(''); }
 
   useEffect(() => {
     if (!image) return;
@@ -134,7 +171,7 @@ export function VideoStudio({ credits, generationEnabled, onCreditsChanged }: { 
     }
   }
 
-  return <div className="studio-grid">
+  return <><div className="studio-grid">
     <section className="generator panel" aria-label="Video settings">
       <div className="panel-heading"><span className="step">01</span><h2>Video settings</h2></div>
       <form noValidate onSubmit={event => { event.preventDefault(); void generate(); }}>
@@ -190,10 +227,10 @@ export function VideoStudio({ credits, generationEnabled, onCreditsChanged }: { 
       </form>
     </section>
 
-    <section className="preview panel" aria-label="Video preview">
-      <div className="panel-heading"><span className="step">02</span><h2>Preview</h2><span className="preview-meta">{ratio} · {resolution}p</span></div>
+    <section ref={previewPanel} className="preview panel" aria-label="Video preview">
+      <div className="panel-heading"><span className="step">02</span><h2>Preview</h2><span className="preview-meta">{ratio} · {previewResolution}p</span></div>
       <div className="preview-stage">
-        {generation ? <GenerationResult generation={generation} onAgain={again} /> : mode === 'image' && image ? <>
+        {previewGeneration ? <GenerationResult key={previewGeneration.id} generation={previewGeneration} onAgain={selectedHistory ? () => setSelectedHistoryId(null) : again} againLabel={selectedHistory ? 'Tutup preview history' : 'Generate Again'} /> : mode === 'image' && image ? <>
           <div className={`source-preview ${orientation}`}><Image src={image.url} alt="Preview gambar sumber" fill unoptimized sizes="(max-width: 820px) 85vw, 440px" /></div>
           <h3>Source image preview</h3><p>Gambar sumber untuk Image to Video.</p>
         </> : <>
@@ -201,9 +238,9 @@ export function VideoStudio({ credits, generationEnabled, onCreditsChanged }: { 
           <h3>{mode === 'image' ? <>Choose your<br />source image</> : <>Your generated video<br />will appear here</>}</h3>
           <p>{mode === 'image' ? 'Pilih gambar untuk lihat preview di sini.' : 'Preview hasil video sebelum download.'}</p>
         </>}
-        <div className="video-specs" aria-label="Selected video settings"><span>{ratio}</span><span>{resolution}p</span><span>{PRODUCT.durationSeconds} saat</span><span>{PRODUCT.creditsPerGeneration} credit</span></div>
+        <div className="video-specs" aria-label="Selected video settings"><span>{ratio}</span><span>{previewResolution}p</span><span>{PRODUCT.durationSeconds} saat</span><span>{PRODUCT.creditsPerGeneration} credit</span></div>
       </div>
       <div className="preview-footer"><span aria-hidden="true">↓</span><p>Download terus selepas generate.<br /><span>Video hilang daripada paparan apabila refresh atau logout.</span></p></div>
     </section>
-  </div>;
+  </div><RecentHistory items={history} selectedId={selectedHistory?.id ?? null} onSelect={selectHistory} /></>;
 }
