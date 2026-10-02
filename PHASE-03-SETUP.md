@@ -3,7 +3,8 @@
 Target repo: https://github.com/wancupie-netizen/radas-v4
 Baseline: 8a540629a63c254957ade1ff37057b3ee4621b4e
 Supabase project: fyqvvkpzcwrmyozxlqkw
-App: https://app.radas.my/
+Current app: http://localhost:3000/
+Future V4 domain: https://video.radas.my/
 
 ## Apply code
 
@@ -43,7 +44,7 @@ if ($LASTEXITCODE -ne 0) { throw 'PUSH failed' }
 
 ## Live acceptance
 
-Log in with an existing email at app.radas.my after deployment. Header should show 0 for a new RADAS V4 wallet. Credits opens real ledger and Semak baki refreshes it. Refresh/logout/login retains wallet balance, while video session behavior stays unchanged. If SQL/config is missing or unreachable, UI shows — / Baki belum tersedia; it never substitutes zero for a failed read.
+Log in with an existing email at http://localhost:3000/. The future V4 domain is video.radas.my; app.radas.my is unrelated to V4. Header should show 0 for a new RADAS V4 wallet. Credits opens real ledger and Semak baki refreshes it. Refresh/logout/login retains wallet balance, while video session behavior stays unchanged. If SQL/config is missing or unreachable, UI shows — / Baki belum tersedia; it never substitutes zero for a failed read.
 
 QRPay, provider generation, automatic failure refunds and payment confirmation are later phases. Generate remains disabled, and Top Up takes no payment. Do not manually award production test credits.
 

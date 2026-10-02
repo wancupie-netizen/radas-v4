@@ -3,6 +3,7 @@ import { useActionState, useRef, useState } from 'react';
 import { logout } from '@/app/auth/actions';
 import type { AuthState } from '@/lib/auth/input';
 import { parseSnapshot, type CreditSnapshot } from '@/lib/credits/types';
+import { VideoStudio } from '@/components/video-studio';
 import { PRODUCT } from '@/lib/config';
 export function VideoWorkspace({ accountEmail, initialCredits }: { accountEmail: string; initialCredits: CreditSnapshot }) {
   const [credits, setCredits] = useState(initialCredits);
@@ -19,14 +20,7 @@ export function VideoWorkspace({ accountEmail, initialCredits }: { accountEmail:
   }
   const [logoutState, logoutAction, logoutPending] = useActionState<AuthState, FormData>(logout, {});
   const profile = useRef<HTMLDialogElement>(null);
-  const [mode, setMode] = useState('text');
-  const [orientation, setOrientation] = useState('portrait');
-  const [resolution, setResolution] = useState('720');
-  const [prompt, setPrompt] = useState('');
-  const [imageName, setImageName] = useState('');
-  const [notice, setNotice] = useState('');
   const dialog = useRef<HTMLDialogElement>(null);
-  const file = useRef<HTMLInputElement>(null);
   function topUp() { dialog.current?.showModal(); }
   return <div className="app-shell">
     <aside className="sidebar" aria-label="Main navigation">
@@ -40,19 +34,8 @@ export function VideoWorkspace({ accountEmail, initialCredits }: { accountEmail:
       <div className="mobile-account"><button onClick={() => profile.current?.showModal()}>Profile</button><form action={logoutAction}><button type="submit" disabled={logoutPending}>{logoutPending ? "Logging out…" : "Logout"}</button></form></div>
       <div className="workspace">
         <div className="page-heading"><div><span className="eyebrow">AI VIDEO GENERATOR</span><h1>Create Video<span>.</span></h1><p>Dari idea ke video. Generate, preview, download.</p></div><span className="duration-badge">10 saat / video</span></div>
-        <div className="studio-grid">
-          <section className="generator panel" aria-label="Video settings">
-            <div className="panel-heading"><span className="step">01</span><h2>Video settings</h2></div>
-            <label htmlFor="mode">Generation mode</label><select id="mode" value={mode} onChange={e => { setMode(e.target.value); setNotice(''); }}><option value="text">Text to Video</option><option value="image">Image to Video</option></select>
-            {mode === 'image' && <div className="upload-area"><label htmlFor="image">Upload image</label><input ref={file} id="image" type="file" accept="image/jpeg,image/png,image/webp" onChange={e => { const f = e.target.files?.[0]; if (f && (!['image/jpeg','image/png','image/webp'].includes(f.type) || f.size > 10 * 1024 * 1024)) { e.target.value='';setImageName('');setNotice('Pilih JPG, PNG atau WEBP maksimum 10 MB.');return; } setImageName(f?.name ?? '');setNotice(''); }}/><span>{imageName || 'JPG, PNG, WEBP · Maksimum 10 MB'}</span></div>}
-            <fieldset><legend>Orientation</legend><div className="choices"><button type="button" aria-pressed={orientation === 'portrait'} className={orientation === 'portrait' ? 'selected' : ''} onClick={() => setOrientation('portrait')}><span className="ratio portrait"/>Portrait <span className="muted">9:16</span></button><button type="button" aria-pressed={orientation === 'landscape'} className={orientation === 'landscape' ? 'selected' : ''} onClick={() => setOrientation('landscape')}><span className="ratio landscape"/>Landscape <span className="muted">16:9</span></button></div></fieldset>
-            <fieldset><legend>Resolution</legend><div className="choices"><button type="button" aria-pressed={resolution === '720'} className={resolution === '720' ? 'selected' : ''} onClick={() => setResolution('720')}>720p <span className="muted">HD</span></button><button type="button" aria-pressed={resolution === '1080'} className={resolution === '1080' ? 'selected' : ''} onClick={() => setResolution('1080')}>1080p <span className="muted">Full HD</span></button></div></fieldset>
-            <div className="prompt-label"><label htmlFor="prompt">{mode === 'image' ? 'Motion prompt' : 'Describe your video'}</label><span className="muted">{prompt.length}/2000</span></div><textarea id="prompt" maxLength={2000} value={prompt} onChange={e => setPrompt(e.target.value)} placeholder={mode === 'image' ? 'Terangkan pergerakan subjek dan kamera…' : 'Contoh: Seorang creator memperkenalkan produk di studio dengan cahaya lembut…'} />
-            <button className="primary generate" disabled>Generate Video <span>· {PRODUCT.creditsPerGeneration} Credit</span></button><p className="phase-note">{credits.status === 'unavailable' ? 'Baki credit belum tersedia. Cuba semak semula di Credits.' : credits.balance === 0 ? 'Baki 0 credit. Top up dan generation akan dibuka dalam fasa seterusnya.' : 'Generation akan dibuka dalam fasa seterusnya.'}</p>
-          </section>
-          <section className="preview panel" aria-label="Video preview"><div className="panel-heading"><span className="step">02</span><h2>Preview</h2><span className="preview-meta">{orientation === 'portrait' ? '9:16' : '16:9'} · {resolution}p</span></div><div className="preview-stage"><div className={`empty-frame ${orientation}`}><span className="play-icon" aria-hidden="true">▷</span></div><h3>Your generated video<br/>will appear here</h3><p>Preview hasil video sebelum download.</p></div><div className="preview-footer"><span aria-hidden="true">↓</span><p>Download terus selepas generate.<br/><span>Video hilang daripada paparan apabila refresh atau logout.</span></p></div></section>
-        </div>
-        {notice && <p className="notice" role="status">{notice}</p>}{logoutState.error && <p className="notice" role="alert">{logoutState.error}</p>}
+        <VideoStudio credits={credits} />
+        {logoutState.error && <p className="notice" role="alert">{logoutState.error}</p>}
         <footer className="workspace-footer"><span>RADAS AI VIDEO</span><span>RM5 / 60 credits · 1 credit / generation</span></footer>
       </div>
     </main>

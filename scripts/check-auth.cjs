@@ -63,7 +63,7 @@ async function runAuthTests(testRoot) {
   const decode=s=>s.replaceAll('&quot;','"').replaceAll('&#x27;',"'").replaceAll('&amp;','&');
   async function submit(path, values, chooseLast=false) {
     const html=await (await request(path)).text();
-    const forms=[...html.matchAll(/<form\b[\s\S]*?<\/form>/g)];
+    const forms=[...html.matchAll(/<form\b[\s\S]*?<\/form>/g)].filter(match => /name="\$ACTION_/.test(match[0]));
     const markup=forms[chooseLast ? forms.length-1 : 0]?.[0];assert.ok(markup,'Expected server action form');
     const body=form(values);
     for(const m of markup.matchAll(/<input\b[^>]*type="hidden"[^>]*>/g)) {const name=m[0].match(/name="([^"]*)"/);const value=m[0].match(/value="([^"]*)"/);if(name)body.set(decode(name[1]),decode(value?.[1]||''));}
