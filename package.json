@@ -12,7 +12,8 @@
     "check:generator": "node scripts/check-generator.cjs",
     "check:nexabot": "node scripts/check-nexabot.cjs",
     "check:nexabot:credit": "node scripts/check-nexabot-credit.cjs",
-    "check:generation": "node scripts/check-generation.cjs"
+    "check:generation": "node scripts/check-generation.cjs",
+    "check:safety": "node scripts/check-credit-safety.cjs"
   },
   "dependencies": {
     "@supabase/ssr": "0.8.0",

@@ -5,6 +5,7 @@ const ts = require('typescript'); const { PGlite } = require('@electric-sql/pgli
 const uid = '11111111-1111-4111-8111-111111111111'; const other = '22222222-2222-4222-8222-222222222222';
 const migration = fs.readdirSync('supabase/migrations').find(name => name.endsWith('_generation_flow.sql'));
 const cache = new Map(); let db; let authUser = uid; let rpcFailures = 0; let submitKind = 'ok'; let providerStatus = 'processing';
+let loseResponse = '';
 let credit = 3; let posts = 0; let providerReads = 0; let jobCounter = 0; const jobs = new Set();
 async function operation(action, user, id, data = {}) {
   return (await db.query('select public.radas_v4_generation_operation($1,$2,$3,$4) as result', [action,user,id,JSON.stringify(data)])).rows[0].result;
@@ -19,7 +20,9 @@ function load(file) {
       try {
         assert.equal(name,'radas_v4_generation_operation');
         if(args.p_action==='transition' && rpcFailures>0){rpcFailures--;throw new Error('transport');}
-        return {data:await operation(args.p_action,args.p_user_id,args.p_id,args.p_data),error:null};
+        const data=await operation(args.p_action,args.p_user_id,args.p_id,args.p_data);
+        if(args.p_action===loseResponse){loseResponse='';throw new Error('lost committed response');}
+        return {data,error:null};
       } catch(error){return {data:null,error};}
     }})};
     const resolved=name.startsWith('@/') ? path.resolve('src',name.slice(2)+'.ts') : name.startsWith('.') ? path.resolve(path.dirname(file),name+'.ts') : null;
@@ -46,6 +49,8 @@ function request(f,origin='http://localhost:3000') {return new Request('http://l
     insert into auth.users values ('${uid}'),('${other}');`);
   await db.exec(fs.readFileSync('supabase/migrations/202610020001_credit_engine.sql','utf8'));
   await db.exec(fs.readFileSync('supabase/migrations/'+migration,'utf8'));
+  const safetyMigration=fs.readdirSync('supabase/migrations').find(name=>name.endsWith('_credit_safety.sql'));
+  await db.exec(fs.readFileSync('supabase/migrations/'+safetyMigration,'utf8'));
   for(const role of ['anon','authenticated']) {
     await actor(role,uid);await assert.rejects(operation('reserve',uid,randomUUID(),spec),/permission denied/);
     await assert.rejects(db.exec('select * from radas_v4.generations'),/permission denied/);
@@ -54,12 +59,13 @@ function request(f,origin='http://localhost:3000') {return new Request('http://l
   let id=randomUUID();assert.equal((await operation('reserve',uid,id,spec)).error,'insufficient_credits');
   await db.query('select public.radas_v4_credit_apply($1,$2,$3)',[uid,'topup','fixture-paid-1']);
   await db.query('select public.radas_v4_credit_apply($1,$2,$3)',[other,'topup','fixture-paid-2']);
-  let g=await operation('reserve',uid,id,spec);assert.equal(g.created,true);assert.equal(g.status,'submitting');
+  let g=await operation('reserve',uid,id,spec);assert.equal(g.created,true);assert.equal(g.status,'reserved');
   assert.equal((await operation('reserve',uid,id,spec)).created,false);
   assert.equal((await operation('reserve',uid,id,{...spec,hash:'b'.repeat(64)})).error,'request_conflict');
   assert.equal((await operation('reserve',uid,randomUUID(),spec)).error,'active_generation');
   assert.equal((await operation('read',other,id)).error,'not_found');
-  assert.equal((await operation('transition',uid,id,{status:'rejected'})).refunded,true);
+  const initialToken=randomUUID();await operation('claim',uid,id,{claimToken:initialToken});
+  assert.equal((await operation('transition',uid,id,{status:'rejected',claimToken:initialToken})).refunded,true);
   assert.equal((await operation('transition',uid,id,{status:'rejected'})).refunded,true);
   console.log('PASS SQL permissions, ownership, zero balance, atomic reservation, matching retry and fixed refund');
   await db.exec('reset role');
@@ -70,7 +76,7 @@ function request(f,origin='http://localhost:3000') {return new Request('http://l
   await db.exec('drop trigger fixture_failure on radas_v4.generations;drop function radas_v4.fail_generation_insert();');
   await actor('service_role');const burst=await Promise.all(Array.from({length:20},()=>operation('reserve',uid,randomUUID(),spec)));
   assert.equal(burst.filter(x=>x.created).length,1);assert.equal(burst.filter(x=>x.error==='active_generation').length,19);
-  const active=burst.find(x=>x.created);await operation('transition',uid,active.id,{status:'queued',providerJobId:'sql-job'});
+  const active=burst.find(x=>x.created);const activeToken=randomUUID();await operation('claim',uid,active.id,{claimToken:activeToken});await operation('transition',uid,active.id,{status:'queued',providerJobId:'sql-job',claimToken:activeToken});
   assert.equal((await operation('poll',uid,active.id)).pollAllowed,true);assert.equal((await operation('poll',uid,active.id)).pollAllowed,false);
   await operation('transition',uid,active.id,{status:'processing',providerJobId:'sql-job'});
   assert.equal((await operation('transition',uid,active.id,{status:'queued',providerJobId:'sql-job'})).status,'processing');
@@ -128,17 +134,42 @@ function request(f,origin='http://localhost:3000') {return new Request('http://l
   // Set expiry explicitly, retaining a valid created/expiry interval.
   await db.query("update radas_v4.generations set expires_at=created_at+interval '12 hours' where id=$1",[id]);await actor('service_role');assert.equal((await video(id)).status,410);
   console.log('PASS real routes: verified auth, CSRF, feature gate, strict body, full image decode, provider-zero denial, replay, ownership, poll, MP4 and expiry');
+  providerStatus='done';
+  for(const lostAction of ['reserve','claim']) {
+    loseResponse=lostAction;id=randomUUID();const beforePosts=posts;
+    response=await POST(request(form(id)));assert.equal(response.status,202);assert.equal(posts,beforePosts+1);
+    await POST(request(form(id)));assert.equal(posts,beforePosts+1);
+    assert.equal((await (await get(id)).json()).status,'done');
+  }
+  const duplicateId=randomUUID();const beforeBurstPosts=posts;
+  const duplicates=await Promise.all(Array.from({length:20},()=>POST(request(form(duplicateId)))));
+  assert.ok(duplicates.every(r=>r.status===202));assert.equal(posts,beforeBurstPosts+1);
+  assert.equal((await (await get(duplicateId)).json()).status,'done');
+  for(const terminal of ['done','failed']) {
+    const oldId=randomUUID();await POST(request(form(oldId)));
+    await db.exec('reset role');await db.query("update radas_v4.generations set created_at=clock_timestamp()-interval '13 hours',expires_at=clock_timestamp()-interval '1 hour' where id=$1",[oldId]);await actor('service_role');
+    providerStatus=terminal;const beforePosts=posts;const newId=randomUUID();
+    response=await POST(request(form(newId)));assert.equal(response.status,202);assert.equal(posts,beforePosts+1);
+    assert.equal((await video(oldId)).status,410);
+    await db.exec('reset role');const oldJob=(await db.query('select status,refunded from radas_v4.generations where id=$1',[oldId])).rows[0];assert.equal(oldJob.status,terminal);assert.equal(oldJob.refunded,terminal==='failed');await actor('service_role');
+    providerStatus='done';await get(newId);
+  }
+  console.log('PASS new request reconciles owned known jobs after refresh/expiry; old output stays inaccessible; failed old job refunded');
+  // An existing unclaimed reservation can be refunded safely when provider credit disappears.
+  id=randomUUID();await operation('reserve',uid,id,{...spec,hash:(await load('src/lib/generations/input.ts').readGenerationInput(request(form(id)))).hash});
+  credit=0;g=await (await POST(request(form(id)))).json();assert.equal(g.status,'rejected');assert.equal(g.refunded,true);credit=3;
+  console.log('PASS lost committed reserve/claim responses recover safely; twenty HTTP retries send one paid POST; unclaimed provider outage refund');
   submitKind='reject';id=randomUUID();g=await (await POST(request(form(id)))).json();assert.equal(g.status,'rejected');assert.equal(g.refunded,true);
   const rejectedPosts=posts;await POST(request(form(id)));assert.equal(posts,rejectedPosts);
   submitKind='ok';providerStatus='failed';id=randomUUID();await POST(request(form(id)));g=await (await get(id)).json();assert.equal(g.status,'failed');assert.equal(g.refunded,true);
   submitKind='unknown';id=randomUUID();g=await (await POST(request(form(id)))).json();assert.equal(g.status,'unknown');assert.equal(g.refunded,false);
   const unknownPosts=posts;await POST(request(form(id)));assert.equal(posts,unknownPosts);assert.equal((await POST(request(form(randomUUID())))).status,409);
-  await assert.rejects(operation('transition',uid,id,{status:'rejected'}),/unknown_cannot_be_refunded/);
+  await assert.rejects(operation('transition',uid,id,{status:'rejected'}),/unknown_cannot_be_refunded|claim_owner_required/);
   // Free only this isolated fixture account for crash-persistence testing, never live data.
   await db.exec('reset role');await db.query('delete from radas_v4.generations where id=$1',[id]);await actor('service_role');
   submitKind='ok';rpcFailures=2;id=randomUUID();response=await POST(request(form(id)));assert.equal(response.status,503);
   const savedPosts=posts;g=await (await POST(request(form(id)))).json();assert.equal(g.status,'submitting');assert.equal(posts,savedPosts);
-  await db.exec('reset role');await db.query("update radas_v4.generations set created_at=clock_timestamp()-interval '3 minutes' where id=$1",[id]);await actor('service_role');
+  await db.exec('reset role');await db.query("update radas_v4.generations set created_at=clock_timestamp()-interval '3 minutes',updated_at=clock_timestamp()-interval '3 minutes' where id=$1",[id]);await actor('service_role');
   g=await (await get(id)).json();assert.equal(g.status,'unknown');assert.equal(g.refunded,false);
   global.fetch=originalFetch;
   console.log('PASS definitive rejection/failure refund once; ambiguous submit and accepted-but-unsaved job never repost or refund');

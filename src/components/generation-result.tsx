@@ -17,7 +17,7 @@ export function GenerationResult({ generation, onAgain }: { generation: Generati
     })();
     return () => { mounted = false; controller.abort(); if (objectUrl) URL.revokeObjectURL(objectUrl); };
   }, [generation.id, generation.status, attempt]);
-  const labels = { submitting: 'Preparing…', queued: 'Preparing…', processing: 'Generating…', done: 'Video siap', failed: 'Generation gagal', rejected: 'Request tidak diterima', unknown: 'Status request belum dapat dipastikan' };
+  const labels = { reserved: 'Preparing…', submitting: 'Preparing…', queued: 'Preparing…', processing: 'Generating…', done: 'Video siap', failed: 'Generation gagal', rejected: 'Request tidak diterima', unknown: 'Status request belum dapat dipastikan' };
   const final = ['done', 'failed', 'rejected'].includes(generation.status);
   return <div className="generation-result">
     <h3 aria-live="polite">{labels[generation.status]}</h3>

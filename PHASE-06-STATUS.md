@@ -9,5 +9,6 @@
 - Generation remains feature-gated; default false. No real API generation, database migration or free credit performed.
 - Build/auth/credit/provider/input/generation checks pass using isolated mocks and PostgreSQL functions.
 - Browser verification passed: actual Next routes with isolated SQL and mock provider, text/image settings, processing, playable MP4/download, credits/refund, unknown outcome, mobile, refresh/logout and no JavaScript errors.
-- Pending local SQL install/verification and owner's acceptance. Live output duration/provider download behavior unverified.
+- Owner installed SQL: all 12 verification checks true; localhost accepted. Pushed 440b9ee5ac5c1cb99c0c3f109f010e6520ecb0d0.
+- Windows-only mock path matching fixed before commit. Live output duration/provider download behavior unverified.
 - Temporary object storage, history, cleanup, payments and public rollout remain later phases.

@@ -78,8 +78,8 @@ Local multipart uploads support this limit. Vercel's request-size limits need a 
 before deploying the full 10 MiB image path; that is part of Phase 08 deployment preparation.
 Polling is every four seconds in the UI and throttled to at least three seconds per job in the database.
 After repeated errors/15 minutes the UI pauses and offers a read-only status check.
-There is no background worker yet: after refresh/logout, a known job is reconciled by later operator/recovery work,
-not automatically rediscovered by the UI. Unknown jobs require reconciliation, even after output access expires.
+Phase 07 adds request-driven reconciliation of owned known jobs before a new submit, without restoring UI history.
+There is no background worker yet. Unknown jobs require operator/provider evidence, even after output access expires.
 
 ## Commit only after acceptance
 

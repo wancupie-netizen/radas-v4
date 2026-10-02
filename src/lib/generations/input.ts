@@ -5,7 +5,7 @@ import { validatePrompt, validateImageFile, VIDEO_INPUT } from '../video/input';
 import type { VideoRequest } from '../nexabot/client';
 import { UUID } from './types';
 export class GenerationError extends Error {
-  constructor(public readonly code: string, public readonly status = 503) { super(code); }
+  constructor(public readonly code: string, public readonly status = 503, public readonly activeId?: string) { super(code); }
 }
 export async function readGenerationInput(request: Request) {
   if (!(request.headers.get('content-type') ?? '').startsWith('multipart/form-data;')) throw new GenerationError('invalid_input', 400);

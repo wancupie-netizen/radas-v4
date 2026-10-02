@@ -37,7 +37,7 @@ export function VideoStudio({ credits, generationEnabled, onCreditsChanged }: { 
   const refreshCredits = useRef(onCreditsChanged);
   useEffect(() => { refreshCredits.current = onCreditsChanged; }, [onCreditsChanged]);
   useEffect(() => {
-    if (!generation || !['submitting', 'queued', 'processing'].includes(generation.status)) return;
+    if (!generation || !['reserved', 'submitting', 'queued', 'processing'].includes(generation.status)) return;
     let alive = true; let timer: ReturnType<typeof setTimeout>; let failures = 0;
     const controller = new AbortController(); const started = Date.now();
     async function poll() {
@@ -80,7 +80,7 @@ export function VideoStudio({ credits, generationEnabled, onCreditsChanged }: { 
       if (response.status === 401) { window.location.assign('/login'); return; }
       const data = await response.json();
       if (!response.ok) {
-        const messages: Record<string, string> = { insufficient_credits: 'Credit tidak mencukupi.', active_generation: 'Masih ada generation aktif. Tunggu atau hubungi sokongan.', provider_unavailable: 'Generation belum tersedia. Tiada credit digunakan.', invalid_image: 'Gambar tidak sah. Pilih gambar lain.', invalid_input: 'Semak prompt dan tetapan video.', image_too_large: 'Saiz gambar maksimum 10 MB.', generation_disabled: 'Generation belum diaktifkan.', request_conflict: 'Rujukan request tidak sepadan. Hubungi sokongan.' };
+        const messages: Record<string, string> = { insufficient_credits: 'Credit tidak mencukupi.', active_generation: 'Masih ada generation aktif. Tunggu sebentar dan cuba semula; hubungi sokongan jika berlarutan.', provider_unavailable: 'Generation belum tersedia. Tiada credit digunakan.', invalid_image: 'Gambar tidak sah. Pilih gambar lain.', invalid_input: 'Semak prompt dan tetapan video.', image_too_large: 'Saiz gambar maksimum 10 MB.', generation_disabled: 'Generation belum diaktifkan.', request_conflict: 'Rujukan request tidak sepadan. Hubungi sokongan.' };
         if ([400, 402, 403, 409, 413].includes(response.status) || ['provider_unavailable', 'generation_disabled'].includes(data.error)) pending.current = null;
         setFlowError(messages[data.error] || 'Respons belum dapat dipastikan. Klik semak request semula menggunakan rujukan yang sama.');
         return;
