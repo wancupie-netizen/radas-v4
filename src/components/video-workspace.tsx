@@ -5,9 +5,11 @@ import type { AuthState } from '@/lib/auth/input';
 import { parseSnapshot, type CreditSnapshot } from '@/lib/credits/types';
 import { VideoStudio } from '@/components/video-studio';
 import { PaymentPanel } from '@/components/payment-panel';
+import { AffiliatePanel } from '@/components/affiliate-panel';
 import { requestJson, RequestError } from '@/lib/errors/client';
 export function VideoWorkspace({ accountEmail, initialCredits, generationEnabled }: { accountEmail: string; initialCredits: CreditSnapshot; generationEnabled: boolean }) {
   const [credits, setCredits] = useState(initialCredits);
+  const [tab, setTab] = useState<'video' | 'affiliate'>('video');
   const [refreshing, setRefreshing] = useState(false);
   const creditDialog = useRef<HTMLDialogElement>(null);
   async function refreshCredits() {
@@ -29,16 +31,20 @@ export function VideoWorkspace({ accountEmail, initialCredits, generationEnabled
   return <div className="app-shell">
     <aside className="sidebar" aria-label="Main navigation">
       <a href="/studio" className="brand"><span className="brand-mark">R</span>RADAS<span className="brand-dot">.</span></a>
-      <div className="nav-group"><span className="eyebrow">WORKSPACE</span><a href="/studio" className="nav-item active" aria-current="page"><span aria-hidden="true">▣</span>Create Video</a></div>
+      <div className="nav-group"><span className="eyebrow">WORKSPACE</span><button className={`nav-item ${tab==='video'?'active':''}`} aria-pressed={tab==='video'} onClick={()=>setTab('video')}><span aria-hidden="true">▣</span>Create Video</button><button className={`nav-item ${tab==='affiliate'?'active':''}`} aria-pressed={tab==='affiliate'} onClick={()=>setTab('affiliate')}><span aria-hidden="true">◇</span>Produk Affiliate</button></div>
       <div className="nav-group"><span className="eyebrow">ACCOUNT</span><button className="nav-item" onClick={() => creditDialog.current?.showModal()}><span aria-hidden="true">◈</span>Credits</button><button className="nav-item" onClick={topUp}><span aria-hidden="true">＋</span>Top Up</button></div>
       <div className="sidebar-bottom"><div className="package-card"><span className="eyebrow">MULA DENGAN RM5</span><strong>60 video credits</strong><p>Top up bila perlu.</p><button onClick={topUp}>Top Up Credits</button></div><button className="nav-item" onClick={() => profile.current?.showModal()}>Profile</button><form action={logoutAction}><button className="nav-item" type="submit" disabled={logoutPending}>{logoutPending ? "Logging out…" : "Logout"}</button></form></div>
     </aside>
     <main>
-      <header className="topbar"><span>Create Video</span><div className="header-actions"><span className="balance">Credits: <strong>{credits.status === 'ready' ? credits.balance : '—'}</strong></span><button className="primary small" onClick={topUp}>Top Up</button></div></header>
+      <header className="topbar"><span>{tab==='video'?'Create Video':'Produk Affiliate'}</span><div className="header-actions"><span className="balance">Credits: <strong>{credits.status === 'ready' ? credits.balance : '—'}</strong></span><button className="primary small" onClick={topUp}>Top Up</button></div></header>
+      <nav className="mobile-workspace-nav" aria-label="Workspace"><button className="secondary" aria-pressed={tab==='video'} onClick={()=>setTab('video')}>Create Video</button><button className="secondary" aria-pressed={tab==='affiliate'} onClick={()=>setTab('affiliate')}>Produk Affiliate</button></nav>
       <div className="mobile-account"><button onClick={() => profile.current?.showModal()}>Profile</button><form action={logoutAction}><button type="submit" disabled={logoutPending}>{logoutPending ? "Logging out…" : "Logout"}</button></form></div>
       <div className="workspace">
+        <div hidden={tab!=='video'}>
         <div className="page-heading"><div><span className="eyebrow">AI VIDEO GENERATOR</span><h1>Create Video<span>.</span></h1><p>Dari idea ke video. Generate, preview, download.</p></div><span className="duration-badge">10 saat / video</span></div>
         <VideoStudio credits={credits} generationEnabled={generationEnabled} onCreditsChanged={refreshCredits} />
+        </div>
+        {tab==='affiliate' && <AffiliatePanel balance={credits.status==='ready'?credits.balance:-1} onTopUp={topUp}/>}
         {logoutState.error && <p className="notice" role="alert">{logoutState.error}</p>}
         <footer className="workspace-footer"><span>RADAS AI VIDEO</span><span>RM5 / 60 credits · 1 credit / generation</span></footer>
       </div>
