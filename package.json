@@ -25,7 +25,8 @@
     "check:errors": "node scripts/check-errors.cjs",
     "check:protection": "node scripts/check-protection.cjs",
     "check:landing": "node scripts/check-landing.cjs",
-    "check:all": "node scripts/run-phase16.cjs"
+    "check:all": "node scripts/run-phase16.cjs",
+    "check:api-stock": "node scripts/check-api-stock.cjs"
   },
   "dependencies": {
     "@supabase/ssr": "0.8.0",
