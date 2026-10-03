@@ -20,7 +20,8 @@
     "check:cleanup": "node scripts/check-cleanup.cjs",
     "cleanup:check": "node scripts/run-cleanup.cjs --check",
     "cleanup:once": "node scripts/run-cleanup.cjs --run",
-    "check:cleanup:runtime": "node scripts/check-cleanup-runtime.cjs"
+    "check:cleanup:runtime": "node scripts/check-cleanup-runtime.cjs",
+    "check:payments": "node scripts/check-payments.cjs"
   },
   "dependencies": {
     "@supabase/ssr": "0.8.0",

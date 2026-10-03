@@ -4,7 +4,7 @@ import { logout } from '@/app/auth/actions';
 import type { AuthState } from '@/lib/auth/input';
 import { parseSnapshot, type CreditSnapshot } from '@/lib/credits/types';
 import { VideoStudio } from '@/components/video-studio';
-import { PRODUCT } from '@/lib/config';
+import { PaymentPanel } from '@/components/payment-panel';
 export function VideoWorkspace({ accountEmail, initialCredits, generationEnabled }: { accountEmail: string; initialCredits: CreditSnapshot; generationEnabled: boolean }) {
   const [credits, setCredits] = useState(initialCredits);
   const [refreshing, setRefreshing] = useState(false);
@@ -48,6 +48,6 @@ export function VideoWorkspace({ accountEmail, initialCredits, generationEnabled
       <div className="credit-actions"><button className="primary" onClick={refreshCredits} disabled={refreshing}>{refreshing ? 'Menyemak…' : 'Semak baki'}</button><button onClick={() => { creditDialog.current?.close(); topUp(); }}>Top Up</button></div>
     </dialog>
     <dialog ref={profile} aria-labelledby="profile-title"><div className="modal-heading"><span className="eyebrow">ACCOUNT</span><button aria-label="Close profile" onClick={() => profile.current?.close()}>×</button></div><h2 id="profile-title">Profile</h2><p className="profile-email">{accountEmail}</p><button className="primary" onClick={() => profile.current?.close()}>Tutup</button></dialog>
-    <dialog ref={dialog} aria-labelledby="topup-title" onClick={e => { if (e.target === e.currentTarget) dialog.current?.close(); }}><div className="modal-heading"><span className="eyebrow">VIDEO CREDITS</span><button aria-label="Close top up" onClick={() => dialog.current?.close()}>×</button></div><h2 id="topup-title">Top Up Credits</h2><div className="pricing"><strong>RM{PRODUCT.packagePriceMYR}</strong><span>{PRODUCT.packageCredits} video credits</span></div><p>1 credit = 1 video generation.</p><p className="payment-note">Pembayaran QRPay belum tersedia. Tiada bayaran diambil pada peringkat ini.</p><button className="primary" onClick={() => dialog.current?.close()}>Tutup</button></dialog>
+    <dialog ref={dialog} aria-labelledby="topup-title" onClick={e => { if (e.target === e.currentTarget) dialog.current?.close(); }}><div className="modal-heading"><span className="eyebrow">VIDEO CREDITS</span><button aria-label="Close top up" onClick={() => dialog.current?.close()}>×</button></div><h2 id="topup-title">Top Up Credits</h2><PaymentPanel onCreditsChanged={refreshCredits} /><button className="primary" onClick={() => dialog.current?.close()}>Tutup</button></dialog>
   </div>;
 }
