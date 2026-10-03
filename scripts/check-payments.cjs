@@ -5,7 +5,11 @@ const admin=randomUUID(),user=randomUUID(),other=randomUUID();
 await db.exec(`create role anon;create role authenticated;create role service_role bypassrls;create schema auth;create table auth.users(id uuid primary key,email text,email_confirmed_at timestamptz);create function auth.jwt() returns jsonb language sql stable as $$select coalesce(nullif(current_setting('request.jwt.claims',true),''),'{}')::jsonb$$;create function auth.uid() returns uuid language sql stable as $$select (auth.jwt()->>'sub')::uuid$$;grant usage on schema auth to anon,authenticated,service_role;grant execute on function auth.uid(),auth.jwt() to anon,authenticated,service_role;insert into auth.users values('${admin}','wancupie@gmail.com',now()),('${user}','fixture@example.com',now()),('${other}','other@example.com',now());`);
 for(const suffix of ['_credit_engine.sql','_generation_flow.sql','_credit_safety.sql'])await db.exec(fs.readFileSync('supabase/migrations/'+fs.readdirSync('supabase/migrations').find(x=>x.endsWith(suffix)),'utf8'));
 await require('./storage-fixture.cjs').installStorage(db);await db.exec('alter table storage.objects add column created_at timestamptz default now();');
-for(const suffix of ['_auto_cleanup.sql','_manual_payments.sql'])await db.exec(fs.readFileSync('supabase/migrations/'+fs.readdirSync('supabase/migrations').find(x=>x.endsWith(suffix)),'utf8'));
+for(const suffix of ['_auto_cleanup.sql','_manual_payments.sql','_payment_safety.sql']) {
+ if(suffix==='_payment_safety.sql') await as('service_role',admin,'select public.radas_v4_credit_apply($1,$2,$3)',[admin,'topup','legacy-before-phase12']);
+ await db.exec(fs.readFileSync('supabase/migrations/'+fs.readdirSync('supabase/migrations').find(x=>x.endsWith(suffix)),'utf8'));
+}
+assert.equal((await db.query('select balance from radas_v4.credit_wallets where user_id=$1',[admin])).rows[0].balance,60);
 async function as(role,actor,sql,params=[]){await db.exec(`begin;set local role ${role};select set_config('request.jwt.claims','${JSON.stringify({role,sub:actor})}',true);`);try{const result=await db.query(sql,params);await db.exec('commit');return result;}catch(e){await db.exec('rollback');throw e;}}
 async function op(actor,action,body={}){return(await as('service_role',actor,'select public.radas_v4_payment_operation($1,$2,$3,$4,$5,$6,$7) as result',[actor,action,body.id??null,body.packageId??null,body.reference??null,body.amountSen??null,body.reason??null])).rows[0].result;}
 const rpc='public.radas_v4_payment_operation(uuid,text,uuid,text,text,integer,text)';
@@ -31,7 +35,7 @@ await assert.rejects(op(admin,'approve',{id,reference:duplicate,amountSen:500}),
 assert.equal((await db.query('select status from radas_v4.payments where id=$1',[id])).rows[0].status,'submitted');
 await db.exec(`create function radas_v4.fixture_payment_failure() returns trigger language plpgsql as $$begin raise exception 'fixture_failure';end$$;create trigger fixture_failure before update on radas_v4.credit_wallets for each row execute function radas_v4.fixture_payment_failure();`);
 await assert.rejects(op(admin,'approve',{id,reference:'BANK-ROLLBACK',amountSen:500}),/fixture_failure/);
-assert.equal((await db.query("select count(*)::int n from radas_v4.credit_transactions where reference='maybank:BANK-ROLLBACK'")).rows[0].n,0);
+assert.equal((await db.query("select count(*)::int n from radas_v4.credit_transactions where reference='maybank:BANKROLLBACK'")).rows[0].n,0);
 await db.exec('drop trigger fixture_failure on radas_v4.credit_wallets;drop function radas_v4.fixture_payment_failure();');
 await op(admin,'reject',{id,reason:'Transaksi belum ditemui'});await assert.rejects(op(admin,'approve',{id,reference:'BANK-LATE',amountSen:500}),/payment_not_submitted/);
 const repeated=randomUUID();await op(other,'create',{id:repeated,packageId:'try'});await op(other,'submit',{id:repeated,reference:'BANK-CONCURRENT'});for(let i=0;i<20;i++)await op(admin,'approve',{id:repeated,reference:'BANK-CONCURRENT',amountSen:500});assert.equal((await db.query("select count(*)::int n from radas_v4.credit_transactions where reference='maybank:BANKCONCURRENT'")).rows[0].n,1);
@@ -50,5 +54,7 @@ process.env.RADAS_PAYMENTS_ENABLED='false';assert.equal((await route.POST(req({a
 console.log('PASS real HTTP handlers: verified auth, CSRF, feature gate, strict fields, admin denial, no cache');
 const checks=(await db.query(fs.readFileSync('supabase/verify-payments.sql','utf8'))).rows;assert.ok(checks.every(x=>x.passed));
 await assert.rejects(db.exec(fs.readFileSync('supabase/migrations/'+fs.readdirSync('supabase/migrations').find(x=>x.endsWith('_manual_payments.sql')),'utf8')),/payments_already_installed/);await db.exec('rollback');
+await require('./payment-safety-fixture.cjs')({db,op,as,admin,user,other,load,route,req,setActor:value=>actor=value});
+const safetyChecks=(await db.query(fs.readFileSync('supabase/verify-payment-safety.sql','utf8'))).rows;assert.ok(safetyChecks.every(x=>x.passed));
 console.log('PAYMENTS_LOCAL=PASS (isolated PGlite queued connection; no bank requests or live credit mutation)');
 }finally{await db.close();}})().catch(e=>{console.error(e);process.exitCode=1;});
