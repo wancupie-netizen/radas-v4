@@ -1,3 +1,4 @@
+import { Brand } from '@/components/brand';
 import { PACKAGES } from '@/lib/payments/packages';
 import { PRODUCT } from '@/lib/config';
 
@@ -5,7 +6,7 @@ export function LandingPage() {
  return <div className="landing" id="top">
   <a className="landing-skip" href="#landing-main">Terus ke kandungan</a>
   <header className="landing-header landing-wrap">
-   <a href="/" className="brand" aria-label="RADAS halaman utama"><span className="brand-mark" aria-hidden="true">R</span>RADAS<span className="brand-dot">.</span></a>
+   <Brand/>
    <nav aria-label="Navigasi utama"><a href="#cara">Cara guna</a><a href="#pakej">Pakej</a><a href="/login" className="landing-login">Login <span aria-hidden="true">↗</span></a></nav>
   </header>
   <main id="landing-main">
@@ -50,6 +51,6 @@ export function LandingPage() {
    </section>
    <section className="landing-wrap"><div className="landing-final"><div><p className="landing-eyebrow">ADA IDEA UNTUK VIDEO?</p><h2>Bawa idea anda ke studio.</h2></div><a href="/register" className="primary">Mula dengan RM{PRODUCT.packagePriceMYR} <span aria-hidden="true">↗</span></a></div></section>
   </main>
-  <footer className="landing-footer landing-wrap"><a href="#top" className="brand">RADAS<span className="brand-dot">.</span></a><p>AI Video Generator · Top up, generate, download.</p><a href="/login">Login <span aria-hidden="true">↗</span></a></footer>
+  <footer className="landing-footer landing-wrap"><Brand href="#top"/><p>AI Video Generator · Top up, generate, download.</p><a href="/login">Login <span aria-hidden="true">↗</span></a></footer>
  </div>;
 }

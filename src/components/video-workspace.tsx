@@ -1,5 +1,6 @@
 'use client';
 import { useActionState, useRef, useState } from 'react';
+import { Brand } from '@/components/brand';
 import { logout } from '@/app/auth/actions';
 import type { AuthState } from '@/lib/auth/input';
 import { parseSnapshot, type CreditSnapshot } from '@/lib/credits/types';
@@ -30,7 +31,7 @@ export function VideoWorkspace({ accountEmail, initialCredits, generationEnabled
   function topUp() { dialog.current?.showModal(); }
   return <div className="app-shell">
     <aside className="sidebar" aria-label="Main navigation">
-      <a href="/studio" className="brand"><span className="brand-mark">R</span>RADAS<span className="brand-dot">.</span></a>
+      <Brand href="/studio"/>
       <div className="nav-group"><span className="eyebrow">WORKSPACE</span><button className={`nav-item ${tab==='video'?'active':''}`} aria-pressed={tab==='video'} onClick={()=>setTab('video')}><span aria-hidden="true">▣</span>Create Video</button><button className={`nav-item ${tab==='affiliate'?'active':''}`} aria-pressed={tab==='affiliate'} onClick={()=>setTab('affiliate')}><span aria-hidden="true">◇</span>Produk Affiliate</button></div>
       <div className="nav-group"><span className="eyebrow">ACCOUNT</span><button className="nav-item" onClick={() => creditDialog.current?.showModal()}><span aria-hidden="true">◈</span>Credits</button><button className="nav-item" onClick={topUp}><span aria-hidden="true">＋</span>Top Up</button></div>
       <div className="sidebar-bottom"><div className="package-card"><span className="eyebrow">MULA DENGAN RM5</span><strong>60 video credits</strong><p>Top up bila perlu.</p><button onClick={topUp}>Top Up Credits</button></div><button className="nav-item" onClick={() => profile.current?.showModal()}>Profile</button><form action={logoutAction}><button className="nav-item" type="submit" disabled={logoutPending}>{logoutPending ? "Logging out…" : "Logout"}</button></form></div>
