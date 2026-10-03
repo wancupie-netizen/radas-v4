@@ -29,6 +29,11 @@ async function failure(fn, code, outcome) { await assert.rejects(fn, e => e inst
   const imageDataUri = 'data:image/png;base64,' + Buffer.from([137,80,78,71,13,10,26,10]).toString('base64');
   await c.submitVideo({ ...input, mode: 'image', imageDataUri, orientation: 'portrait', resolution: '720' });
   assert.deepEqual(JSON.parse(calls.at(-1).init.body), { mode: 'i2v', prompt: 'hello', ratio: 2, resolution: 720, media: [imageDataUri] });
+  c = client(() => reply({ ...accepted, status: 'processing' }, 202));
+  const processingCalls = calls.length;
+  assert.deepEqual(await c.submitVideo(input), { jobId: 'abc_123', status: 'queued', creditCost: .15, creditBalance: 1, estimatedSeconds: 60 });
+  assert.equal(calls.length, processingCalls + 1);
+  console.log('PASS accepted processing response preserves job ID without another paid POST');
   const before = calls.length;
   for (const bad of [{ prompt: ' ' }, { resolution: '480' }, { orientation: 'square' }, { mode: 'wrong' }, { imageDataUri }, { mode: 'image', imageDataUri: 'data:image/png;base64,YQ==' }, { mode: 'image', imageDataUri: 'data:image/png;base64,' + 'A'.repeat(14*1024*1024) }]) await failure(() => c.submitVideo({ ...input, ...bad }), 'INVALID_INPUT', 'rejected');
   assert.equal(calls.length, before);

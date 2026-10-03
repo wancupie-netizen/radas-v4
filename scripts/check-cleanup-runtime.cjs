@@ -26,7 +26,7 @@ const assert=require('node:assert/strict');const http=require('node:http');const
  const env={...process.env,NODE_OPTIONS:'--require '+JSON.stringify(preload),NEXT_PUBLIC_SUPABASE_URL:'https://fyqvvkpzcwrmyozxlqkw.supabase.co',NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:'fixture-publishable',SUPABASE_SECRET_KEY:'fixture-server-key',CRON_SECRET:'c'.repeat(64),RADAS_CLEANUP_ENABLED:'true',RADAS_GENERATION_ENABLED:'false'};
  const proc=spawn(process.execPath,[require.resolve('next/dist/bin/next'),'dev','--hostname','127.0.0.1','--port',String(port)],{cwd:process.cwd(),env,stdio:'pipe'});let logs='';proc.stdout.on('data',d=>logs+=d);proc.stderr.on('data',d=>logs+=d);
  try{
-  for(let i=0;i<300&&deleted===0;i++){if(proc.exitCode!==null)throw new Error('Dev server stopped: '+logs);await new Promise(r=>setTimeout(r,100));}
+  for(let i=0;i<300&&(deleted===0||!logs.includes('RADAS_CLEANUP=OK'));i++){if(proc.exitCode!==null)throw new Error('Dev server stopped: '+logs);await new Promise(r=>setTimeout(r,100));}
   assert.equal(deleted,1,logs);assert.match(logs,/RADAS_CLEANUP=OK/);
   const url='http://127.0.0.1:'+port+'/api/internal/cleanup';assert.equal((await fetch(url)).status,401);
   let response=await fetch(url+'?dryRun=1',{headers:{authorization:'Bearer '+env.CRON_SECRET}});assert.equal(response.status,200,logs);assert.equal((await response.json()).eligible,0);

@@ -7,7 +7,7 @@ const migration = fs.readdirSync('supabase/migrations').find(name => name.endsWi
 const {installStorage,mockStorage,mp4}=require('./storage-fixture.cjs');const storage=mockStorage();
 const cache = new Map(); let db; let authUser = uid; let rpcFailures = 0; let submitKind = 'ok'; let providerStatus = 'processing';
 let loseResponse = '';
-let credit = 3; let posts = 0; let providerReads = 0; let jobCounter = 0; const jobs = new Set();
+let credit = 3; let posts = 0; let providerReads = 0; let jobCounter = 0; const jobs = new Set(); const providerBodies=[];
 async function operation(action, user, id, data = {}) {
   return (await db.query('select public.radas_v4_generation_operation($1,$2,$3,$4) as result', [action,user,id,JSON.stringify(data)])).rows[0].result;
 }
@@ -96,7 +96,7 @@ function request(f,origin='http://localhost:3000') {return new Request('http://l
     const reply=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json'}});
     if(p==='/api/v1/api/credit'){providerReads++;return reply({ok:true,registered:true,credit,credit_cost:.15});}
     if(p==='/api/v1/api'){
-      posts++;const body=JSON.parse(init.body);assert.equal(typeof body.ratio,'number');assert.equal(typeof body.resolution,'number');assert.equal('duration' in body,false);
+      posts++;const body=JSON.parse(init.body);providerBodies.push(body);assert.equal(typeof body.ratio,'number');assert.equal(typeof body.resolution,'number');assert.equal('duration' in body,false);
       if(submitKind==='unknown')throw new Error('upstream key secret');
       if(submitKind==='reject')return reply({secret:'upstream'},402);
       const job='fixture-'+(++jobCounter);jobs.add(job);
@@ -166,6 +166,21 @@ function request(f,origin='http://localhost:3000') {return new Request('http://l
   submitKind='reject';id=randomUUID();g=await (await POST(request(form(id)))).json();assert.equal(g.status,'rejected');assert.equal(g.refunded,true);
   const rejectedPosts=posts;await POST(request(form(id)));assert.equal(posts,rejectedPosts);
   submitKind='ok';providerStatus='failed';id=randomUUID();await POST(request(form(id)));g=await (await get(id)).json();assert.equal(g.status,'failed');assert.equal(g.refunded,true);
+  submitKind='ok';providerStatus='done';
+  const matrixStartPosts=posts;let matrixCases=0;
+  for(const mode of ['text','image'])for(const orientation of ['portrait','landscape'])for(const resolution of ['720','1080']) {
+    const matrixId=randomUUID();await db.exec('reset role');const beforeBalance=(await db.query('select balance from radas_v4.credit_wallets where user_id=$1',[uid])).rows[0].balance;await actor('service_role');
+    const extras={mode,orientation,resolution};if(mode==='image')extras.image=new File([png],'matrix.png',{type:'image/png'});
+    const submitted=await POST(request(form(matrixId,extras)));assert.equal(submitted.status,202);assert.equal((await submitted.json()).status,'queued');
+    const body=providerBodies.at(-1);assert.equal(body.mode,mode==='text'?'t2v':'i2v');assert.equal(body.ratio,orientation==='portrait'?2:1);assert.equal(body.resolution,Number(resolution));
+    if(mode==='image')assert.match(body.media[0],/^data:image\/png;base64,/);else assert.equal(body.media,undefined);
+    const finished=await get(matrixId);assert.equal(finished.status,200);assert.equal((await finished.json()).status,'done');
+    const output=await video(matrixId);assert.equal(output.status,200);assert.equal(output.headers.get('content-type'),'video/mp4');assert.match(output.headers.get('content-disposition'),new RegExp(matrixId));assert.deepEqual(Buffer.from(await output.arrayBuffer()),mp4);
+    await db.exec('reset role');assert.equal((await db.query('select balance from radas_v4.credit_wallets where user_id=$1',[uid])).rows[0].balance,beforeBalance-1);
+    const settings=(await db.query('select mode,orientation,resolution from radas_v4.generations where id=$1',[matrixId])).rows[0];assert.deepEqual(settings,{mode,orientation,resolution:Number(resolution)});await actor('service_role');matrixCases++;
+  }
+  assert.equal(matrixCases,8);assert.equal(posts,matrixStartPosts+8);
+  console.log('PASS all 8 text/image × portrait/landscape × 720/1080 combinations: real input decode, adapter payload, SQL settings, one debit, done status and private MP4 route (provider/Storage fixtures)');
   submitKind='unknown';id=randomUUID();g=await (await POST(request(form(id)))).json();assert.equal(g.status,'unknown');assert.equal(g.refunded,false);
   const unknownPosts=posts;await POST(request(form(id)));assert.equal(posts,unknownPosts);assert.equal((await POST(request(form(randomUUID())))).status,409);
   await assert.rejects(operation('transition',uid,id,{status:'rejected'}),/unknown_cannot_be_refunded|claim_owner_required/);

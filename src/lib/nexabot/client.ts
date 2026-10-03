@@ -95,7 +95,7 @@ export function createNexabotClient(options: { apiKey?: string; fetcher?: typeof
       return request('/api/v1/api', 'POST', async response => {
         if (response.status !== 202) throw new Error('unexpected status');
         const data = await json(response);
-        if (data.status !== 'queued') throw new Error('unexpected status');
+        if (data.status !== 'queued' && data.status !== 'processing') throw new Error('unexpected status');
         const jobId = id(data.job_id);
         return { jobId, status: 'queued' as const, creditCost: amount(data.credit_cost), creditBalance: amount(data.credit_balance), estimatedSeconds: amount(data.est_seconds) };
       }, body).catch(error => {
