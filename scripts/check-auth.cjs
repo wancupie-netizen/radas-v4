@@ -73,7 +73,8 @@ async function runAuthTests(testRoot) {
     let ready=false;
     for(let i=0;i<80;i++){try {const r=await request('/login');if(r.status===200){ready=true;break;}}catch{}await new Promise(r=>setTimeout(r,100));}
     assert.ok(ready,'Production server did not start');
-    let r=await request('/');assert.equal(r.status,307);assert.ok(r.headers.get('location').endsWith('/login'));
+    const landing=await request('/');assert.equal(landing.status,200);assert.match(await landing.text(),/Generate AI Video/);
+    let r=await request('/studio');assert.equal(r.status,307);assert.ok(r.headers.get('location').endsWith('/login'));
     r=await request('/auth/callback?next=https://example.com');assert.ok(r.headers.get('location').includes('/login?confirmation=failed'));
     assert.equal((await request('/api/credits')).status,401);
     assert.equal((await request('/api/credits',{method:'POST',body:JSON.stringify({balance:999})})).status,405);
@@ -83,29 +84,30 @@ async function runAuthTests(testRoot) {
     }
     console.log('PASS anonymous workspace denial, safe callback failure and credit API mutation denial');
     r=await submit('/login',{email:'test@example.com',password:'wrongpass'});assert.equal(r.status,200);assert.match(await r.text(),/Login gagal/);
-    assert.equal((await request('/')).status,307);
+    assert.equal((await request('/studio')).status,307);
     r=await submit('/register',{name:'Test',email:'new@example.com',password:'abcdefgh'});assert.equal(r.status,200);assert.match(await r.text(),/Semak inbox/);
-    assert.equal((await request('/')).status,307);
+    assert.equal((await request('/studio')).status,307);
     console.log('PASS failed login and confirmation-required signup grant no access');
-    r=await request('/auth/callback?code=test-confirmation-code&next=https://example.com');assert.equal(r.status,307);assert.ok(r.headers.get('location').endsWith('/'));assert.equal((await request('/')).status,200);
-    r=await submit('/',{},true);assert.equal(r.status,303);
+    r=await request('/auth/callback?code=test-confirmation-code&next=https://example.com');assert.equal(r.status,307);assert.ok(r.headers.get('location').endsWith('/studio'));assert.equal((await request('/studio')).status,200);
+    r=await submit('/studio',{},true);assert.equal(r.status,303);
     console.log('PASS confirmation callback establishes cookies and ignores external redirects');
-    r=await submit('/login',{email:'test@example.com',password:'abcdefgh'});assert.equal(r.status,303);assert.ok(jar.size>0);
-    r=await request('/');assert.equal(r.status,200);assert.match(await r.text(),/test@example.com/);assert.match(r.headers.get('cache-control'),/no-store/);
+    r=await submit('/login',{email:'test@example.com',password:'abcdefgh'});assert.equal(r.status,303);assert.ok(r.headers.get('location').endsWith('/studio'));assert.ok(jar.size>0);
+    r=await request('/studio');assert.equal(r.status,200);assert.match(await r.text(),/test@example.com/);assert.match(r.headers.get('cache-control'),/no-store/);
+    const publicPage=await request('/');const publicHtml=await publicPage.text();assert.equal(publicPage.status,200);assert.doesNotMatch(publicHtml,/test@example.com|Baki belum tersedia|credit-ledger/);
     console.log('PASS successful login sets cookies, verified user sees workspace, response not cached');
     r=await request('/api/credits?user_id=someone-else');assert.equal(r.status,200);assert.equal((await r.json()).balance,59);assert.match(r.headers.get('cache-control'),/no-store/);
     creditFailure=true;r=await request('/api/credits');assert.equal(r.status,503);assert.equal((await r.json()).status,'unavailable');
-    r=await request('/');assert.equal(r.status,200);assert.match(await r.text(),/Baki belum tersedia/);creditFailure=false;
+    r=await request('/studio');assert.equal(r.status,200);assert.match(await r.text(),/Baki belum tersedia/);creditFailure=false;
     console.log('PASS wallet API ignores spoofed user ID, never caches and fails closed on database outage');
     // Expire the session in the test cookie to exercise refresh and cookie propagation.
     for(const [key,value] of jar) { if(value.startsWith('base64-')) { const stored=JSON.parse(Buffer.from(value.slice(7),'base64url').toString());stored.expires_at=1;jar.set(key,'base64-'+Buffer.from(JSON.stringify(stored)).toString('base64url')); } }
-    r=await request('/');assert.equal(r.status,200);assert.ok(refreshCount>0);assert.ok(r.headers.getSetCookie().length>0);
+    r=await request('/studio');assert.equal(r.status,200);assert.ok(refreshCount>0);assert.ok(r.headers.getSetCookie().length>0);
     console.log('PASS expired session refresh updates response cookies');
-    revoked=true;r=await request('/');assert.equal(r.status,307);assert.equal((await request('/api/credits')).status,401);revoked=false;
+    revoked=true;r=await request('/studio');assert.equal(r.status,307);assert.equal((await request('/api/credits')).status,401);revoked=false;
     console.log('PASS revoked user cannot access workspace despite existing cookies');
-    failLogout=true;r=await submit('/',{},true);assert.equal(r.status,200);assert.match(await r.text(),/Logout belum berjaya/);failLogout=false;
-    r=await submit('/',{},true);assert.equal(r.status,303);assert.ok(r.headers.get('location').endsWith('/login'));
-    assert.equal((await request('/')).status,307);
+    failLogout=true;r=await submit('/studio',{},true);assert.equal(r.status,200);assert.match(await r.text(),/Logout belum berjaya/);failLogout=false;
+    r=await submit('/studio',{},true);assert.equal(r.status,303);assert.ok(r.headers.get('location').endsWith('/login'));
+    assert.equal((await request('/studio')).status,307);
     console.log('PASS logout failure is reported; successful logout removes workspace access');
   } catch (error) {console.error(logs);throw error;}
   finally {await stopServer(proc);await new Promise(resolve=>auth.close(resolve));}
@@ -115,8 +117,9 @@ async function runAuthTests(testRoot) {
     for(let i=0;i<80;i++){try{response=await fetch('http://127.0.0.1:3095/login');if(response.ok)break;}catch{}await new Promise(r=>setTimeout(r,100));}
     assert.equal(response?.status,200);
     const html=await response.text();assert.match(html,/Sambungan akaun belum tersedia/);assert.match(html,/<button[^>]*disabled/);
-    const denied=await fetch('http://127.0.0.1:3095/',{redirect:'manual'});assert.equal(denied.status,307);
-    console.log('PASS missing configuration disables auth forms and denies workspace');
+    const denied=await fetch('http://127.0.0.1:3095/studio',{redirect:'manual'});assert.equal(denied.status,307);
+    const publicMissingConfig=await fetch('http://127.0.0.1:3095/');assert.equal(publicMissingConfig.status,200);assert.match(await publicMissingConfig.text(),/Generate AI Video/);
+    console.log('PASS missing configuration leaves landing public, disables auth forms and denies studio');
   } finally { await stopServer(unconfigured); }
 }
 

@@ -28,8 +28,8 @@ export function VideoWorkspace({ accountEmail, initialCredits, generationEnabled
   function topUp() { dialog.current?.showModal(); }
   return <div className="app-shell">
     <aside className="sidebar" aria-label="Main navigation">
-      <a href="/" className="brand"><span className="brand-mark">R</span>RADAS<span className="brand-dot">.</span></a>
-      <div className="nav-group"><span className="eyebrow">WORKSPACE</span><a href="/" className="nav-item active" aria-current="page"><span aria-hidden="true">▣</span>Create Video</a></div>
+      <a href="/studio" className="brand"><span className="brand-mark">R</span>RADAS<span className="brand-dot">.</span></a>
+      <div className="nav-group"><span className="eyebrow">WORKSPACE</span><a href="/studio" className="nav-item active" aria-current="page"><span aria-hidden="true">▣</span>Create Video</a></div>
       <div className="nav-group"><span className="eyebrow">ACCOUNT</span><button className="nav-item" onClick={() => creditDialog.current?.showModal()}><span aria-hidden="true">◈</span>Credits</button><button className="nav-item" onClick={topUp}><span aria-hidden="true">＋</span>Top Up</button></div>
       <div className="sidebar-bottom"><div className="package-card"><span className="eyebrow">MULA DENGAN RM5</span><strong>60 video credits</strong><p>Top up bila perlu.</p><button onClick={topUp}>Top Up Credits</button></div><button className="nav-item" onClick={() => profile.current?.showModal()}>Profile</button><form action={logoutAction}><button className="nav-item" type="submit" disabled={logoutPending}>{logoutPending ? "Logging out…" : "Logout"}</button></form></div>
     </aside>

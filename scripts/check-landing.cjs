@@ -1,0 +1,15 @@
+// Public SSR content and navigation contracts. No live services or paid requests.
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),ts=require('typescript'),React=require('react'),{renderToStaticMarkup}=require('react-dom/server');
+const cache=new Map();function load(file){file=path.resolve(file);if(cache.has(file))return cache.get(file).exports;const m={exports:{}};cache.set(file,m);const code=ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText;new Function('require','module','exports',code)(name=>{if(name.startsWith('@/')||name.startsWith('.')){let target=name.startsWith('@/')?path.resolve('src',name.slice(2)):path.resolve(path.dirname(file),name);target+=fs.existsSync(target+'.tsx')?'.tsx':'.ts';return load(target);}return require(name);},m,m.exports);return m.exports;}
+const page=load('src/app/page.tsx'),{PACKAGES}=load('src/lib/payments/packages.ts'),{PRODUCT}=load('src/lib/config.ts');
+assert.equal(PRODUCT.packagePriceMYR,PACKAGES[0].amountSen/100);assert.equal(PRODUCT.packageCredits,PACKAGES[0].credits);
+const original=global.fetch;let calls=0;global.fetch=()=>{calls++;throw Error('Landing must not call services');};let html;try{html=renderToStaticMarkup(React.createElement(page.default));}finally{global.fetch=original;}
+assert.equal(calls,0);assert.equal((html.match(/<h1\b/g)||[]).length,1);assert.match(html,/Generate AI Video/);assert.match(html,/Serendah RM5/);assert.match(html,/RM5 untuk 60 video AI/);assert.match(page.metadata.title,/RM5/);
+const cards=[...html.matchAll(/<article\b[^>]*>(.*?)<\/article>/g)].map(m=>m[1]);assert.equal(cards.length,4);
+for(const [i,pack]of PACKAGES.entries()){assert.match(cards[i],new RegExp('>'+pack.name+'<'));assert.match(cards[i],new RegExp('>RM'+pack.amountSen/100+'<'));assert.match(cards[i],new RegExp('>'+pack.credits+'<'));}
+assert.match(html,/Maybank QR disahkan secara manual sebelum kredit masuk/);assert.match(html,/720p/);assert.match(html,/1080p/);assert.match(html,/12 jam/);assert.match(html,/refresh atau logout/);assert.match(html,/10 saat/);
+assert.doesNotMatch(html,/free credits|kredit percuma|tanpa antrean|tanpa antre|guaranteed|Nilai Terbaik|app\.radas\.my|SUPABASE_SECRET_KEY|NEXABOT_API_KEY|credit-ledger|accountEmail/i);
+const links=[...html.matchAll(/href="([^"]+)"/g)].map(m=>m[1]);for(const href of links){assert.ok(['/','/register','/login','/studio'].includes(href)||href.startsWith('#'),href);if(href.startsWith('#'))assert.ok(html.includes(`id="${href.slice(1)}"`),href);}for(const route of ['/register','/login','/studio'])assert.ok(links.includes(route));
+assert.match(html,/landing-skip/);assert.match(html,/<nav[^>]*aria-label=/);assert.match(html,/<main id="landing-main"/);
+console.log('PASS public SSR: locked packages, manual payment and retention copy; no service requests, private account data or invented claims');
+console.log('PASS register/login/studio CTAs, real anchor targets and semantic navigation; LANDING_LOCAL=PASS (SSR; desktop/mobile visual acceptance separate)');

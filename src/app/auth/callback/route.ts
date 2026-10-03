@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
       const supabase = await createClient();
       const { error } = await supabase.auth.exchangeCodeForSession(code);
       if (!error) {
-        const response = NextResponse.redirect(new URL('/', request.url));
+        const response = NextResponse.redirect(new URL('/studio', request.url));
         response.headers.set('Cache-Control', 'private, no-store');
         return response;
       }

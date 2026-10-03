@@ -1,18 +1,7 @@
-import { getCreditSnapshot } from '@/lib/credits/snapshot';
-import { redirect } from 'next/navigation';
-import { VideoWorkspace } from '@/components/video-workspace';
-import { createClient } from '@/lib/supabase/server';
-import { hasSupabaseConfig } from '@/lib/supabase/settings';
-export const dynamic = 'force-dynamic';
-export default async function Page() {
-  if (!hasSupabaseConfig()) redirect('/login');
-  const supabase = await createClient();
-  let user;
-  try {
-    const { data, error } = await supabase.auth.getUser();
-    if (!error) user = data.user;
-  } catch { /* Fail closed if verification is unavailable. */ }
-  if (!user) redirect('/login');
-  const credits = await getCreditSnapshot(supabase);
-  return <VideoWorkspace accountEmail={user.email || ''} initialCredits={credits} generationEnabled={process.env.RADAS_GENERATION_ENABLED === 'true'} />;
-}
+import type { Metadata } from 'next';
+import { LandingPage } from '@/components/landing-page';
+export const metadata: Metadata = {
+ title: 'RADAS — Generate AI Video Serendah RM5',
+ description: 'RM5 untuk 60 video AI. Text to Video dan Image to Video 10 saat. Top up bila perlu, generate dan download terus.',
+};
+export default function Page() { return <LandingPage />; }

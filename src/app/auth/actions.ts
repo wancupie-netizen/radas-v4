@@ -18,7 +18,7 @@ export async function login(_previous: AuthState, form: FormData): Promise<AuthS
       : 'Login gagal. Semak email dan password anda.' };
   } catch { return { error: 'Tidak dapat menghubungi sistem akaun. Cuba semula.' }; }
   revalidatePath('/', 'layout');
-  redirect('/');
+  redirect('/studio');
 }
 export async function register(_previous: AuthState, form: FormData): Promise<AuthState> {
   const input = readCredentials(form, true);
@@ -37,7 +37,7 @@ export async function register(_previous: AuthState, form: FormData): Promise<Au
     if (error) return { error: error.status === 429 ? 'Terlalu banyak cubaan. Cuba semula sebentar lagi.' : 'Pendaftaran gagal. Semak maklumat anda dan cuba semula.' };
     signedIn = Boolean(data.session);
   } catch { return { error: 'Tidak dapat menghubungi sistem akaun. Cuba semula.' }; }
-  if (signedIn) { revalidatePath('/', 'layout'); redirect('/'); }
+  if (signedIn) { revalidatePath('/', 'layout'); redirect('/studio'); }
   return { message: 'Semak inbox atau spam untuk sahkan email. Jika akaun sudah wujud, cuba login.' };
 }
 export async function logout(_previous: AuthState, _form: FormData): Promise<AuthState> {

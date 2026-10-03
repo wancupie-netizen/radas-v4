@@ -7,7 +7,7 @@ export function AuthForm({ mode, configured, confirmationFailed = false }: { mod
   const isRegister = mode === 'register';
   const [state, action, pending] = useActionState<AuthState, FormData>(isRegister ? register : login, {});
   return <main className="auth-page"><div className="auth-wrap">
-    <Link href="/login" className="brand"><span className="brand-mark">R</span>RADAS<span className="brand-dot">.</span></Link>
+    <Link href="/" className="brand"><span className="brand-mark">R</span>RADAS<span className="brand-dot">.</span></Link>
     <section className="auth-card panel"><span className="eyebrow">AI VIDEO GENERATOR</span><h1>{isRegister ? 'Create account' : 'Welcome back'}<span>.</span></h1>
       <p className="auth-intro">{isRegister ? 'Daftar untuk mula generate video.' : 'Login untuk masuk ke workspace anda.'}</p>
       {!configured && <p className="auth-message" role="status">Sambungan akaun belum tersedia. Sila lengkapkan konfigurasi Supabase untuk daftar atau login.</p>}

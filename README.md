@@ -1,14 +1,13 @@
-# RADAS AI Video Generator — Phase 02
+# RADAS V4 AI Video Generator
 
-Complete updated project for the supplied V1 roadmap. Independent of RADAS V3; no Atlas source imported.
+Existing Next.js App Router project for the supplied V1 roadmap. Repo: wancupie-netizen/radas-v4. Development: http://localhost:3000/. Future host: video.radas.my; app.radas.my is unrelated.
 
-Phase 01: Next.js App Router, TypeScript, Tailwind, UI shell and Supabase client setup.
-Phase 02: register/login/logout, cookie sessions/refresh, verified workspace access and profile email.
+Public landing: `/`. Verified-account workspace: `/studio`. Login and successful email confirmation enter the studio. Manual bank review remains `/admin/payments`.
 
-Start with [PHASE-02-SETUP.md](PHASE-02-SETUP.md). Node.js 22+ required. Install `npm ci`, configure `.env.local`, then `npm run dev`.
+Completed through Phase 14: authentication, isolated wallet/ledger, generation UI, server-only NexaBot adapter, atomic jobs/claims/refunds, private temporary outputs, session history, cleanup, manual Maybank top-ups, payment safety, error handling and shared account write limits. Phase 15 adds the public landing and studio routing; see [PHASE-15-SETUP.md](PHASE-15-SETUP.md).
 
-Validate: `npm run build`, `npm run typecheck`, `npm run check:auth`. The auth check uses a simulated service, not real Supabase accounts.
+Locked pricing: Try RM5/60, Starter RM10/120, Creator RM20/250, Power RM50/620 platform credits. One credit per 10-second generation. Provider cost 0.15 NexaBot credits/video for 720p and 1080p, based on the owner's confirmation. Temporary output maximum 12 hours; download promptly. Maybank payments require manual admin confirmation before credits are granted.
 
-Locked pricing: Try RM5/60, Starter RM10/120, Creator RM20/250, Power RM50/620 platform credits; 1 credit per generation. Provider cost 0.15 NexaBot credits/video for 720p and 1080p, based on the owner's direct confirmation. Duration target 10 seconds; temporary output maximum 12 hours.
+Node.js 22+ required. Install npm ci, configure local environment using the phase setup documents, then npm run dev. Stop dev before production build. Authentication setup starts in [PHASE-02-SETUP.md](PHASE-02-SETUP.md); existing database/storage setup follows the later phase documents in order.
 
-Deferred: real wallet/ledger, payment, generation/jobs, temporary media/cleanup, landing page and deployment. No secret/service-role key is needed for authentication.
+Validate: npm run build, npm run check:landing, npm run check:auth, npm run check:protection. Isolated checks use simulated Auth/provider/Storage transport and private fixture databases; no live bank or paid provider request. Desktop/mobile owner acceptance remains separate. End-to-end funded testing and launch are later roadmap phases; no deployment performed.
