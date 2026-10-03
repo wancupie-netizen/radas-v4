@@ -41,7 +41,7 @@ export async function readProviderVideo(response: Response, signal: AbortSignal,
 }
 export function createVideoStorage() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL; const key = process.env.SUPABASE_SECRET_KEY;
-  if (!url || !key) throw new GenerationError('unavailable');
+  if (url !== 'https://fyqvvkpzcwrmyozxlqkw.supabase.co' || !key) throw new GenerationError('unavailable');
   const client = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }, global: {
     fetch: async (input, init) => {
       const response = await fetch(input, { ...init, cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(120_000) });

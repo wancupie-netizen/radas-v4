@@ -9,8 +9,8 @@ async function applyCredit(userId: string, type: 'debit' | 'refund' | 'topup', r
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId) || !reference || reference.length > 200 || reference !== reference.trim()) throw new Error('invalid_credit_request');
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.SUPABASE_SECRET_KEY;
-  if (!url || !key) throw new Error('credit_service_not_configured');
-  const client = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } });
+  if (url !== 'https://fyqvvkpzcwrmyozxlqkw.supabase.co' || !key) throw new Error('credit_service_not_configured');
+  const client = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }, global: { fetch: (input, init) => fetch(input, { ...init, cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(15_000) }) } });
   const { data, error } = await client.rpc('radas_v4_credit_apply', { p_user_id: userId, p_type: type, p_reference: reference });
   // An ambiguous transport error must be retried using the SAME reference.
   if (error) throw new Error('credit_mutation_failed');

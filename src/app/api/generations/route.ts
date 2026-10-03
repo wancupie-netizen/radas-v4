@@ -1,3 +1,4 @@
+import { requireRequestLimit } from '@/lib/protection/rate-limit';
 import { createNexabotClient } from '@/lib/nexabot/client';
 import { createGenerationStore } from '@/lib/generations/store';
 import { createGenerationFlow } from '@/lib/generations/flow';
@@ -8,6 +9,7 @@ export const runtime = 'nodejs';
 export async function POST(request: Request) {
   try {
     const userId = await verifiedUser(); sameOrigin(request); requireGenerationEnabled();
+    await requireRequestLimit(userId, 'generation');
     const { requestId, input, hash } = await readGenerationInput(request);
     const flow = createGenerationFlow(createGenerationStore(), createNexabotClient());
     const generation = await flow.submit(userId, requestId, input, hash);

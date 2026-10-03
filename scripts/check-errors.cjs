@@ -27,6 +27,7 @@ const settle=()=>new Promise(resolve=>setImmediate(resolve));
  // Keep the process alive while native AbortSignal.timeout's unref timer fires.
  const keepAlive=setInterval(()=>{},50);try{await assert.rejects(requestJson('/fixture',{method:'POST'},15),e=>e.code==='unavailable');}finally{clearInterval(keepAlive);}assert.equal(aborts,1);
  for(const code of ['invalid_input','invalid_image','image_too_large','insufficient_credits','provider_unavailable','active_generation','generation_disabled','forbidden'])assert.equal(generationIssue(new RequestError(code,400)).retainRequest,false);
+ assert.equal(generationIssue(new RequestError('rate_limited',429)).retainRequest,true);assert.match(paymentIssue(new RequestError('rate_limited',429),true),/60 saat/);
  for(const status of [403,409,500,503])assert.equal(generationIssue(new RequestError('unknown-proxy-error',status)).retainRequest,true);
  console.log('PASS timeout, malformed/HTML responses and auth handling; one request only; unknown outcomes retained and private text hidden');
  // Actual VideoStudio handlers: timeout, same-ID replay, wrong-ID response, then successful original ID.

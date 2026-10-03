@@ -1,3 +1,4 @@
+import { requireRequestLimit } from '@/lib/protection/rate-limit';
 import { operation } from '@/lib/payments/service';
 import { verifiedUser, sameOrigin, PRIVATE_HEADERS, errorResponse } from '@/lib/generations/http';
 import { GenerationError } from '@/lib/generations/input';
@@ -12,6 +13,7 @@ export async function GET(request:Request) {
 }
 export async function POST(request:Request) {
  try { const actor=await verifiedUser();sameOrigin(request);enabled();
+ await requireRequestLimit(actor,'payment');
  if(!request.headers.get('content-type')?.startsWith('application/json')) throw new GenerationError('invalid_request',400);
  const reader=request.body?.getReader();if(!reader)throw new GenerationError('invalid_request',400);let size=0;const chunks:Uint8Array[]=[];
  for(;;){const {done,value}=await reader.read();if(done)break;size+=value.length;if(size>2048){await reader.cancel();throw new GenerationError('invalid_request',413);}chunks.push(value);}

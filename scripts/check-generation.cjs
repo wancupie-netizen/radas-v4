@@ -19,6 +19,7 @@ function load(file) {
     if(name==='server-only') return {};
     if(name==='@supabase/supabase-js') return {createClient:()=>({storage,rpc:async(name,args)=>{
       try {
+        if(name==='radas_v4_request_limit')return {data:{allowed:true,retryAfter:0},error:null}; // Rate limiting tested separately.
         if(name==='radas_v4_video_object_operation')return {data:(await db.query('select public.radas_v4_video_object_operation($1,$2,$3,$4) as result',[args.p_action,args.p_user_id,args.p_id,args.p_size])).rows[0].result,error:null};
         assert.equal(name,'radas_v4_generation_operation');
         if(args.p_action==='transition' && rpcFailures>0){rpcFailures--;throw new Error('transport');}
@@ -86,7 +87,7 @@ function request(f,origin='http://localhost:3000') {return new Request('http://l
   assert.equal((await operation('transition',uid,active.id,{status:'done',providerJobId:'sql-job'})).status,'done');
   assert.equal((await operation('transition',uid,active.id,{status:'failed',providerJobId:'sql-job'})).status,'done');
   console.log('PASS insert failure rolls back debit; burst permits one active job; polling throttled; states never regress');
-  process.env.NEXT_PUBLIC_SUPABASE_URL='https://fixture.supabase.co';process.env.SUPABASE_SECRET_KEY='fixture-secret';
+  process.env.NEXT_PUBLIC_SUPABASE_URL='https://fyqvvkpzcwrmyozxlqkw.supabase.co';process.env.SUPABASE_SECRET_KEY='fixture-secret';
   process.env.NEXABOT_API_KEY='nxb_FIXTURE';process.env.APP_URL='http://localhost:3000';process.env.RADAS_GENERATION_ENABLED='true';
   const originalFetch=global.fetch;
   global.fetch=async(url,init)=>{

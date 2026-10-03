@@ -17,6 +17,7 @@ export async function requestJson(url: string, init: RequestInit = {}, timeout =
   }
 }
 const generationMessages: Record<string, string> = {
+ rate_limited: 'Terlalu banyak request. Tunggu sehingga 60 saat, kemudian semak request yang sama; jangan submit video baharu.',
  insufficient_credits: 'Credit tidak mencukupi. Top up atau semak baki sebelum generate.',
  active_generation: 'Masih ada generation aktif. Tunggu dan semak semula; hubungi sokongan jika berlarutan.',
  provider_unavailable: 'Generation belum tersedia. Request ini tidak menggunakan credit. Cuba semula kemudian.',
@@ -32,6 +33,7 @@ export function generationIssue(error: unknown) {
 }
 export function paymentIssue(error: unknown, writing: boolean) {
  if (error instanceof RequestError) {
+  if (error.code === 'rate_limited') return 'Terlalu banyak request bayaran. Tunggu sehingga 60 saat dan semak status; jangan bayar semula.';
   if (error.status === 403) return 'Akses bayaran tidak dibenarkan untuk akaun atau sesi ini.';
   if (error.code === 'payments_disabled') return 'Top up belum tersedia. Cuba semak semula kemudian.';
   if (error.code === 'invalid_request') return 'Semak jumlah dan rujukan bayaran yang dimasukkan.';

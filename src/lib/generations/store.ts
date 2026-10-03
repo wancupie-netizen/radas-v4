@@ -6,8 +6,8 @@ export type StoredGeneration = Generation & { providerJobId: string | null; poll
 export type GenerationStore = { operation(action: 'reserve' | 'read' | 'poll' | 'transition' | 'claim' | 'cancel' | 'reconcile', userId: string, id: string, data?: Record<string, unknown>): Promise<StoredGeneration> };
 export function createGenerationStore(): GenerationStore {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL; const key = process.env.SUPABASE_SECRET_KEY;
-  if (!url || !key) throw new GenerationError('unavailable');
-  const client = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }, global: { fetch: (input, init) => fetch(input, { ...init, signal: AbortSignal.timeout(15_000) }) } });
+  if (url !== 'https://fyqvvkpzcwrmyozxlqkw.supabase.co' || !key) throw new GenerationError('unavailable');
+  const client = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }, global: { fetch: (input, init) => fetch(input, { ...init, cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(15_000) }) } });
   return { async operation(action, userId, id, details = {}) {
     const { data, error } = await client.rpc('radas_v4_generation_operation', { p_action: action, p_user_id: userId, p_id: id, p_data: details });
     if (error) throw new GenerationError('unavailable');

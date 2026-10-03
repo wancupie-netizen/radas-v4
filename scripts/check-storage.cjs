@@ -51,7 +51,7 @@ async function completed(user=uid){const id=randomUUID(),token=randomUUID();cons
  await assert.rejects(db.query('select public.radas_v4_video_object_operation($1,$2,$3,$4)',['read',uid,randomUUID(),null]),/server_only/);await actor('service_role');
  for(const user of [uid,other])await db.query('select public.radas_v4_credit_apply($1,$2,$3)',[user,'topup','fixture-paid-'+user]);
  console.log('PASS restrictive policies block browser reads/writes despite permissive legacy policy; legacy bucket unchanged; RPC/service JWT and private metadata enforced');
- process.env.NEXT_PUBLIC_SUPABASE_URL='https://fixture.supabase.co';process.env.SUPABASE_SECRET_KEY='fixture-server-secret';process.env.RADAS_GENERATION_ENABLED='true';
+ process.env.NEXT_PUBLIC_SUPABASE_URL='https://fyqvvkpzcwrmyozxlqkw.supabase.co';process.env.SUPABASE_SECRET_KEY='fixture-server-secret';process.env.RADAS_GENERATION_ENABLED='true';
  const {createVideoStorage,readProviderVideo,validateMp4,VIDEO_MAX_BYTES}=load('src/lib/storage/video.ts');const store=createVideoStorage();const VIDEO=load('src/app/api/generations/[id]/video/route.ts').GET;
  const video=(id,signal)=>VIDEO(new Request('http://localhost:3000/api/generations/'+id+'/video',{signal}),{params:Promise.resolve({id})});
  let id=await completed(),objectPath=uid+'/'+id+'.mp4';
