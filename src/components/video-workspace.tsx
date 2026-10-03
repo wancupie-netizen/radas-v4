@@ -5,6 +5,7 @@ import type { AuthState } from '@/lib/auth/input';
 import { parseSnapshot, type CreditSnapshot } from '@/lib/credits/types';
 import { VideoStudio } from '@/components/video-studio';
 import { PaymentPanel } from '@/components/payment-panel';
+import { requestJson, RequestError } from '@/lib/errors/client';
 export function VideoWorkspace({ accountEmail, initialCredits, generationEnabled }: { accountEmail: string; initialCredits: CreditSnapshot; generationEnabled: boolean }) {
   const [credits, setCredits] = useState(initialCredits);
   const [refreshing, setRefreshing] = useState(false);
@@ -13,9 +14,12 @@ export function VideoWorkspace({ accountEmail, initialCredits, generationEnabled
     if (refreshing) return;
     setRefreshing(true);
     try {
-      const response = await fetch('/api/credits', { cache: 'no-store' });
-      setCredits(response.ok ? parseSnapshot(await response.json()) : { status: 'unavailable' });
-    } catch { setCredits({ status: 'unavailable' }); }
+      const data = await requestJson('/api/credits');
+      setCredits(parseSnapshot(data));
+    } catch (error) {
+      setCredits({ status: 'unavailable' });
+      if (error instanceof RequestError && error.status === 401) window.location.assign('/login');
+    }
     finally { setRefreshing(false); }
   }
   const [logoutState, logoutAction, logoutPending] = useActionState<AuthState, FormData>(logout, {});

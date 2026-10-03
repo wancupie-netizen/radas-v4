@@ -40,6 +40,7 @@ export function GenerationResult({ generation, onAgain, againLabel = 'Generate A
     </> : <p role={error ? 'status' : undefined}>{error || 'Finalizing…'}</p>)}
     {error && !expired ? <button type="button" className="secondary" onClick={() => setAttempt(previous => previous + 1)}>Muatkan video semula</button> : null}
     {generation.refunded && <p>1 credit telah dipulangkan.</p>}
+    {['failed', 'rejected'].includes(generation.status) && !generation.refunded && <p>Pemulangan credit belum disahkan. Semak baki atau hubungi sokongan dengan rujukan <code>{generation.id}</code>.</p>}
     {generation.status === 'unknown' && <p>Jangan submit semula. Hubungi sokongan dengan rujukan <code>{generation.id}</code> untuk semakan.</p>}
     {final && <button type="button" className="secondary" onClick={onAgain}>{againLabel}</button>}
   </div>;

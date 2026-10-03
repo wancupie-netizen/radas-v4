@@ -1,10 +1,11 @@
 'use client';
 
 import Image from 'next/image';
+import { requestJson, RequestError, generationIssue } from '@/lib/errors/client';
 import { GenerationResult } from './generation-result';
 import { RecentHistory } from './recent-history';
 import { pruneRecent, rememberRecent, type RecentDetails, type RecentVideo } from '@/lib/history/recent';
-import { parseGeneration, type Generation } from '@/lib/generations/types';
+import { parseRequestedGeneration, type Generation } from '@/lib/generations/types';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { PRODUCT } from '@/lib/config';
 import type { CreditSnapshot } from '@/lib/credits/types';
@@ -76,16 +77,14 @@ export function VideoStudio({ credits, generationEnabled, onCreditsChanged }: { 
     async function poll() {
       if (!alive) return;
       try {
-        const response = await fetch(`/api/generations/${generation!.id}`, { cache: 'no-store', signal: AbortSignal.any([controller.signal, AbortSignal.timeout(20_000)]) });
-        if (response.status === 401) { window.location.assign('/login'); return; }
-        if (!response.ok) throw new Error('poll_failed');
-        const data = await response.json(); const next = parseGeneration(data);
+        const data = await requestJson(`/api/generations/${generation!.id}`, { signal: controller.signal });
+        const next = parseRequestedGeneration(data, generation!.id);
         if (!alive) return;
         setGeneration(next); rememberCompletion(next);
         if (data.pollUnavailable) throw new Error('provider_poll_failed');
         failures = 0; setFlowError('');
         if (['done', 'failed', 'rejected', 'unknown'].includes(next.status)) { void refreshCredits.current(); return; }
-      } catch { if (!alive) return; failures += 1; }
+      } catch (error) { if (!alive) return; if (error instanceof RequestError && error.status === 401) { window.location.assign('/login'); return; } failures += 1; }
       if (failures >= 3 || Date.now() - started > 15 * 60 * 1000) {
         setFlowError('Status belum dapat disemak. Cuba semak status semula; jangan submit video baharu.'); return;
       }
@@ -109,22 +108,19 @@ export function VideoStudio({ credits, generationEnabled, onCreditsChanged }: { 
     }
     submittingNow.current = true; setSubmitting(true); setFlowError(''); setGeneration(null); setSelectedHistoryId(null);
     try {
-      const response = await fetch('/api/generations', { method: 'POST', body: pending.current.form, signal: AbortSignal.timeout(45_000) });
-      if (response.status === 401) { window.location.assign('/login'); return; }
-      const data = await response.json();
-      if (!response.ok) {
-        const messages: Record<string, string> = { insufficient_credits: 'Credit tidak mencukupi.', active_generation: 'Masih ada generation aktif. Tunggu sebentar dan cuba semula; hubungi sokongan jika berlarutan.', provider_unavailable: 'Generation belum tersedia. Tiada credit digunakan.', invalid_image: 'Gambar tidak sah. Pilih gambar lain.', invalid_input: 'Semak prompt dan tetapan video.', image_too_large: 'Saiz gambar maksimum 10 MB.', generation_disabled: 'Generation belum diaktifkan.', request_conflict: 'Rujukan request tidak sepadan. Hubungi sokongan.' };
-        if ([400, 402, 403, 409, 413].includes(response.status) || ['provider_unavailable', 'generation_disabled'].includes(data.error)) pending.current = null;
-        setFlowError(messages[data.error] || 'Respons belum dapat dipastikan. Klik semak request semula menggunakan rujukan yang sama.');
-        return;
-      }
-      const next = parseGeneration(data);
+      const data = await requestJson('/api/generations', { method: 'POST', body: pending.current.form }, 45_000);
+      const next = parseRequestedGeneration(data, pending.current.id);
       const form = pending.current.form;
       details.current = { id: next.id, prompt: String(form.get('prompt')).trim(), mode: form.get('mode') as VideoMode,
         orientation: form.get('orientation') as VideoOrientation, resolution: form.get('resolution') as VideoResolution };
       setGeneration(next); rememberCompletion(next); pending.current = null;
       await refreshCredits.current();
-    } catch { setFlowError('Respons belum dapat dipastikan. Klik semak request semula menggunakan rujukan yang sama.'); }
+    } catch (error) {
+      if (error instanceof RequestError && error.status === 401) { window.location.assign('/login'); return; }
+      const issue = generationIssue(error);
+      if (!issue.retainRequest) pending.current = null;
+      setFlowError(issue.message);
+    }
     finally { submittingNow.current = false; setSubmitting(false); }
   }
 
@@ -222,7 +218,7 @@ export function VideoStudio({ credits, generationEnabled, onCreditsChanged }: { 
         </fieldset>
         <button className="primary generate" type="submit" disabled={!generationEnabled || submitting || Boolean(generation && !['done', 'failed', 'rejected'].includes(generation.status)) || (!pending.current && (credits.status !== 'ready' || credits.balance < 1 || Boolean(validatePrompt(prompt)) || readingImage || (mode === 'image' && !image)))} aria-describedby="generation-note">{submitting ? 'Preparing…' : pending.current ? 'Semak request semula' : 'Generate Video'} <span>· {PRODUCT.creditsPerGeneration} Credit</span></button>
         <p id="generation-note" className="phase-note">{generationEnabled ? '1 credit digunakan untuk setiap generation. Download terus apabila siap.' : 'Generation belum diaktifkan. Tiada credit digunakan.'}</p>
-        {flowError && <div className="input-error" role="alert">{flowError}{generation && <button type="button" className="secondary" onClick={() => { setFlowError(''); setPollAttempt(previous => previous + 1); }}>Semak status semula</button>}</div>}
+        {flowError && <div className="input-error" role="alert">{flowError}{pending.current && <p>Rujukan request: <code>{pending.current.id}</code></p>}{generation && <button type="button" className="secondary" onClick={() => { setFlowError(''); setPollAttempt(previous => previous + 1); }}>Semak status semula</button>}</div>}
         {credits.status === 'unavailable' ? <p className="phase-note">Baki belum tersedia. Cuba semak semula di Credits.</p> : credits.balance === 0 ? <p className="phase-note">Baki anda 0 credit.</p> : null}
       </form>
     </section>

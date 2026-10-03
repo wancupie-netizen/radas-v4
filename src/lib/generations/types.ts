@@ -9,3 +9,9 @@ export function parseGeneration(value: unknown): Generation {
     typeof data.expiresAt !== 'string' || !Number.isFinite(Date.parse(data.expiresAt)) || typeof data.refunded !== 'boolean' || (data.refunded && !['failed', 'rejected'].includes(String(data.status)))) throw new Error('invalid_generation');
   return { id: data.id, status: data.status as GenerationStatus, expiresAt: data.expiresAt, refunded: data.refunded };
 }
+
+export function parseRequestedGeneration(value: unknown, requestId: string): Generation {
+  const generation = parseGeneration(value);
+  if (generation.id !== requestId) throw new Error('request_mismatch');
+  return generation;
+}
