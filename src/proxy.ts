@@ -10,7 +10,7 @@ function noCache(response: NextResponse) {
 export async function proxy(request: NextRequest) {
   // Public auth pages remain available for setup. The workspace fails closed.
   if (!hasSupabaseConfig()) {
-    return noCache(request.nextUrl.pathname === '/studio'
+    return noCache(['/studio','/updates','/admin/updates'].includes(request.nextUrl.pathname)
       ? NextResponse.redirect(new URL('/login', request.url))
       : NextResponse.next());
   }
@@ -35,11 +35,11 @@ export async function proxy(request: NextRequest) {
     const { data, error } = await supabase.auth.getUser();
     authenticated = !error && Boolean(data.user);
   } catch { /* Provider unavailable: deny workspace access. */ }
-  if (request.nextUrl.pathname === '/studio' && !authenticated) {
+  if (['/studio','/updates','/admin/updates'].includes(request.nextUrl.pathname) && !authenticated) {
     const redirect = NextResponse.redirect(new URL('/login', request.url));
     for (const cookie of response.cookies.getAll()) redirect.cookies.set(cookie);
     return noCache(redirect);
   }
   return noCache(response);
 }
-export const config = { matcher: ['/studio', '/login', '/register', '/auth/:path*'] };
+export const config = { matcher: ['/studio', '/updates', '/admin/updates', '/login', '/register', '/auth/:path*'] };
