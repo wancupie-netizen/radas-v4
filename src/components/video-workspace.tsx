@@ -1,5 +1,6 @@
 'use client';
 import { useActionState, useRef, useState } from 'react';
+import { WorkspaceGreeting } from '@/components/workspace-greeting';
 import { Brand } from '@/components/brand';
 import { logout } from '@/app/auth/actions';
 import type { AuthState } from '@/lib/auth/input';
@@ -8,7 +9,7 @@ import { VideoStudio } from '@/components/video-studio';
 import { PaymentPanel } from '@/components/payment-panel';
 import { AffiliatePanel } from '@/components/affiliate-panel';
 import { requestJson, RequestError } from '@/lib/errors/client';
-export function VideoWorkspace({ accountEmail, initialCredits, generationEnabled }: { accountEmail: string; initialCredits: CreditSnapshot; generationEnabled: boolean }) {
+export function VideoWorkspace({ accountEmail, accountName = '', initialCredits, generationEnabled }: { accountEmail: string; accountName?: string; initialCredits: CreditSnapshot; generationEnabled: boolean }) {
   const [credits, setCredits] = useState(initialCredits);
   const [tab, setTab] = useState<'video' | 'affiliate'>('video');
   const [refreshing, setRefreshing] = useState(false);
@@ -42,10 +43,10 @@ export function VideoWorkspace({ accountEmail, initialCredits, generationEnabled
       <div className="mobile-account"><button onClick={() => profile.current?.showModal()}>Profile</button><form action={logoutAction}><button type="submit" disabled={logoutPending}>{logoutPending ? "Logging out…" : "Logout"}</button></form></div>
       <div className="workspace">
         <div hidden={tab!=='video'}>
-        <div className="page-heading"><div><span className="eyebrow">AI VIDEO GENERATOR</span><h1>Create Video<span>.</span></h1><p>Dari idea ke video. Generate, preview, download.</p></div><span className="duration-badge">10 saat / video</span></div>
+        <div className="page-heading"><WorkspaceGreeting name={accountName} onFindProducts={()=>setTab('affiliate')}/><span className="duration-badge">10 saat / video</span></div>
         <VideoStudio credits={credits} generationEnabled={generationEnabled} onCreditsChanged={refreshCredits} />
         </div>
-        {tab==='affiliate' && <AffiliatePanel balance={credits.status==='ready'?credits.balance:-1} onTopUp={topUp}/>}
+        {tab==='affiliate' && <AffiliatePanel accountName={accountName} balance={credits.status==='ready'?credits.balance:-1} onTopUp={topUp}/>}
         {logoutState.error && <p className="notice" role="alert">{logoutState.error}</p>}
         <footer className="workspace-footer"><span>RADAS AI VIDEO</span><span>RM5 / 60 credits · 1 credit / generation</span></footer>
       </div>

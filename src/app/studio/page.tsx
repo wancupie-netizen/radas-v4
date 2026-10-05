@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { getCreditSnapshot } from '@/lib/credits/snapshot';
 import { redirect } from 'next/navigation';
+import { accountDisplayName } from '@/components/workspace-greeting';
 import { VideoWorkspace } from '@/components/video-workspace';
 import { createClient } from '@/lib/supabase/server';
 import { hasSupabaseConfig } from '@/lib/supabase/settings';
@@ -16,5 +17,5 @@ export default async function Page() {
   } catch { /* Fail closed if verification is unavailable. */ }
   if (!user) redirect('/login');
   const credits = await getCreditSnapshot(supabase);
-  return <VideoWorkspace accountEmail={user.email || ''} initialCredits={credits} generationEnabled={process.env.RADAS_GENERATION_ENABLED === 'true'} />;
+  return <VideoWorkspace accountEmail={user.email || ''} accountName={accountDisplayName(user.user_metadata?.name)} initialCredits={credits} generationEnabled={process.env.RADAS_GENERATION_ENABLED === 'true'} />;
 }

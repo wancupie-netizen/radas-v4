@@ -1,12 +1,13 @@
 'use client';
 import './affiliate-panel.css';
+import { WorkspaceGreeting } from './workspace-greeting';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { CONTENT_TYPES, parseCatalog, validProduct, completeProduct, type Catalog, type Product } from '@/lib/affiliate/types';
 import { requestJson, RequestError } from '@/lib/errors/client';
 const PAGE_SIZE = 9;
 const money = (sen: number | null) => sen === null ? 'Belum diisi' : `RM${(sen/100).toFixed(2)}`;
 function blank(): Product { return {id:crypto.randomUUID(),name:'',imageUrl:'',category:'',priceSen:null,commissionSen:null,url:'',reviewedOn:'',contentTypes:[],sourceNotes:'',published:false,revision:0}; }
-export function AffiliatePanel({ admin = false, balance, onTopUp }: { admin?: boolean; balance?: number; onTopUp?: () => void }) {
+export function AffiliatePanel({ admin = false, balance, onTopUp, accountName = '' }: { admin?: boolean; accountName?: string; balance?: number; onTopUp?: () => void }) {
   const [catalog,setCatalog] = useState<Catalog | null>(null), [error,setError] = useState(''), [loading,setLoading] = useState(true);
   const [query,setQuery] = useState(''), [category,setCategory] = useState(''), [draft,setDraft] = useState<Product | null>(null), [busy,setBusy] = useState(false);
   const [page,setPage] = useState(1);
@@ -69,7 +70,7 @@ export function AffiliatePanel({ admin = false, balance, onTopUp }: { admin?: bo
     </fieldset></form> : null;
   }
   return <section className="affiliate-panel" aria-labelledby="affiliate-title">
-    <div className="affiliate-heading"><div><span className="eyebrow">SUMBER CONTENT</span><h1 id="affiliate-title">{admin?'Urus Produk':'Produk Affiliate'}<span>.</span></h1><p>Pilih produk dan jenis content yang sesuai untuk video anda.</p></div><button className="secondary" disabled={busy} onClick={()=>void refresh()}>Semak semula</button></div>
+    <div className="affiliate-heading">{admin?<div><span className="eyebrow">SUMBER CONTENT</span><h1 id="affiliate-title">Urus Produk<span>.</span></h1><p>Pilih produk dan jenis content yang sesuai untuk video anda.</p></div>:<WorkspaceGreeting name={accountName} affiliate id="affiliate-title"/>}<button className="secondary" disabled={busy} onClick={()=>void refresh()}>Semak semula</button></div>
     {error && <p className="notice" role="alert">{error}</p>}
     {loading ? <p className="notice" role="status">Menyemak akses…</p> : !catalog ? null : !accessible ? <div className="panel affiliate-locked"><h2>Akses Produk Affiliate dikunci</h2><p>Top up bermula RM5 dan tunggu pengesahan admin. Akses tersedia selagi baki kredit masih ada.</p>{onTopUp && <button className="primary" onClick={onTopUp}>Top Up RM5</button>}</div> : <>
       {!admin && catalog.admin && <a className="secondary affiliate-admin-link" href="/admin/products">Urus produk sebagai admin</a>}

@@ -5,6 +5,7 @@ function load(file,cache=new Map()) {
  file=path.resolve(file);if(cache.has(file))return cache.get(file).exports;const mod={exports:{}};cache.set(file,mod);
  const code=ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText;
  const req=name=>{
+  if(name.endsWith('.css'))return {};
   if(name==='react')return hooks||React;
   if(name==='next/image')return {default:'img'};
   if(name.startsWith('@/')||name.startsWith('.')){let target=name.startsWith('@/')?path.resolve('src',name.slice(2)):path.resolve(path.dirname(file),name);if(!path.extname(target))target+=fs.existsSync(target+'.tsx')?'.tsx':'.ts';return load(target,cache);}
@@ -55,6 +56,14 @@ const settle=()=>new Promise(resolve=>setImmediate(resolve));
  console.log('PASS actual payment handlers distinguish unavailable list from empty list, show safe failure and preserve create ID without automatic write retry');
  // Real React static render of failure states and boundaries, without exposing raw error.
  const {GenerationResult}=load('src/components/generation-result.tsx');const base={id:randomUUID(),status:'failed',expiresAt:new Date(Date.now()+1000).toISOString(),refunded:true};
+ for(const status of ['reserved','submitting','queued','processing','done','failed','rejected','unknown']) {
+  const html=renderToStaticMarkup(React.createElement(GenerationResult,{generation:{...base,status},onAgain(){}}));
+  const active=['reserved','submitting','queued','processing'].includes(status);
+  assert.equal(html.includes('class="generation-working"'),active);assert.equal(html.includes('class="generation-working-track"'),active);
+  assert.ok(html.includes(`aria-busy="${active}"`));assert.doesNotMatch(html,/aria-valuenow|[0-9]+%/);
+ }
+ const animationCSS=fs.readFileSync('src/components/generation-result.css','utf8');assert.match(animationCSS,/prefers-reduced-motion: reduce/);assert.match(animationCSS,/animation: none/);
+ console.log('PASS preview working animation only for active states, busy accessibility, reduced motion and no fabricated progress');
  const refunded=renderToStaticMarkup(React.createElement(GenerationResult,{generation:base,onAgain(){}}));assert.match(refunded,/1 credit telah dipulangkan/);
  const held=renderToStaticMarkup(React.createElement(GenerationResult,{generation:{...base,refunded:false},onAgain(){}}));assert.doesNotMatch(held,/1 credit telah dipulangkan/);assert.match(held,/belum disahkan/);
  const unknown=renderToStaticMarkup(React.createElement(GenerationResult,{generation:{...base,status:'unknown',refunded:false},onAgain(){}}));assert.match(unknown,/Jangan submit semula/);

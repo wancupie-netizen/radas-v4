@@ -1,4 +1,5 @@
 'use client';
+import './generation-result.css';
 import { useEffect, useState } from 'react';
 import type { Generation } from '@/lib/generations/types';
 export function GenerationResult({ generation, onAgain, againLabel = 'Generate Again' }: { generation: Generation; onAgain: () => void; againLabel?: string }) {
@@ -31,9 +32,12 @@ export function GenerationResult({ generation, onAgain, againLabel = 'Generate A
     return () => { mounted = false; clearTimeout(timer); document.removeEventListener('visibilitychange', checkExpiry); controller.abort(); if (objectUrl) URL.revokeObjectURL(objectUrl); };
   }, [generation.id, generation.status, generation.expiresAt, attempt]);
   const labels = { reserved: 'Preparing…', submitting: 'Preparing…', queued: 'Preparing…', processing: 'Generating…', done: 'Video siap', failed: 'Generation gagal', rejected: 'Request tidak diterima', unknown: 'Status request belum dapat dipastikan' };
+  const working = ['reserved', 'submitting', 'queued', 'processing'].includes(generation.status);
   const final = ['done', 'failed', 'rejected'].includes(generation.status);
-  return <div className="generation-result">
+  return <div className="generation-result" aria-busy={working}>
+    {working && <div className="generation-working" aria-hidden="true"><div className="generation-working-ring"><span>▷</span></div></div>}
     <h3 aria-live="polite">{expired ? 'Video telah luput' : labels[generation.status]}</h3>
+    {working && <div className="generation-working-track" aria-hidden="true"><span /></div>}
     {generation.status === 'done' && (url ? <>
       <video controls playsInline src={url} aria-label="Generated video preview" />
       <a className="primary download-video" href={url} download={`radas-${generation.id}.mp4`}>Download Video</a>

@@ -1,0 +1,9 @@
+.generation-working { display: flex; justify-content: center; margin-bottom: 22px; }
+.generation-working-ring { position: relative; display: grid; place-items: center; width: 80px; height: 80px; border-radius: 50%; background: #103331; color: var(--accent); }
+.generation-working-ring::before { content: ''; position: absolute; inset: 0; border: 3px solid #235653; border-top-color: var(--accent); border-right-color: var(--accent); border-radius: 50%; animation: radas-generation-spin 1.4s linear infinite; }
+.generation-working-ring > span { font-size: 32px; line-height: 1; }
+.generation-working-track { width: min(220px, 70vw); height: 4px; margin: 18px auto 0; overflow: hidden; border-radius: 4px; background: #173331; }
+.generation-working-track > span { display: block; width: 40%; height: 100%; border-radius: inherit; background: var(--accent); animation: radas-generation-sweep 1.8s ease-in-out infinite; }
+@keyframes radas-generation-spin { to { transform: rotate(360deg); } }
+@keyframes radas-generation-sweep { from { transform: translateX(-100%); } to { transform: translateX(350%); } }
+@media (prefers-reduced-motion: reduce) { .generation-working-ring::before, .generation-working-track > span { animation: none; } .generation-working-track > span { margin-inline: auto; } }
