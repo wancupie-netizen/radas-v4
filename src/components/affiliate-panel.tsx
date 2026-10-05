@@ -10,26 +10,27 @@ export function AffiliatePanel({ admin = false, balance, onTopUp }: { admin?: bo
   const [catalog,setCatalog] = useState<Catalog | null>(null), [error,setError] = useState(''), [loading,setLoading] = useState(true);
   const [query,setQuery] = useState(''), [category,setCategory] = useState(''), [draft,setDraft] = useState<Product | null>(null), [busy,setBusy] = useState(false);
   const [page,setPage] = useState(1);
-  const controller = useRef<AbortController | null>(null), sequence = useRef(0), writing = useRef(false);
-  async function refresh() {
-    if (writing.current) return;
+  const controller = useRef<AbortController | null>(null), sequence = useRef(0), writing = useRef(false), reading = useRef(false);
+  async function refresh(background = false) {
+    if (writing.current || (background && reading.current)) return;
     controller.current?.abort(); const c = new AbortController(); controller.current = c; const n = ++sequence.current;
-    setCatalog(null); setLoading(true); setError('');
+    reading.current = true;
+    if(!background){setCatalog(null);setLoading(true);} setError('');
     try { const data = parseCatalog(await requestJson(`/api/affiliate${admin?'?admin=1':''}`,{signal:c.signal})); if(n===sequence.current) setCatalog(data); }
-    catch(e) { if(n!==sequence.current || c.signal.aborted) return; if(e instanceof RequestError && e.status===401) window.location.assign('/login'); setError(e instanceof RequestError && e.status===403?'Akses admin tidak dibenarkan.':'Senarai produk belum dapat dimuatkan. Semak semula.'); }
-    finally { if(n===sequence.current) setLoading(false); }
+    catch(e) { if(n!==sequence.current || c.signal.aborted) return; setCatalog(null); if(e instanceof RequestError && e.status===401) window.location.assign('/login'); setError(e instanceof RequestError && e.status===403?'Akses admin tidak dibenarkan.':'Senarai produk belum dapat dimuatkan. Semak semula.'); }
+    finally { if(n===sequence.current){reading.current=false;setLoading(false);} }
   }
   useEffect(()=>{
     void refresh();
     // Admin catalogue changes through save/delete or explicit refresh. Do not
     // interrupt reading or inline editing when a timer fires or focus changes.
     if(admin) return ()=>{controller.current?.abort();++sequence.current;};
-    const visibility = () => { if(document.visibilityState==='hidden'){controller.current?.abort();++sequence.current;setCatalog(null);}else void refresh(); };
-    const focus = () => { if(document.visibilityState==='visible') void refresh(); };
+    const visibility = () => { if(document.visibilityState==='hidden'){controller.current?.abort();++sequence.current;reading.current=false;}else void refresh(true); };
+    const focus = () => { if(document.visibilityState==='visible') void refresh(true); };
     document.addEventListener('visibilitychange',visibility); window.addEventListener('focus',focus);
-    const timer = window.setInterval(()=>{if(document.visibilityState==='visible') void refresh();},60000);
+    const timer = window.setInterval(()=>{if(document.visibilityState==='visible') void refresh(true);},60000);
     return ()=>{controller.current?.abort();++sequence.current;window.clearInterval(timer);document.removeEventListener('visibilitychange',visibility);window.removeEventListener('focus',focus);};
-  },[admin,balance]); // User catalogue continues to recheck entitlement on balance, focus and visibility changes.
+  },[admin,balance]); // Recheck access without replacing the visible catalogue during background reads.
   async function mutate(action: 'save' | 'delete', product: Product) {
     if(writing.current) return;
     if(!validProduct(product)){setError('Semak semua medan, pautan HTTPS, komisen dan tarikh.');return;}

@@ -94,14 +94,26 @@ const settle=()=>new Promise(resolve=>setImmediate(resolve));
  assert.equal(gets,1);assert.equal(events.length,0);assert.equal(timers.length,0);
  nodes(stableAdmin()).find(n=>n.type==='button'&&words(n)==='Edit').props.onClick();assert.equal(nodes(stableAdmin()).filter(n=>n.type==='form').length,1);
  adminCleanup.forEach(fn=>fn?.());
- // Non-admin revalidation remains unchanged: timer/focus and hidden-tab fail closed.
+ // Background reads preserve cards/page; failed checks and revoked access fail closed.
  global.fetch=async()=>{gets++;return Response.json({admin:false,access:'allowed',products:[p]});};
  const revalidatedUser=harness('src/components/affiliate-panel.tsx','AffiliatePanel',{balance:60});revalidatedUser();const userCleanup=revalidatedUser.runEffects();await settle();await settle();
  assert.equal(events.length,2);assert.equal(timers.length,1);assert.equal(timers[0].ms,60000);
- const beforeFocus=gets;events.find(e=>e.name==='focus').fn();await settle();await settle();assert.equal(gets,beforeFocus+1);
- document.visibilityState='hidden';events.find(e=>e.name==='visibilitychange').fn();assert.equal(nodes(revalidatedUser()).filter(n=>n.type==='article').length,0);
- document.visibilityState='visible';events.find(e=>e.name==='visibilitychange').fn();await settle();await settle();assert.equal(nodes(revalidatedUser()).filter(n=>n.type==='article').length,1);
+ const beforeFocus=gets;events.find(e=>e.name==='focus').fn();assert.equal(nodes(revalidatedUser()).filter(n=>n.type==='article').length,1);await settle();await settle();assert.equal(gets,beforeFocus+1);
+ document.visibilityState='hidden';events.find(e=>e.name==='visibilitychange').fn();assert.equal(nodes(revalidatedUser()).filter(n=>n.type==='article').length,1);
+ document.visibilityState='visible';events.find(e=>e.name==='visibilitychange').fn();assert.equal(nodes(revalidatedUser()).filter(n=>n.type==='article').length,1);await settle();await settle();
+ // Slow background response cannot blank the list, reset pagination, or duplicate focus requests.
+ global.fetch=async()=>Response.json({admin:false,access:'allowed',products:list});timers[0].fn();await settle();await settle();
+ nodes(revalidatedUser()).find(n=>n.type==='button'&&n.props['aria-label']==='Halaman 3').props.onClick();
+ let release;gets=0;global.fetch=async()=>{gets++;return await new Promise(resolve=>release=resolve);};
+ timers[0].fn();events.find(e=>e.name==='focus').fn();assert.equal(gets,1);
+ assert.equal(nodes(revalidatedUser()).filter(n=>n.type==='article').length,9);assert.ok(!words(revalidatedUser()).includes('Menyemak akses'));
+ assert.equal(nodes(revalidatedUser()).find(n=>n.props['aria-current']==='page').props['aria-label'],'Halaman 3');
+ release(Response.json({admin:false,access:'allowed',products:list}));await settle();await settle();
+ assert.equal(nodes(revalidatedUser()).find(n=>n.props['aria-current']==='page').props['aria-label'],'Halaman 3');
+ global.fetch=async()=>Response.json({admin:false,access:'locked',products:[]});timers[0].fn();await settle();await settle();assert.equal(nodes(revalidatedUser()).filter(n=>n.type==='article').length,0);assert.match(words(revalidatedUser()),/dikunci/);
+ global.fetch=async()=>Response.json({admin:false,access:'allowed',products:[p]});timers[0].fn();await settle();await settle();
+ global.fetch=async()=>{throw Error('offline');};timers[0].fn();await settle();await settle();assert.equal(nodes(revalidatedUser()).filter(n=>n.type==='article').length,0);assert.match(words(revalidatedUser()),/belum dapat dimuatkan/);
  userCleanup.forEach(fn=>fn?.());delete global.document;
- console.log('PASS admin initial fetch only; no timer/focus/visibility refresh; user entitlement revalidation and hidden-tab clearing retained');
+ console.log('PASS admin initial fetch only; no timer/focus/visibility refresh; silent user revalidation preserves cards/page, deduplicates reads and clears on revocation/failure');
  assert.doesNotMatch(words(admin()),/Prompt video/);console.log('PASS actual client handlers: locked/no stale cards, zero/unavailable credit, top-up CTA, filters, safe links, lost-save draft and same ID; no automatic write retry');
 }finally{global.fetch=original;delete global.window;}})().catch(e=>{console.error(e);process.exitCode=1;});
