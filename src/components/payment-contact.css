@@ -1,0 +1,4 @@
+.payment-panel .payment-contact { overflow-wrap: anywhere; }
+.payment-panel .payment-contact strong { font-weight: 700; }
+.payment-panel .payment-contact a { display: inline-block; margin: 4px 0; }
+.payment-panel label > small { display: block; margin: 6px 0 12px; }

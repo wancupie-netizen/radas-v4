@@ -1,0 +1,41 @@
+const assert=require('node:assert/strict'),{randomUUID}=require('node:crypto');
+module.exports=async({db,as,op,admin,user,other,load,route,req,setActor})=>{
+ process.env.RADAS_PAYMENTS_ENABLED='true';
+ const normalize=load(require('node:path').resolve('src/lib/payments/contact.ts')).normalizeWhatsApp;
+ for(const [raw,want] of [['012-345 6789','60123456789'],['+60 (12) 3456789','60123456789'],['+447911123456','447911123456']])assert.equal(normalize(raw),want);
+ for(const bad of ['',null,'abc','+60++12345678','123','0','https://wa.me/60123456789'])assert.equal(normalize(bad),null);
+ const snapshot=async()=>JSON.stringify((await db.query('select (select jsonb_agg(t order by id) from radas_v4.credit_transactions t) ledger,(select jsonb_agg(w order by user_id) from radas_v4.credit_wallets w) wallets')).rows);
+ const before=await snapshot();
+ // Finish any existing active fixture, then start a new contact-backed order.
+ for(const p of (await op(admin,'admin_list')).payments)await op(admin,'reject',{id:p.id,reason:'Fixture reset'});
+ const id=randomUUID();await assert.rejects(op(user,'create',{id,packageId:'try'}),/invalid_whatsapp/);
+ assert.equal((await db.query('select count(*)::int n from radas_v4.payments where id=$1',[id])).rows[0].n,0);
+ await db.exec("create function radas_v4.fixture_contact_failure() returns trigger language plpgsql as $$begin raise exception 'contact_failure';end$$;create trigger fixture_contact_failure before update of whatsapp on radas_v4.payments for each row execute function radas_v4.fixture_contact_failure();");
+ await assert.rejects(op(user,'create',{id,packageId:'try',whatsapp:'0123456789'}),/contact_failure/);
+ assert.equal((await db.query('select count(*)::int n from radas_v4.payments where id=$1',[id])).rows[0].n,0);
+ await db.exec('drop trigger fixture_contact_failure on radas_v4.payments;drop function radas_v4.fixture_contact_failure();');
+ const created=(await op(user,'create',{id,packageId:'try',whatsapp:'012-345 6789'})).payment;assert.equal(created.whatsapp,'60123456789');
+ assert.equal((await op(user,'create',{id,packageId:'try',whatsapp:'0199999999'})).payment.whatsapp,'60123456789');
+ assert.equal((await op(user,'list')).payments[0].customer_email,undefined);
+ const listed=(await op(admin,'admin_list')).payments.find(p=>p.id===id);assert.equal(listed.customer_email,'fixture@example.com');assert.equal(listed.whatsapp,'60123456789');
+ await assert.rejects(op(other,'contact',{id,whatsapp:'0199999999'}),/not_found/);
+ await assert.rejects(op(user,'admin_list'),/forbidden/);
+ for(const role of ['anon','authenticated'])await assert.rejects(as(role,user,'select public.radas_v4_payment_contact_operation($1,$2)',[user,'admin_list']),/permission denied/);
+ await assert.rejects(op(user,'contact',{id,whatsapp:'bad'}),/invalid_whatsapp/);
+ await op(user,'submit',{id,reference:'CONTACT-FIXTURE'});await op(user,'contact',{id,whatsapp:'+60199999999'});
+ assert.equal((await op(admin,'admin_list')).payments.find(p=>p.id===id).whatsapp,'60199999999');
+ assert.equal(await snapshot(),before);
+ // Legacy order is blank until its owner supplies the contact.
+ const old=randomUUID();await as('service_role',other,'select public.radas_v4_payment_operation($1,$2,$3,$4)',[other,'create',old,'try']);
+ assert.equal((await op(other,'list')).payments[0].whatsapp,null);await op(other,'contact',{id:old,whatsapp:'0181234567'});
+ setActor(other);assert.equal((await route.POST(req({action:'contact',id,whatsapp:'0181234567'}))).status,409);
+ for(const whatsapp of ['bad','',null,'http://example.com'])assert.equal((await route.POST(req({action:'contact',id:old,whatsapp}))).status,400);
+ assert.equal((await route.POST(req({action:'create',id:randomUUID(),packageId:'try'}))).status,400);
+ assert.equal((await route.POST(req({action:'contact',id:old,whatsapp:'0187654321'}))).status,200);
+ assert.equal((await route.POST(req({action:'contact',id:old,whatsapp:'0187654321',customer_email:'spoof@example.com'}))).status,400);
+ setActor(admin);let res=await route.GET(new Request('http://localhost:3000/api/payments?admin=1'));assert.equal(res.status,200);assert.equal((await res.json()).payments.find(p=>p.id===old).customer_email,'other@example.com');
+ setActor(other);res=await route.GET(new Request('http://localhost:3000/api/payments'));assert.equal(res.status,200);assert.ok((await res.json()).payments.every(p=>!('customer_email' in p)));
+ await op(admin,'reject',{id:old,reason:'Fixture complete'});await assert.rejects(op(other,'contact',{id:old,whatsapp:'0181234567'}),/payment_locked/);
+ assert.equal(await snapshot(),before);
+ console.log('PASS contacts: normalization, required on create, legacy completion, owner/admin isolation, real HTTP validation, no wallet/ledger changes');
+};
