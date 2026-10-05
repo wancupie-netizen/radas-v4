@@ -19,7 +19,7 @@ export async function POST(request: Request) {
     let bytes = 0; const chunks: Uint8Array[] = [];
     for (;;) { const {done,value} = await reader.read(); if(done) break; bytes += value.length; if(bytes>8192){await reader.cancel();throw new GenerationError('invalid_request',413);} chunks.push(value); }
     let b; try { b = JSON.parse(Buffer.concat(chunks).toString('utf8')); } catch { throw new GenerationError('invalid_request',400); }
-    const keys = ['id','name','imageUrl','category','priceSen','commissionSen','url','reviewedOn','contentTypes','published','revision'];
+    const keys = ['id','name','imageUrl','category','priceSen','commissionSen','url','reviewedOn','contentTypes','published','revision','sourceNotes'];
     if (!b || typeof b!=='object' || Array.isArray(b) || Object.keys(b).some(k=>!['action','product'].includes(k)) || !['save','delete'].includes(b.action) || !validProduct(b.product) || Object.keys(b.product).some(k=>!keys.includes(k))) throw new GenerationError('invalid_request',400);
     return Response.json(await catalogOperation(actor,b.action,b.product),{headers:PRIVATE_HEADERS});
   } catch(e) { return errorResponse(e); }

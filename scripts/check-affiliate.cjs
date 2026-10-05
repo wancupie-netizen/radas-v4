@@ -15,6 +15,8 @@ async function op(actor,action,body={}){return(await as('service_role',actor,'se
 
 const migration='supabase/migrations/'+fs.readdirSync('supabase/migrations').find(x=>x.endsWith('_affiliate_catalog.sql'));
 await db.exec(fs.readFileSync(migration,'utf8'));
+await db.exec(fs.readFileSync('supabase/migrations/'+fs.readdirSync('supabase/migrations').find(x=>x.endsWith('_affiliate_drafts.sql')),'utf8'));
+await db.exec(fs.readFileSync('supabase/migrations/'+fs.readdirSync('supabase/migrations').find(x=>x.endsWith('_affiliate_optional_links.sql')),'utf8'));
 async function cat(actor,action,product=null){return (await as('service_role',actor,'select public.radas_v4_affiliate_operation($1,$2,$3) result',[actor,action,product])).rows[0].result;}
 const product={id:randomUUID(),name:'Fixture Blender',imageUrl:'https://example.com/image.jpg',category:'Dapur',priceSen:9900,commissionSen:2000,url:'https://example.com/product',reviewedOn:new Date().toISOString().slice(0,10),contentTypes:['POV','UGC'],published:false,revision:0};
 for(const role of ['anon','authenticated'])await assert.rejects(as(role,user,'select public.radas_v4_affiliate_operation($1,$2)',[user,'list']),/permission denied/);
@@ -48,6 +50,71 @@ assert.equal((await route.POST(req({action:'save',product}))).status,200);
 const response=await route.GET(new Request('http://localhost:3000/api/affiliate?admin=1'));assert.match(response.headers.get('cache-control'),/no-store/);assert.equal(types.parseCatalog(await response.json()).products.length,1);
 assert.equal((await route.GET(new Request('http://localhost:3000/api/affiliate?userId='+other))).status,400);
 for(const invalid of [null,{admin:false,access:'locked',products:[product]},{admin:false,access:'allowed',products:[product]},{admin:false,access:'allowed',products:[{...product,published:true,url:'http://example.com'}]}])assert.throws(()=>types.parseCatalog(invalid));
+// Draft SQL + real route, publication transition, private notes, import replay.
+const incomplete={...product,id:randomUUID(),name:'Name-only draft',imageUrl:'',category:'',priceSen:null,commissionSen:null,url:'',reviewedOn:'',contentTypes:[],published:false,revision:0,sourceNotes:'RM161.59 source only'};
+assert.equal(types.validProduct(incomplete),true);assert.equal(types.completeProduct(incomplete),false);
+assert.equal((await route.POST(req({action:'save',product:incomplete}))).status,200);
+let draftSaved=(await cat(admin,'admin_list')).products.find(p=>p.id===incomplete.id);
+assert.equal(draftSaved.priceSen,null);assert.equal(draftSaved.reviewedOn,'');
+assert.equal((await cat(user,'list')).products.some(p=>p.id===incomplete.id),false);
+assert.throws(()=>types.parseCatalog({admin:false,access:'allowed',products:[draftSaved]}));
+for(const bad of [{...draftSaved,published:true},{...draftSaved,name:''},{...draftSaved,url:'http://example.com'},{...draftSaved,priceSen:-1},{...draftSaved,contentTypes:['UGC','UGC']},{...draftSaved,reviewedOn:'2026-02-30'},{...draftSaved,sourceNotes:null},{...draftSaved,sourceNotes:'x'.repeat(4001)},{...draftSaved,revision:2147483647}]) {
+ assert.equal(types.validProduct(bad),false);await assert.rejects(cat(admin,'save',bad),/invalid_product/);
+ assert.equal((await route.POST(req({action:'save',product:bad}))).status,400);
+}
+// Required fields cannot be missing/null, even for drafts (explicit blanks only).
+for(const field of Object.keys(product)) {const bad={...draftSaved};delete bad[field];assert.equal(types.validProduct(bad),false);await assert.rejects(cat(admin,'save',bad),/invalid_product/);}
+let ready={...product,id:incomplete.id,revision:draftSaved.revision,published:true,sourceNotes:incomplete.sourceNotes};
+ready=(await cat(admin,'save',ready)).products.find(p=>p.id===ready.id);
+assert.equal((await cat(user,'list')).products.find(p=>p.id===ready.id).sourceNotes,undefined);
+assert.equal((await cat(admin,'list')).products.find(p=>p.id===ready.id).sourceNotes,undefined);
+assert.equal((await cat(admin,'admin_list')).products.find(p=>p.id===ready.id).sourceNotes,incomplete.sourceNotes);
+ready=(await cat(admin,'save',{...ready,imageUrl:'',url:''})).products.find(p=>p.id===ready.id);
+assert.equal(ready.published,true);assert.equal(ready.imageUrl,'');assert.equal(ready.url,'');
+assert.equal(types.completeProduct(ready),true);assert.equal(types.parseCatalog(await cat(user,'list')).products.find(p=>p.id===ready.id).url,'');
+assert.equal((await route.POST(req({action:'save',product:ready}))).status,200);
+ready=(await cat(admin,'admin_list')).products.find(p=>p.id===ready.id);
+for(const field of ['imageUrl','url'])for(const value of ['Akan Dikemaskini','http://example.com','javascript:alert(1)',' https://example.com','https://example.com\\unsafe',null]) {const bad={...ready,[field]:value};assert.equal(types.validProduct(bad),false);await assert.rejects(cat(admin,'save',bad),/invalid_product/);}
+for(const change of [{category:''},{priceSen:null},{commissionSen:null},{reviewedOn:''},{contentTypes:[]}]) {const bad={...ready,...change};assert.equal(types.completeProduct(bad),false);await assert.rejects(cat(admin,'save',bad),/invalid_product/);}
+const downgraded=(await cat(admin,'save',{...ready,published:false,imageUrl:''})).products.find(p=>p.id===ready.id);
+await assert.rejects(cat(user,'delete',downgraded),/forbidden/);await cat(admin,'delete',downgraded);
+const fixtures=JSON.parse(fs.readFileSync('scripts/fixtures/affiliate-txt-v1.json','utf8'));
+assert.equal(fixtures.length,99);assert.equal(new Set(fixtures.map(p=>p.name.toLowerCase())).size,99);assert.ok(fixtures.every(p=>types.validProduct(p)&&!p.published));
+assert.ok(fixtures.every(p=>p.category===''&&p.imageUrl===''&&p.url===''&&p.reviewedOn===''&&p.contentTypes.length===0));
+for(const number of ['007','020','034','043'])assert.equal(fixtures.find(p=>p.sourceNotes.includes('#'+number+'\n')).commissionSen,null);
+assert.equal(fixtures.find(p=>p.sourceNotes.includes('#020\n')).priceSen,null);
+assert.ok(!fixtures.some(p=>/#(?:022|026)\n/.test(p.sourceNotes)));
+const snapshot=async()=>JSON.stringify((await db.query('select (select jsonb_agg(w order by user_id) from radas_v4.credit_wallets w) wallets,(select jsonb_agg(t order by id) from radas_v4.credit_transactions t) ledger,(select jsonb_agg(p order by id) from radas_v4.payments p) payments')).rows);
+const beforeImport=await snapshot();const existingCount=(await cat(admin,'admin_list')).products.length;
+const importSQL=fs.readFileSync('supabase/import-affiliate-txt-v1.sql','utf8');
+// A failure late in the import rolls back all earlier inserts and audit rows.
+const auditPreImport=(await db.query('select count(*)::int n from radas_v4.affiliate_audit')).rows[0].n;
+await assert.rejects(db.exec(importSQL.replace('"name": "SWISS THOMAS 5.5L ELECTRIC DOUGH MIXER"','"name": ""')),/invalid_import_product/);
+await db.exec('rollback');
+assert.equal((await cat(admin,'admin_list')).products.length,existingCount);
+assert.equal((await db.query('select count(*)::int n from radas_v4.affiliate_audit')).rows[0].n,auditPreImport);
+await db.exec('insert into radas_v4.payment_admins(user_id) values ($$'+other+'$$)');
+await assert.rejects(db.exec(importSQL),/Set v_actor/);await db.exec('rollback');
+await db.query('delete from radas_v4.payment_admins where user_id=$1',[other]);
+await db.exec(importSQL);
+assert.equal((await cat(admin,'admin_list')).products.length,existingCount+99);
+const imported=(await cat(admin,'admin_list')).products.find(p=>p.id===fixtures[0].id);
+assert.equal(imported.revision,1);assert.equal(imported.published,false);
+const changed={...imported,sourceNotes:imported.sourceNotes+'\nAdmin edited'};
+await cat(admin,'save',changed);
+const auditBefore=(await db.query('select count(*)::int n from radas_v4.affiliate_audit')).rows[0].n;
+await db.exec(importSQL);
+assert.equal((await cat(admin,'admin_list')).products.find(p=>p.id===changed.id).sourceNotes,changed.sourceNotes);
+assert.equal((await db.query('select count(*)::int n from radas_v4.affiliate_audit')).rows[0].n,auditBefore);
+assert.equal(await snapshot(),beforeImport);
+assert.ok(!(await cat(user,'list')).products.some(p=>fixtures.some(f=>f.id===p.id)));
+// Deduplicate an existing same-name entry with a different ID.
+await cat(admin,'delete',(await cat(admin,'admin_list')).products.find(p=>p.id===fixtures[1].id));
+const sameName={...fixtures[1],id:randomUUID(),name:'  '+fixtures[1].name+'  '};sameName.name=sameName.name.trim();
+await cat(admin,'save',sameName);await db.exec(importSQL);
+assert.ok(!(await cat(admin,'admin_list')).products.some(p=>p.id===fixtures[1].id));
+assert.equal((await cat(admin,'admin_list')).products.length,existingCount+99);
+console.log('PASS draft SQL/HTTP validation, complete publish required, unpublished-only blanks, private source notes, 99 names, duplicate-name and replay safety, admin edits preserved; wallet/payment/ledger unchanged');
 const checks=(await db.query(fs.readFileSync('supabase/verify-affiliate.sql','utf8'))).rows;assert.ok(checks.every(c=>c.passed));
 await assert.rejects(db.exec(fs.readFileSync(migration,'utf8')),/affiliate_already_installed/);await db.exec('rollback');
 console.log('PASS real route auth, admin denial, CSRF, spoofed fields, safe response parsing, no-store headers, SQL verification and migration rerun guard');
