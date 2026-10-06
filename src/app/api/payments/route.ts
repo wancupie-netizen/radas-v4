@@ -1,3 +1,4 @@
+import { schedulePaymentNotifications } from '@/lib/payments/telegram';
 import { requireRequestLimit } from '@/lib/protection/rate-limit';
 import { normalizeWhatsApp } from '@/lib/payments/contact';
 import { operation } from '@/lib/payments/service';
@@ -5,11 +6,14 @@ import { verifiedUser, sameOrigin, PRIVATE_HEADERS, errorResponse } from '@/lib/
 import { GenerationError } from '@/lib/generations/input';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
+export const maxDuration = 60;
 function enabled() { if (process.env.RADAS_PAYMENTS_ENABLED !== 'true') throw new GenerationError('payments_disabled',503); }
 export async function GET(request:Request) {
  try { const actor=await verifiedUser();enabled();const q=new URL(request.url).searchParams;
  if([...q.keys()].some(k=>k!=='admin')||q.getAll('admin').length>1||(q.has('admin')&&q.get('admin')!=='1')) throw new GenerationError('invalid_request',400);
- return Response.json(await operation(actor,q.get('admin')==='1'?'admin_list':'list'),{headers:PRIVATE_HEADERS});
+ const data=await operation(actor,q.get('admin')==='1'?'admin_list':'list');
+ if(q.get('admin')==='1')schedulePaymentNotifications(actor,null);
+ return Response.json(data,{headers:PRIVATE_HEADERS});
  }catch(e){return errorResponse(e);}
 }
 export async function POST(request:Request) {
@@ -23,6 +27,8 @@ export async function POST(request:Request) {
  const allowed:Record<string,string[]>={cancel:['action','id'],create:['action','id','packageId','whatsapp'],contact:['action','id','whatsapp'],submit:['action','id','reference'],approve:['action','id','reference','amountSen'],reject:['action','id','reason']};
  if(Object.keys(b).some(k=>!allowed[b.action].includes(k))||allowed[b.action].some(k=>!(k in b))||('reference'in b&&(typeof b.reference!=='string'||b.reference.length>100||b.reference.trim().length<3))||('reason'in b&&(typeof b.reason!=='string'||b.reason.trim().length<3||b.reason.length>200))||('amountSen'in b&&!Number.isSafeInteger(b.amountSen))||('packageId'in b&&!['try','starter','creator','power'].includes(b.packageId)))throw new GenerationError('invalid_request',400);
  if ('whatsapp' in b) { const number=normalizeWhatsApp(b.whatsapp); if(!number) throw new GenerationError('invalid_request',400); b.whatsapp=number; }
- return Response.json(await operation(actor,b.action,b),{headers:PRIVATE_HEADERS});
+ const data=await operation(actor,b.action,b);
+ if(b.action==='submit')schedulePaymentNotifications(actor,b.id);
+ return Response.json(data,{headers:PRIVATE_HEADERS});
  }catch(e){return errorResponse(e);}
 }
