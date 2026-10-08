@@ -34,4 +34,12 @@ function workspaceHarness(){const slots=[];let index=0;const fakeReact={...React
 }
 const ws=workspaceHarness();let tree=ws.render();const greet=nodes(tree).find(n=>n.type===greeting.WorkspaceGreeting);assert.ok(greet);assert.equal(greet.props.name,'Wan Sufi');assert.equal(words(nodes(tree).find(n=>n.type==='header')), 'Create VideoCredits: 55Top Up');
 greet.props.onFindProducts();tree=ws.render();const panel=nodes(tree).find(n=>n.type===ws.AffiliatePanel);assert.ok(panel);assert.equal(panel.props.accountName,'Wan Sufi');assert.equal(panel.props.balance,55);assert.equal(words(nodes(tree).find(n=>n.type==='header')),'Produk AffiliateCredits: 55Top Up');assert.ok(nodes(tree).some(n=>n.type==='a'&&n.props.href==='/updates'));
+// Profile uses only the server-resolved payment permission, shared with Top Up.
+const paymentNode=nodes(ws.render()).find(n=>n.type?.name==='PaymentPanel');
+const profileLinks=()=>nodes(nodes(ws.render()).find(n=>n.type==='dialog'&&n.props['aria-labelledby']==='profile-title')).filter(n=>n.type==='a'&&n.props.href==='/admin/payments');
+assert.equal(profileLinks().length,0);
+paymentNode.props.onAdminResolved(true);assert.equal(profileLinks().length,1);assert.equal(words(profileLinks()[0]),'Semak Bayaran↗');
+paymentNode.props.onAdminResolved(false);assert.equal(profileLinks().length,0);
+assert.equal(nodes(ws.render()).filter(n=>n.type==='button'&&words(n)==='Profile').length,2);
+console.log('PASS admin Profile shortcut, default/user hidden, revoked permission hidden, shared desktop/mobile Profile');
 console.log('PASS personalized greeting, missing/invalid name fallback, React escaping, affiliate copy, real CTA tab navigation and preserved credit/header/support props');

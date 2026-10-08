@@ -19,7 +19,9 @@ function words(tree){if(Array.isArray(tree))return tree.map(words).join('');retu
 const settle=()=>new Promise(resolve=>setImmediate(resolve));
 (async()=>{const original=global.fetch;global.window={location:{assign(){}},confirm:()=>true};try{
  let payments=[],posts=[];global.fetch=async(_url,init={})=>{if(init.method){posts.push(JSON.parse(init.body));return Response.json({payment:payments[0]});}return Response.json({payments,admin:false});};
- const panel=harness('src/components/payment-panel.tsx','PaymentPanel',{});
+ let permission=false,serverAdmin=false,failRead=false;
+ const baseFetch=global.fetch;global.fetch=async(url,init={})=>{if(!init.method&&failRead)throw new Error("offline");const response=await baseFetch(url,init);if(!init.method){const data=await response.json();return Response.json({...data,admin:serverAdmin});}return response;};
+ const panel=harness('src/components/payment-panel.tsx','PaymentPanel',{onAdminResolved:value=>permission=value});
  const refresh=async p=>{nodes(p()).find(n=>n.type==='button'&&words(n).startsWith('Semak status')).props.onClick();await settle();await settle();};
  await refresh(panel);const packages=()=>nodes(panel()).filter(n=>n.type==='button'&&n.props.className?.includes('payment-package'));
  assert.ok(packages().every(n=>n.props.disabled));
@@ -32,5 +34,8 @@ const settle=()=>new Promise(resolve=>setImmediate(resolve));
  nodes(panel()).find(n=>n.type==='form'&&words(n).includes('Simpan WhatsApp')).props.onSubmit({preventDefault(){}});await settle();await settle();assert.equal(posts.at(-1).action,'contact');assert.equal(posts.at(-1).whatsapp,'60191234567');assert.equal(nodes(panel()).find(n=>n.type==='input'&&n.props.minLength===3).props.value,'UNSENT-BANK-REF');
  const admin=harness('src/components/payment-panel.tsx','PaymentPanel',{admin:true});await refresh(admin);assert.match(words(admin()),/customer@example.com/);assert.match(words(admin()),/Belum diisi/);assert.equal(nodes(admin()).filter(n=>n.type==='a'&&n.props.href.startsWith('https://wa.me/')).length,0);
  payments=[{...p,whatsapp:'60123456789'}];await refresh(admin);const link=nodes(admin()).find(n=>n.type==='a'&&n.props.href==='https://wa.me/60123456789');assert.ok(link);assert.equal(link.props.rel,'noopener noreferrer');assert.equal(posts.length,2);
+ serverAdmin=true;await refresh(panel);assert.equal(permission,true);assert.ok(nodes(panel()).some(n=>n.type==='a'&&n.props.href==='/admin/payments'));
+ serverAdmin=false;await refresh(panel);assert.equal(permission,false);
+ serverAdmin=true;await refresh(panel);failRead=true;await refresh(panel);assert.equal(permission,false);assert.ok(!nodes(panel()).some(n=>n.type==='a'&&n.props.href==='/admin/payments'));failRead=false;
  renderToStaticMarkup(admin());console.log('PASS actual payment UI handlers: gate package until contact, normalized creation, legacy contact save, admin email and manual WhatsApp link');
 }finally{global.fetch=original;}})().catch(e=>{console.error(e);process.exitCode=1;});

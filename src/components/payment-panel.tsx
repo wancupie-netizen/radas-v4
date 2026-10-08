@@ -5,7 +5,7 @@ import { normalizeWhatsApp } from '@/lib/payments/contact';
 import { PACKAGES, type Payment } from '@/lib/payments/packages';
 import { requestJson, RequestError, paymentIssue } from '@/lib/errors/client';
 const labels={pending:'Belum hantar rujukan',submitted:'Menunggu pengesahan',approved:'Selesai',rejected:'Ditolak'};
-export function PaymentPanel({admin=false,onCreditsChanged,onReviewed}:{admin?:boolean;onCreditsChanged?:()=>void;onReviewed?:()=>void}) {
+export function PaymentPanel({admin=false,onCreditsChanged,onReviewed,onAdminResolved}:{admin?:boolean;onCreditsChanged?:()=>void;onReviewed?:()=>void;onAdminResolved?:(admin:boolean)=>void}) {
  const [payments,setPayments]=useState<Payment[]>([]),[isAdmin,setIsAdmin]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState('');
  const [reference,setReference]=useState(''),[amount,setAmount]=useState(''),[reason,setReason]=useState(''),[selected,setSelected]=useState('');
  const [whatsapp,setWhatsApp]=useState('');
@@ -19,8 +19,8 @@ export function PaymentPanel({admin=false,onCreditsChanged,onReviewed}:{admin?:b
    if(sequence!==loadSequence.current)return false;
    const next=data.payments as Payment[];setPayments(next);setLoaded(true);
    for(const p of next){if(p.status==='approved'||p.status==='rejected'){for(const [key,id] of requests.current){if(id===p.id)requests.current.delete(key);}}}
-   setIsAdmin(data.admin===true);onCreditsChanged?.();setError('');return true;
-  }catch(error){if(sequence===loadSequence.current){setError(paymentIssue(error,false));if(error instanceof RequestError&&error.status===401)window.location.assign('/login');}return false;}
+   setIsAdmin(data.admin===true);onAdminResolved?.(data.admin===true);onCreditsChanged?.();setError('');return true;
+  }catch(error){if(sequence===loadSequence.current){setIsAdmin(false);onAdminResolved?.(false);setError(paymentIssue(error,false));if(error instanceof RequestError&&error.status===401)window.location.assign('/login');}return false;}
   finally{if(sequence===loadSequence.current)setLoading(false);}
  }
  useEffect(()=>{void load();return()=>{loadSequence.current+=1;};},[]); // Only read requests may be refreshed.
