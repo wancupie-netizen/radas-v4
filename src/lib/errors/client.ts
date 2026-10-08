@@ -21,8 +21,8 @@ const generationMessages: Record<string, string> = {
  insufficient_credits: 'Credit tidak mencukupi. Top up atau semak baki sebelum generate.',
  active_generation: 'Masih ada generation aktif. Tunggu dan semak semula; hubungi sokongan jika berlarutan.',
  provider_unavailable: 'Generation belum tersedia. Request ini tidak menggunakan credit. Cuba semula kemudian.',
- invalid_image: 'Gambar tidak sah atau tidak dapat dibaca. Pilih gambar lain.',
- invalid_input: 'Semak prompt dan tetapan video.', image_too_large: 'Saiz gambar maksimum 10 MB.',
+ invalid_image: 'Img tidak sah atau tidak dapat dibaca. Pilih img lain.',
+ invalid_input: 'Semak prompt dan tetapan video.', image_too_large: 'Jumlah upload terlalu besar. Maksimum 3 img, 10 MB setiap img.',
  generation_disabled: 'Generation belum diaktifkan.', forbidden: 'Request tidak dibenarkan. Semak sesi login dan cuba semula.',
  request_conflict: 'Rujukan request tidak sepadan. Hubungi sokongan menggunakan rujukan ini.'
 };

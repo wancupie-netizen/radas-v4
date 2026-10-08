@@ -8,7 +8,7 @@ export function RecentHistory({ items, selectedId, onSelect }: { items: RecentVi
       <ul className="recent-list">{items.map(item => <li className={`recent-item${selectedId === item.id ? ' selected' : ''}`} key={item.id}>
         <div className={`recent-icon ${item.orientation}`} aria-hidden="true">▷</div>
         <div className="recent-info"><p className="recent-prompt">{item.prompt}</p>
-          <p className="recent-specs">{item.mode === 'image' ? 'Image to Video' : 'Text to Video'} · {item.orientation === 'portrait' ? '9:16' : '16:9'} · {item.resolution}p</p>
+          <p className="recent-specs">{item.mode === 'ingredients' ? 'Ingredients to Video' : item.mode === 'image' ? 'Image to Video' : 'Text to Video'} · {item.orientation === 'portrait' ? '9:16' : '16:9'} · {item.resolution}p</p>
           <p className="recent-time">Siap {new Date(item.completedAt).toLocaleTimeString('en-MY', { timeZone: 'Asia/Kuala_Lumpur', hour: '2-digit', minute: '2-digit' })} · Luput {new Date(item.generation.expiresAt).toLocaleString('en-MY', { timeZone: 'Asia/Kuala_Lumpur', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
         </div>
         <button type="button" className="secondary" aria-pressed={selectedId === item.id} aria-label={`Preview dan download: ${item.prompt.slice(0, 80)}`} onClick={() => onSelect(item.id)}>Preview &amp; download</button>

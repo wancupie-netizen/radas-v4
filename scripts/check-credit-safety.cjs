@@ -21,6 +21,10 @@ async function runSafetyChecks(db){
  await db.query("update radas_v4.generations set status='unknown' where id=$1",[legacy]);
  const migration=fs.readdirSync('supabase/migrations').find(x=>x.endsWith('_credit_safety.sql'));
  await db.exec(fs.readFileSync('supabase/migrations/'+migration,'utf8'));
+ const ingredients=fs.readdirSync('supabase/migrations').find(x=>x.endsWith('_ingredients_mode.sql'));
+ await db.exec(fs.readFileSync('supabase/migrations/'+ingredients,'utf8'));
+ const expiredUnknown=fs.readdirSync('supabase/migrations').find(x=>x.endsWith('_release_expired_unknown.sql'));
+ await db.exec(fs.readFileSync('supabase/migrations/'+expiredUnknown,'utf8'));
  async function op(action,id,data={},user=uid){return(await db.as('service_role',null,'select public.radas_v4_generation_operation($1,$2,$3,$4) as result',[action,user,id,data])).rows[0].result;}
  async function credit(type,reference,user=uid){return(await db.as('service_role',null,'select public.radas_v4_credit_apply($1,$2,$3) as result',[user,type,reference])).rows[0].result;}
  const legacyAfter=await op('read',legacy,{},other);assert.equal(legacyAfter.status,'unknown');assert.equal(legacyAfter.refunded,false);await assert.rejects(credit('refund',legacy,other),/generation_refund_not_allowed/);
@@ -70,6 +74,26 @@ async function runSafetyChecks(db){
  await assert.rejects(credit('refund',next),/generation_refund_not_allowed/);
  assert.equal((await op('claim',next,{claimToken:nextToken})).claimAllowed,false);
  console.log('PASS distinct-ID concurrency; stale unclaimed reservation refunds/releases; claimed/legacy uncertainty never refunds or reclaims');
+ // Fresh ambiguity still blocks; expired ambiguity releases a slot, never its debit.
+ assert.equal((await op('reserve',randomUUID(),spec)).error,'active_generation');
+ await db.query("update radas_v4.generations set created_at=clock_timestamp()-interval '5 days',expires_at=clock_timestamp()-interval '4 days' where id=$1",[next]);
+ assert.equal((await op('reserve',randomUUID(),spec)).error,'insufficient_credits');
+ await credit('topup','fixture-after-expired-unknown');
+ const ledgerBefore=(await db.query('select * from radas_v4.credit_transactions order by id')).rows;
+ const original=(await db.query('select id,request_hash,status,provider_job_id,refunded,claim_token from radas_v4.generations where id=$1',[next])).rows[0];
+ const releaseBurst=await Promise.all(Array.from({length:20},()=>op('reserve',randomUUID(),spec)));
+ assert.equal(releaseBurst.filter(x=>x.created).length,1);assert.equal(releaseBurst.filter(x=>x.error==='active_generation').length,19);
+ assert.deepEqual((await db.query('select id,request_hash,status,provider_job_id,refunded,claim_token from radas_v4.generations where id=$1',[next])).rows[0],original);
+ assert.ok((await db.query('select unknown_released_at from radas_v4.generations where id=$1',[next])).rows[0].unknown_released_at);
+ const ledgerAfter=(await db.query('select * from radas_v4.credit_transactions order by id')).rows;
+ assert.equal(ledgerAfter.length,ledgerBefore.length+1);assert.equal(ledgerAfter.filter(t=>t.reference===next&&t.type==='refund').length,0);
+ await assert.rejects(op('claim',next,{claimToken:nextToken}),/expired_unknown_read_only/);
+ await assert.rejects(op('transition',next,{status:'queued',providerJobId:'late-job',claimToken:nextToken}),/expired_unknown_read_only/);
+ await assert.rejects(credit('refund',next),/generation_refund_not_allowed/);
+ const migrationLedger=(await db.query('select * from radas_v4.credit_transactions order by id')).rows;
+ await db.exec(fs.readFileSync('supabase/migrations/'+expiredUnknown,'utf8'));
+ assert.deepEqual((await db.query('select * from radas_v4.credit_transactions order by id')).rows,migrationLedger);
+ console.log('PASS expired unknown releases one new slot under burst; original unknown/debit preserved; no reclaim, refund or late submit; migration replay changes no ledger');
  const verification=await db.query(fs.readFileSync('supabase/verify-credit-safety.sql','utf8'));assert.ok(verification.rows.every(x=>x.passed),JSON.stringify(verification.rows));
  const before=(await db.query('select count(*)::int as n from radas_v4.credit_transactions')).rows[0].n;
  await assert.rejects(db.exec(fs.readFileSync('supabase/migrations/'+migration,'utf8')),/phase07_already_installed/);await db.exec('rollback');

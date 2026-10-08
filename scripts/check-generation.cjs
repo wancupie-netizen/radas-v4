@@ -7,7 +7,7 @@ const migration = fs.readdirSync('supabase/migrations').find(name => name.endsWi
 const {installStorage,mockStorage,mp4}=require('./storage-fixture.cjs');const storage=mockStorage();
 const cache = new Map(); let db; let authUser = uid; let rpcFailures = 0; let submitKind = 'ok'; let providerStatus = 'processing';
 let loseResponse = '';
-let credit = 3; let posts = 0; let providerReads = 0; let jobCounter = 0; const jobs = new Set(); const providerBodies=[];
+let credit = 3; let posts = 0; let providerReads = 0; let jobCounter = 0; const jobs = new Map(); const providerBodies=[];
 async function operation(action, user, id, data = {}) {
   return (await db.query('select public.radas_v4_generation_operation($1,$2,$3,$4) as result', [action,user,id,JSON.stringify(data)])).rows[0].result;
 }
@@ -54,6 +54,10 @@ function request(f,origin='http://localhost:3000') {return new Request('http://l
   await db.exec(fs.readFileSync('supabase/migrations/'+migration,'utf8'));
   const safetyMigration=fs.readdirSync('supabase/migrations').find(name=>name.endsWith('_credit_safety.sql'));
   await db.exec(fs.readFileSync('supabase/migrations/'+safetyMigration,'utf8'));
+  const ingredientsMigration=fs.readdirSync('supabase/migrations').find(name=>name.endsWith('_ingredients_mode.sql'));
+  await db.exec(fs.readFileSync('supabase/migrations/'+ingredientsMigration,'utf8'));
+  const expiredUnknownMigration=fs.readdirSync('supabase/migrations').find(name=>name.endsWith('_release_expired_unknown.sql'));
+  await db.exec(fs.readFileSync('supabase/migrations/'+expiredUnknownMigration,'utf8'));
   await installStorage(db);
   for(const role of ['anon','authenticated']) {
     await actor(role,uid);await assert.rejects(operation('reserve',uid,randomUUID(),spec),/permission denied/);
@@ -99,12 +103,12 @@ function request(f,origin='http://localhost:3000') {return new Request('http://l
       posts++;const body=JSON.parse(init.body);providerBodies.push(body);assert.equal(typeof body.ratio,'number');assert.equal(typeof body.resolution,'number');assert.equal('duration' in body,false);
       if(submitKind==='unknown')throw new Error('upstream key secret');
       if(submitKind==='reject')return reply({secret:'upstream'},402);
-      const job='fixture-'+(++jobCounter);jobs.add(job);
+      const job='fixture-'+(++jobCounter);jobs.set(job,body.mode);
       return reply({ok:true,job_id:job,status:'queued',credit_cost:.15,credit_balance:2,est_seconds:60},202);
     }
     const match=/^\/api\/v1\/jobs\/(fixture-\d+)(\/download)?$/.exec(p);assert.ok(match);assert.ok(jobs.has(match[1]));
     if(match[2])return new Response(mp4,{headers:{'content-type':'video/mp4'}});
-    return reply({ok:true,job:{id:match[1],mode:'t2v',status:providerStatus,progress:'private@email',error:'private'}});
+    return reply({ok:true,job:{id:match[1],mode:jobs.get(match[1]),status:providerStatus,progress:'private@email',error:'private'}});
   };
   const POST=load('src/app/api/generations/route.ts').POST;
   const GET=load('src/app/api/generations/[id]/route.ts').GET;
@@ -119,7 +123,19 @@ function request(f,origin='http://localhost:3000') {return new Request('http://l
   response=await POST(request(form(id,{mode:'image',image:new File([Buffer.from([137,80,78,71,13,10,26,10])],'broken.png',{type:'image/png'})})));assert.equal(response.status,400);
   const png=await require('sharp')({create:{width:2,height:2,channels:3,background:'red'}}).png().toBuffer();
   const parsed=await load('src/lib/generations/input.ts').readGenerationInput(request(form(id,{mode:'image',image:new File([png],'valid.png',{type:'image/png'})})));
-  assert.equal(parsed.input.mode,'image');assert.match(parsed.input.imageDataUri,/^data:image\/png;base64,/);
+  assert.equal(parsed.input.mode,'image');assert.match(parsed.input.imageDataUris[0],/^data:image\/png;base64,/);
+  const parser=load('src/lib/generations/input.ts').readGenerationInput;
+  const blue=await require('sharp')({create:{width:3,height:2,channels:3,background:'blue'}}).png().toBuffer();
+  function ingredients(id,buffers){const f=form(id,{mode:'ingredients'});for(const bytes of buffers)f.append('image',new File([bytes],'ingredient.png',{type:'image/png'}));return f;}
+  const {createHash}=require('node:crypto');
+  assert.equal(parsed.hash,createHash('sha256').update(JSON.stringify({mode:'image',prompt:'Test scene',orientation:'portrait',resolution:'720',imageHash:createHash('sha256').update(png).digest('hex')})).digest('hex'));
+  const pair=await parser(request(ingredients(id,[png,blue])));
+  assert.equal(pair.input.imageDataUris.length,2);
+  assert.notEqual(pair.hash,(await parser(request(ingredients(id,[blue,png])))).hash);
+  assert.notEqual(pair.hash,(await parser(request(ingredients(id,[png,png])))).hash);
+  const tooManyForSingle=ingredients(randomUUID(),[png,blue]);tooManyForSingle.set('mode','image');assert.equal((await POST(request(tooManyForSingle))).status,400);
+  for(const buffers of [[],[png,png,png,png],[png,Buffer.from('broken')]]) {const before=posts;assert.equal((await POST(request(ingredients(randomUUID(),buffers)))).status,400);assert.equal(posts,before);}
+  const duplicate=form(randomUUID());duplicate.append('prompt','spoof');assert.equal((await POST(request(duplicate))).status,400);
   credit=0;response=await POST(request(form(id)));assert.equal(response.status,503);assert.equal(posts,0);credit=3;
   response=await POST(request(form(id)));assert.equal(response.status,202);g=await response.json();assert.equal(g.status,'queued');assert.equal(posts,1);
   assert.equal(response.headers.get('cache-control'),'private, no-store, max-age=0');assert.equal('providerJobId' in g,false);
@@ -168,28 +184,42 @@ function request(f,origin='http://localhost:3000') {return new Request('http://l
   submitKind='ok';providerStatus='failed';id=randomUUID();await POST(request(form(id)));g=await (await get(id)).json();assert.equal(g.status,'failed');assert.equal(g.refunded,true);
   submitKind='ok';providerStatus='done';
   const matrixStartPosts=posts;let matrixCases=0;
-  for(const mode of ['text','image'])for(const orientation of ['portrait','landscape'])for(const resolution of ['720','1080']) {
+  for(const selection of [{mode:'text',count:0},{mode:'image',count:1},{mode:'ingredients',count:1},{mode:'ingredients',count:2},{mode:'ingredients',count:3}])for(const orientation of ['portrait','landscape'])for(const resolution of ['720','1080']) {
+    const {mode,count}=selection;
     const matrixId=randomUUID();await db.exec('reset role');const beforeBalance=(await db.query('select balance from radas_v4.credit_wallets where user_id=$1',[uid])).rows[0].balance;await actor('service_role');
-    const extras={mode,orientation,resolution};if(mode==='image')extras.image=new File([png],'matrix.png',{type:'image/png'});
-    const submitted=await POST(request(form(matrixId,extras)));assert.equal(submitted.status,202);assert.equal((await submitted.json()).status,'queued');
-    const body=providerBodies.at(-1);assert.equal(body.mode,mode==='text'?'t2v':'i2v');assert.equal(body.ratio,orientation==='portrait'?2:1);assert.equal(body.resolution,Number(resolution));
-    if(mode==='image')assert.match(body.media[0],/^data:image\/png;base64,/);else assert.equal(body.media,undefined);
+    const extras={mode,orientation,resolution};if(mode!=='text')extras.image=new File([png],'matrix.png',{type:'image/png'});
+    const matrixForm=form(matrixId,extras);if(mode!=='text')for(let index=1;index<count;index++)matrixForm.append('image',new File([blue],'extra.png',{type:'image/png'}));
+    const submitted=await POST(request(matrixForm));assert.equal(submitted.status,202);assert.equal((await submitted.json()).status,'queued');
+    const body=providerBodies.at(-1);assert.equal(body.mode,mode==='text'?'t2v':mode==='image'?'sfv':'i2v');assert.equal(body.ratio,orientation==='portrait'?2:1);assert.equal(body.resolution,Number(resolution));
+    if(mode!=='text'){assert.match(body.media[0],/^data:image\/png;base64,/);assert.equal(body.media.length,count); const previousPosts=posts;assert.equal((await POST(request(matrixForm))).status,202);assert.equal(posts,previousPosts);if(count>1){const changed=form(matrixId,extras);changed.append('image',new File([png],'changed.png',{type:'image/png'}));assert.equal((await POST(request(changed))).status,409);assert.equal(posts,previousPosts);}}else assert.equal(body.media,undefined);
     const finished=await get(matrixId);assert.equal(finished.status,200);assert.equal((await finished.json()).status,'done');
     const output=await video(matrixId);assert.equal(output.status,200);assert.equal(output.headers.get('content-type'),'video/mp4');assert.match(output.headers.get('content-disposition'),new RegExp(matrixId));assert.deepEqual(Buffer.from(await output.arrayBuffer()),mp4);
     await db.exec('reset role');assert.equal((await db.query('select balance from radas_v4.credit_wallets where user_id=$1',[uid])).rows[0].balance,beforeBalance-1);
     const settings=(await db.query('select mode,orientation,resolution from radas_v4.generations where id=$1',[matrixId])).rows[0];assert.deepEqual(settings,{mode,orientation,resolution:Number(resolution)});await actor('service_role');matrixCases++;
   }
-  assert.equal(matrixCases,8);assert.equal(posts,matrixStartPosts+8);
-  console.log('PASS all 8 text/image × portrait/landscape × 720/1080 combinations: real input decode, adapter payload, SQL settings, one debit, done status and private MP4 route (provider/Storage fixtures)');
+  assert.equal(matrixCases,20);assert.equal(posts,matrixStartPosts+20);
+  console.log('PASS all 20 text / image 1 img / ingredients 1–3 img × portrait/landscape × 720/1080 combinations: ordered hashes, legacy hash compatibility, invalid media, idempotent retries, real input decode, adapter payload, SQL settings, one debit, done status and private MP4 route (provider/Storage fixtures)');
   submitKind='unknown';id=randomUUID();g=await (await POST(request(form(id)))).json();assert.equal(g.status,'unknown');assert.equal(g.refunded,false);
   const unknownPosts=posts;await POST(request(form(id)));assert.equal(posts,unknownPosts);assert.equal((await POST(request(form(randomUUID())))).status,409);
   await assert.rejects(operation('transition',uid,id,{status:'rejected'}),/unknown_cannot_be_refunded|claim_owner_required/);
-  // Free only this isolated fixture account for crash-persistence testing, never live data.
-  await db.exec('reset role');await db.query('delete from radas_v4.generations where id=$1',[id]);await actor('service_role');
+  // The real account blocker: an old unknown with no provider job. Release without deletion/refund.
+  await db.exec('reset role');await db.query("update radas_v4.generations set created_at=clock_timestamp()-interval '5 days',expires_at=clock_timestamp()-interval '4 days' where id=$1",[id]);
+  const oldUnknown=id;const oldLedger=(await db.query('select * from radas_v4.credit_transactions where reference=$1',[oldUnknown])).rows;
+  await db.exec(fs.readFileSync('supabase/migrations/'+expiredUnknownMigration,'utf8'));await actor('service_role');
+  assert.equal((await POST(request(form(oldUnknown)))).status,410);assert.equal(posts,unknownPosts);
+  submitKind='ok';providerStatus='done';const afterUnknown=randomUUID();response=await POST(request(form(afterUnknown)));assert.equal(response.status,202);assert.equal(posts,unknownPosts+1);await get(afterUnknown);
+  await db.exec('reset role');const archived=(await db.query('select status,refunded,provider_job_id,unknown_released_at from radas_v4.generations where id=$1',[oldUnknown])).rows[0];
+  assert.equal(archived.status,'unknown');assert.equal(archived.refunded,false);assert.equal(archived.provider_job_id,null);assert.ok(archived.unknown_released_at);
+  assert.deepEqual((await db.query('select * from radas_v4.credit_transactions where reference=$1',[oldUnknown])).rows,oldLedger);await actor('service_role');
+  console.log('PASS actual expired-unknown blocker: migration releases slot, old ID returns 410 without paid POST, fresh ID generates once, old record/ledger retained');
   submitKind='ok';rpcFailures=2;id=randomUUID();response=await POST(request(form(id)));assert.equal(response.status,503);
   const savedPosts=posts;g=await (await POST(request(form(id)))).json();assert.equal(g.status,'submitting');assert.equal(posts,savedPosts);
   await db.exec('reset role');await db.query("update radas_v4.generations set created_at=clock_timestamp()-interval '3 minutes',updated_at=clock_timestamp()-interval '3 minutes' where id=$1",[id]);await actor('service_role');
   g=await (await get(id)).json();assert.equal(g.status,'unknown');assert.equal(g.refunded,false);
+  await db.exec('reset role');const rowsBefore=await db.query('select id,mode,request_hash,status from radas_v4.generations order by id');
+  await db.exec(fs.readFileSync('supabase/migrations/'+ingredientsMigration,'utf8'));
+  await db.exec(fs.readFileSync('supabase/migrations/'+expiredUnknownMigration,'utf8'));
+  assert.deepEqual((await db.query('select id,mode,request_hash,status from radas_v4.generations order by id')).rows,rowsBefore.rows);
   global.fetch=originalFetch;
   console.log('PASS definitive rejection/failure refund once; ambiguous submit and accepted-but-unsaved job never repost or refund');
   await db.exec('reset role');

@@ -27,17 +27,21 @@ async function failure(fn, code, outcome) { await assert.rejects(fn, e => e inst
   assert.equal(calls[0].init.redirect, 'manual'); assert.equal(calls[0].init.cache, 'no-store');
   assert.deepEqual(JSON.parse(calls[0].init.body), { mode: 't2v', prompt: 'hello', ratio: 1, resolution: 1080 });
   const imageDataUri = 'data:image/png;base64,' + Buffer.from([137,80,78,71,13,10,26,10]).toString('base64');
-  await c.submitVideo({ ...input, mode: 'image', imageDataUri, orientation: 'portrait', resolution: '720' });
-  assert.deepEqual(JSON.parse(calls.at(-1).init.body), { mode: 'i2v', prompt: 'hello', ratio: 2, resolution: 720, media: [imageDataUri] });
+  await c.submitVideo({ ...input, mode: 'image', imageDataUris: [imageDataUri], orientation: 'portrait', resolution: '720' });
+  assert.deepEqual(JSON.parse(calls.at(-1).init.body), { mode: 'sfv', prompt: 'hello', ratio: 2, resolution: 720, media: [imageDataUri] });
+  for (const count of [2,3]) { await c.submitVideo({...input, mode:'ingredients', imageDataUris:Array(count).fill(imageDataUri)}); assert.deepEqual(JSON.parse(calls.at(-1).init.body).media,Array(count).fill(imageDataUri)); }
+  for (const media of [[],Array(4).fill(imageDataUri),[imageDataUri,'invalid']]) await failure(()=>c.submitVideo({...input,mode:'ingredients',imageDataUris:media}),'INVALID_INPUT','rejected');
+  await failure(()=>c.submitVideo({...input,mode:'image',imageDataUris:[imageDataUri,imageDataUri]}),'INVALID_INPUT','rejected');
+  await c.submitVideo({...input,mode:'ingredients',imageDataUris:[imageDataUri]});assert.equal(JSON.parse(calls.at(-1).init.body).mode,'i2v');
   c = client(() => reply({ ...accepted, status: 'processing' }, 202));
   const processingCalls = calls.length;
   assert.deepEqual(await c.submitVideo(input), { jobId: 'abc_123', status: 'queued', creditCost: .15, creditBalance: 1, estimatedSeconds: 60 });
   assert.equal(calls.length, processingCalls + 1);
   console.log('PASS accepted processing response preserves job ID without another paid POST');
   const before = calls.length;
-  for (const bad of [{ prompt: ' ' }, { resolution: '480' }, { orientation: 'square' }, { mode: 'wrong' }, { imageDataUri }, { mode: 'image', imageDataUri: 'data:image/png;base64,YQ==' }, { mode: 'image', imageDataUri: 'data:image/png;base64,' + 'A'.repeat(14*1024*1024) }]) await failure(() => c.submitVideo({ ...input, ...bad }), 'INVALID_INPUT', 'rejected');
+  for (const bad of [{ prompt: ' ' }, { resolution: '480' }, { orientation: 'square' }, { mode: 'wrong' }, { imageDataUris: [imageDataUri] }, { mode: 'image', imageDataUris: ['data:image/png;base64,YQ=='] }, { mode: 'image', imageDataUris: ['data:image/png;base64,' + 'A'.repeat(14*1024*1024)] }]) await failure(() => c.submitVideo({ ...input, ...bad }), 'INVALID_INPUT', 'rejected');
   assert.equal(calls.length, before);
-  console.log('PASS exact reseller endpoint, secret header, t2v/i2v mapping, numeric settings and invalid inputs');
+  console.log('PASS exact reseller endpoint, secret header, t2v/sfv/i2v mapping, numeric settings and invalid inputs');
   for (const status of [400,401,402,403,404,429,500,503]) {
     const count = calls.length; c = client(() => reply({ error: key }, status));
     await failure(() => c.submitVideo(input), `HTTP_${status}`, status < 500 ? 'rejected' : 'unknown'); assert.equal(calls.length, count + 1);
@@ -49,6 +53,7 @@ async function failure(fn, code, outcome) { await assert.rejects(fn, e => e inst
   const timed = createNexabotClient({ apiKey: key, timeoutMs: 5, fetcher: async (_, init) => new Promise((_, reject) => init.signal.addEventListener('abort', () => reject(new Error(key)))) });
   await failure(() => timed.submitVideo(input), 'TIMEOUT', 'unknown');
   console.log('PASS rejected versus unknown outcomes; no paid POST retry; timeout and error sanitization');
+  c=client(()=>reply({ok:true,job:{id:'sfv-job',mode:'sfv',status:'done'}}));assert.deepEqual(await c.getJob('sfv-job'),{jobId:'sfv-job',mode:'sfv',status:'done'});
   for (const status of ['queued','processing','done','failed']) {
     c = client(() => reply({ ok: true, job: { id: 'abc', status, mode: 'i2v', progress: key, error: key, prompt: key } }));
     assert.deepEqual(await c.getJob('abc'), { jobId: 'abc', status, mode: 'i2v' });

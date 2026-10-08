@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import './ingredients.css';
 import { requestJson, RequestError, generationIssue } from '@/lib/errors/client';
 import { GenerationResult } from './generation-result';
 import { RecentHistory } from './recent-history';
@@ -46,9 +47,12 @@ export function VideoStudio({ credits, generationEnabled, onCreditsChanged }: { 
   const [mode, setMode] = useState<VideoMode>('text');
   const [orientation, setOrientation] = useState<VideoOrientation>('portrait');
   const [resolution, setResolution] = useState<VideoResolution>('720');
-  const [prompts, setPrompts] = useState({ text: '', image: '' });
-  const [touched, setTouched] = useState({ text: false, image: false });
-  const [image, setImage] = useState<SourceImage | null>(null);
+  const [prompts, setPrompts] = useState({ text: '', image: '', ingredients: '' });
+  const [touched, setTouched] = useState({ text: false, image: false, ingredients: false });
+  const [sourceImages, setSourceImages] = useState<Record<'image' | 'ingredients', SourceImage[]>>({ image: [], ingredients: [] });
+  const imagesRef = useRef(sourceImages);
+  const images = mode === 'text' ? [] : sourceImages[mode];
+  const imageLimit = mode === 'image' ? 1 : VIDEO_INPUT.maxImages;
   const [imageError, setImageError] = useState('');
   const [readingImage, setReadingImage] = useState(false);
   const [dragging, setDragging] = useState(false);
@@ -98,12 +102,12 @@ export function VideoStudio({ credits, generationEnabled, onCreditsChanged }: { 
     if (submittingNow.current || !generationEnabled || (generation && !['done', 'failed', 'rejected'].includes(generation.status))) return;
     if (!pending.current) {
       setTouched(previous => ({ ...previous, [mode]: true }));
-      if (validatePrompt(prompt) || readingImage || (mode === 'image' && !image)) return;
+      if (validatePrompt(prompt) || readingImage || (mode !== 'text' && images.length === 0)) return;
       if (credits.status !== 'ready' || credits.balance < 1) return;
       const form = new FormData(); const id = crypto.randomUUID();
       form.set('requestId', id); form.set('mode', mode); form.set('prompt', prompt);
       form.set('orientation', orientation); form.set('resolution', resolution);
-      if (mode === 'image' && image) form.set('image', image.file);
+      if (mode !== 'text') for (const image of images) form.append('image', image.file);
       pending.current = { id, form };
     }
     submittingNow.current = true; setSubmitting(true); setFlowError(''); setGeneration(null); setSelectedHistoryId(null);
@@ -126,45 +130,46 @@ export function VideoStudio({ credits, generationEnabled, onCreditsChanged }: { 
 
   function again() { setSelectedHistoryId(null); details.current = null; setGeneration(null); pending.current = null; setFlowError(''); }
 
-  useEffect(() => {
-    if (!image) return;
-    const url = image.url;
-    return () => URL.revokeObjectURL(url);
-  }, [image]);
+  useEffect(() => () => { for (const image of [...imagesRef.current.image, ...imagesRef.current.ingredients]) URL.revokeObjectURL(image.url); }, []);
 
-  function removeImage() {
-    selection.current += 1;
-    setImage(null);
+  function updateImages(next: SourceImage[]) {
+    if (mode === 'text') return;
+    imagesRef.current = { ...imagesRef.current, [mode]: next };
+    setSourceImages(imagesRef.current);
+  }
+
+  function removeImage(index: number) {
+    if (locked || readingImage || mode === 'text') return;
+    URL.revokeObjectURL(imagesRef.current[mode][index].url);
+    updateImages(imagesRef.current[mode].filter((_, position) => position !== index));
     setImageError('');
-    setReadingImage(false);
-    if (fileInput.current) fileInput.current.value = '';
   }
 
   async function chooseImage(files: File[]) {
-    if (locked || files.length === 0) return;
-    removeImage();
-    if (files.length !== 1) { setImageError('Pilih satu gambar sahaja.'); return; }
+    if (locked || readingImage || mode === 'text' || files.length === 0) return;
+    if (imagesRef.current[mode].length + files.length > imageLimit) { setImageError(`Maksimum ${imageLimit} img. Buang img dahulu untuk menggantikannya.`); return; }
     const current = ++selection.current;
-    const file = files[0];
-    let url: string | undefined;
-    setReadingImage(true);
+    const added: SourceImage[] = [];
+    let pendingUrl: string | undefined;
+    setReadingImage(true); setImageError('');
     try {
-      const error = await validateImageFile(file);
-      if (current !== selection.current) return;
-      if (error) { setImageError(error); return; }
-      url = URL.createObjectURL(file);
-      const decoder = new window.Image();
-      decoder.src = url;
-      await decoder.decode();
-      if (current !== selection.current) { URL.revokeObjectURL(url); return; }
-      if (!decoder.naturalWidth || !decoder.naturalHeight) throw new Error('invalid_image');
-      setImage({ file, url, width: decoder.naturalWidth, height: decoder.naturalHeight });
-    } catch {
-      if (url) URL.revokeObjectURL(url);
-      if (current === selection.current) setImageError('Gambar tidak dapat dibaca. Pilih gambar lain.');
-    } finally {
-      if (current === selection.current) setReadingImage(false);
-    }
+      for (const file of files) {
+        const error = await validateImageFile(file);
+        if (error) throw new Error(error);
+        pendingUrl = URL.createObjectURL(file);
+        const decoder = new window.Image(); decoder.src = pendingUrl;
+        await decoder.decode();
+        if (!decoder.naturalWidth || !decoder.naturalHeight || decoder.naturalWidth * decoder.naturalHeight > 40_000_000) throw new Error('Img tidak dapat dibaca atau terlalu besar dimensinya.');
+        added.push({ file, url: pendingUrl, width: decoder.naturalWidth, height: decoder.naturalHeight });
+        pendingUrl = undefined;
+      }
+      if (current !== selection.current) { for (const image of added) URL.revokeObjectURL(image.url); return; }
+      updateImages([...imagesRef.current[mode], ...added]);
+    } catch (error) {
+      if (pendingUrl) URL.revokeObjectURL(pendingUrl);
+      for (const image of added) URL.revokeObjectURL(image.url);
+      if (current === selection.current) setImageError(error instanceof Error && (error.message.startsWith('Pilih') || error.message.startsWith('Saiz')) ? error.message : 'Img tidak dapat dibaca. Pilih img JPG, PNG atau WEBP yang sah, maksimum 10 MB.');
+    } finally { if (current === selection.current) setReadingImage(false); }
   }
 
   return <><div className="studio-grid">
@@ -173,30 +178,30 @@ export function VideoStudio({ credits, generationEnabled, onCreditsChanged }: { 
       <form noValidate onSubmit={event => { event.preventDefault(); void generate(); }}>
         <fieldset className="generation-settings" disabled={locked}>
         <label htmlFor="mode">Generation mode</label>
-        <select id="mode" value={mode} onChange={event => setMode(event.target.value as VideoMode)}>
-          <option value="text">Text to Video</option><option value="image">Image to Video</option>
+        <select id="mode" value={mode} onChange={event => { selection.current += 1; setReadingImage(false); setImageError(''); setMode(event.target.value as VideoMode); }}>
+          <option value="text">Text to Video</option><option value="image">Image to Video · 1 img</option><option value="ingredients">Ingredients to Video · 1–3 img</option>
         </select>
 
-        {mode === 'image' && <div className={`source-upload${dragging ? ' dragging' : ''}`}
+        {mode !== 'text' && <div className={`source-upload${dragging ? ' dragging' : ''}`}
           onDragOver={event => { event.preventDefault(); if (!locked) setDragging(true); }}
           onDragLeave={event => { if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setDragging(false); }}
           onDrop={event => { event.preventDefault(); setDragging(false); void chooseImage(Array.from(event.dataTransfer.files)); }}>
-          <span className="upload-label">Source image</span>
-          <input ref={fileInput} id="image" type="file" hidden accept="image/jpeg,image/png,image/webp" onChange={event => {
+          <span className="upload-label">Reference img · {images.length}/{imageLimit}</span>
+          <input ref={fileInput} id="image" type="file" multiple={mode === 'ingredients'} disabled={readingImage} hidden accept="image/jpeg,image/png,image/webp" onChange={event => {
             const files = Array.from(event.currentTarget.files || []);
             event.currentTarget.value = '';
             void chooseImage(files);
           }} />
-          {image ? <div className="source-selected">
-            <div className="source-thumbnail"><Image src={image.url} alt="Gambar sumber yang dipilih" fill unoptimized sizes="96px" /></div>
-            <div className="source-info"><strong>{image.file.name}</strong><span>{image.width} × {image.height} · {(image.file.size / 1024 / 1024).toFixed(2)} MB</span></div>
-          </div> : <p className="upload-instruction">{readingImage ? 'Menyemak gambar…' : 'Pilih atau seret gambar ke sini.'}</p>}
-          <div className="image-actions"><button type="button" className="secondary" onClick={() => fileInput.current?.click()}>{image ? 'Tukar gambar' : 'Pilih gambar'}</button>
-            {(image || readingImage) && <button type="button" className="text-button" onClick={removeImage}>{readingImage ? 'Batal' : 'Buang gambar'}</button>}
-          </div>
-          <p className="input-help">JPG, PNG, WEBP · Maksimum 10 MB</p>
+          <div className="ingredients-list">{images.map((image, index) => <div className="source-selected" key={image.url}>
+            <div className="source-thumbnail"><Image src={image.url} alt={`Img rujukan ${index + 1}`} fill unoptimized sizes="96px" /></div>
+            <div className="source-info"><strong>{index + 1}. {image.file.name}</strong><span>{image.width} × {image.height} · {(image.file.size / 1024 / 1024).toFixed(2)} MB</span>
+              <button type="button" className="text-button" disabled={readingImage} aria-label={`Buang img ${index + 1}: ${image.file.name}`} onClick={() => removeImage(index)}>Buang img</button></div>
+          </div>)}</div>
+          {images.length === 0 && <p className="upload-instruction">{mode === 'image' ? 'Pilih atau seret 1 img ke sini.' : 'Pilih atau seret 1–3 img ke sini.'}</p>}
+          <div className="image-actions"><button type="button" className="secondary" disabled={readingImage || images.length >= imageLimit} onClick={() => fileInput.current?.click()}>{images.length ? 'Tambah img' : 'Pilih img'}</button></div>
+          <p className="input-help">JPG, PNG, WEBP · 10 MB setiap img{mode === 'ingredients' ? ' · Jumlah maksimum 30 MB' : ''}</p>
           {imageError && <p className="input-error" role="alert">{imageError}</p>}
-          <span className="sr-only" role="status">{image ? 'Gambar siap dipreview.' : readingImage ? 'Menyemak gambar.' : ''}</span>
+          <span className="sr-only" role="status">{readingImage ? 'Menyemak img…' : `${images.length} img dipilih.`}</span>
         </div>}
 
         <fieldset><legend>Orientation</legend><div className="choices">
@@ -208,15 +213,15 @@ export function VideoStudio({ credits, generationEnabled, onCreditsChanged }: { 
           <button type="button" aria-pressed={resolution === '1080'} className={resolution === '1080' ? 'selected' : ''} onClick={() => setResolution('1080')}>1080p <span className="muted">Full HD</span></button>
         </div></fieldset>
         <div className="duration-setting"><span>Duration</span><strong>{PRODUCT.durationSeconds} seconds <span className="muted">Fixed</span></strong></div>
-        <div className="prompt-label"><label htmlFor="prompt">{mode === 'image' ? 'Motion prompt' : 'Describe your video'}</label><span id="prompt-count" className="muted">{prompt.length}/{VIDEO_INPUT.maxPromptLength}</span></div>
+        <div className="prompt-label"><label htmlFor="prompt">{mode === 'image' ? 'Motion prompt' : mode === 'ingredients' ? 'Describe your ingredients video' : 'Describe your video'}</label><span id="prompt-count" className="muted">{prompt.length}/{VIDEO_INPUT.maxPromptLength}</span></div>
         <textarea id="prompt" maxLength={VIDEO_INPUT.maxPromptLength} value={prompt} aria-invalid={Boolean(promptError)} aria-describedby={`prompt-count prompt-help${promptError ? ' prompt-error' : ''}`}
           onChange={event => setPrompts(previous => ({ ...previous, [mode]: event.target.value }))}
           onBlur={() => setTouched(previous => ({ ...previous, [mode]: true }))}
-          placeholder={mode === 'image' ? 'Contoh: Subjek tersenyum sambil kamera bergerak perlahan ke hadapan…' : 'Contoh: Seorang creator memperkenalkan produk di studio dengan cahaya lembut…'} />
-        <p id="prompt-help" className="input-help">{mode === 'image' ? 'Terangkan gerakan subjek dan kamera.' : 'Terangkan subjek, suasana dan gerakan kamera.'}</p>
+          placeholder={mode === 'image' ? 'Contoh: Subjek tersenyum sambil kamera bergerak perlahan ke hadapan…' : mode === 'ingredients' ? 'Contoh: Gunakan wanita dalam img 1 untuk memperkenalkan produk dalam img 2…' : 'Contoh: Seorang creator memperkenalkan produk di studio dengan cahaya lembut…'} />
+        <p id="prompt-help" className="input-help">{mode === 'image' ? 'Terangkan gerakan subjek dan kamera.' : mode === 'ingredients' ? 'Nyatakan peranan setiap img, suasana dan gerakan yang anda mahu.' : 'Terangkan subjek, suasana dan gerakan kamera.'}</p>
         {promptError && <p id="prompt-error" className="input-error" role="alert">{promptError}</p>}
         </fieldset>
-        <button className="primary generate" type="submit" disabled={!generationEnabled || submitting || Boolean(generation && !['done', 'failed', 'rejected'].includes(generation.status)) || (!pending.current && (credits.status !== 'ready' || credits.balance < 1 || Boolean(validatePrompt(prompt)) || readingImage || (mode === 'image' && !image)))} aria-describedby="generation-note">{submitting ? 'Preparing…' : pending.current ? 'Semak request semula' : 'Generate Video'} <span>· {PRODUCT.creditsPerGeneration} Credit</span></button>
+        <button className="primary generate" type="submit" disabled={!generationEnabled || submitting || Boolean(generation && !['done', 'failed', 'rejected'].includes(generation.status)) || (!pending.current && (credits.status !== 'ready' || credits.balance < 1 || Boolean(validatePrompt(prompt)) || readingImage || (mode !== 'text' && images.length === 0)))} aria-describedby="generation-note">{submitting ? 'Preparing…' : pending.current ? 'Semak request semula' : 'Generate Video'} <span>· {PRODUCT.creditsPerGeneration} Credit</span></button>
         <p id="generation-note" className="phase-note">{generationEnabled ? '1 credit digunakan untuk setiap generation. Download terus apabila siap.' : 'Generation belum diaktifkan. Tiada credit digunakan.'}</p>
         {flowError && <div className="input-error" role="alert">{flowError}{pending.current && <p>Rujukan request: <code>{pending.current.id}</code></p>}{generation && <button type="button" className="secondary" onClick={() => { setFlowError(''); setPollAttempt(previous => previous + 1); }}>Semak status semula</button>}</div>}
         {credits.status === 'unavailable' ? <p className="phase-note">Baki belum tersedia. Cuba semak semula di Credits.</p> : credits.balance === 0 ? <p className="phase-note">Baki anda 0 credit.</p> : null}
@@ -226,13 +231,13 @@ export function VideoStudio({ credits, generationEnabled, onCreditsChanged }: { 
     <section ref={previewPanel} className="preview panel" aria-label="Video preview">
       <div className="panel-heading"><span className="step">02</span><h2>Preview</h2><span className="preview-meta">{ratio} · {previewResolution}p</span></div>
       <div className="preview-stage">
-        {previewGeneration ? <GenerationResult key={previewGeneration.id} generation={previewGeneration} onAgain={selectedHistory ? () => setSelectedHistoryId(null) : again} againLabel={selectedHistory ? 'Tutup preview history' : 'Generate Again'} /> : mode === 'image' && image ? <>
-          <div className={`source-preview ${orientation}`}><Image src={image.url} alt="Preview gambar sumber" fill unoptimized sizes="(max-width: 820px) 85vw, 440px" /></div>
-          <h3>Source image preview</h3><p>Gambar sumber untuk Image to Video.</p>
+        {previewGeneration ? <GenerationResult key={previewGeneration.id} generation={previewGeneration} onAgain={selectedHistory ? () => setSelectedHistoryId(null) : again} againLabel={selectedHistory ? 'Tutup preview history' : 'Generate Again'} /> : mode !== 'text' && images.length > 0 ? <>
+          <div className={mode === 'image' ? `source-preview ${orientation}` : 'ingredients-preview'}>{mode === 'image' ? <Image src={images[0].url} alt="Preview img sumber" fill unoptimized sizes="(max-width: 820px) 85vw, 440px" /> : images.map((image, index) => <figure key={image.url}><div className="ingredient-preview-image"><Image src={image.url} alt={`Preview img rujukan ${index + 1}`} fill unoptimized sizes="(max-width: 820px) 28vw, 150px" /></div><figcaption>Img {index + 1}</figcaption></figure>)}</div>
+          <h3>{mode === 'image' ? 'Image preview' : 'Ingredients preview'}</h3><p>{images.length} img rujukan untuk video anda.</p>
         </> : <>
           <div className={`empty-frame ${orientation}`}><span className="play-icon" aria-hidden="true">▷</span></div>
-          <h3>{mode === 'image' ? <>Choose your<br />source image</> : <>Your generated video<br />will appear here</>}</h3>
-          <p>{mode === 'image' ? 'Pilih gambar untuk lihat preview di sini.' : 'Preview hasil video sebelum download.'}</p>
+          <h3>{mode !== 'text' ? <>Choose your<br />reference img</> : <>Your generated video<br />will appear here</>}</h3>
+          <p>{mode !== 'text' ? `Pilih ${mode === 'image' ? '1' : '1–3'} img untuk lihat preview di sini.` : 'Preview hasil video sebelum download.'}</p>
         </>}
         <div className="video-specs" aria-label="Selected video settings"><span>{ratio}</span><span>{previewResolution}p</span><span>{PRODUCT.durationSeconds} saat</span><span>{PRODUCT.creditsPerGeneration} credit</span></div>
       </div>

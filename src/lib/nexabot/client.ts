@@ -4,7 +4,7 @@ import { validateImageFile, validatePrompt, VIDEO_INPUT, type VideoOrientation, 
 const BASE = 'https://nexabot.id';
 export type JobStatus = 'queued' | 'processing' | 'done' | 'failed';
 export type VideoRequest = { prompt: string; orientation: VideoOrientation; resolution: VideoResolution } &
-  ({ mode: 'text'; imageDataUri?: never } | { mode: 'image'; imageDataUri: string });
+  ({ mode: 'text'; imageDataUris?: never } | { mode: 'image' | 'ingredients'; imageDataUris: string[] });
 export class NexabotError extends Error {
   constructor(public readonly code: string, public readonly outcome: 'rejected' | 'unknown' | 'read' = 'read') {
     super(`NexaBot: ${code}`); this.name = 'NexabotError';
@@ -27,19 +27,21 @@ async function payload(input: VideoRequest) {
   if (!input || typeof input.prompt !== 'string' || validatePrompt(input.prompt) ||
     !['portrait', 'landscape'].includes(input.orientation) || !['720', '1080'].includes(input.resolution)) invalid();
   const body: { mode: string; prompt: string; ratio: number; resolution: number; media?: string[] } = {
-    mode: input.mode === 'text' ? 't2v' : 'i2v', prompt: input.prompt.trim(),
+    mode: input.mode === 'text' ? 't2v' : input.mode === 'image' ? 'sfv' : 'i2v', prompt: input.prompt.trim(),
     ratio: input.orientation === 'landscape' ? 1 : 2, resolution: Number(input.resolution),
   };
-  if (input.mode === 'text') { if (input.imageDataUri !== undefined) invalid(); }
-  else if (input.mode === 'image') {
-    const uri = input.imageDataUri;
+  if (input.mode === 'text') { if (input.imageDataUris !== undefined) invalid(); }
+  else if (input.mode === 'image' || input.mode === 'ingredients') {
+    if (!Array.isArray(input.imageDataUris) || input.imageDataUris.length < 1 || input.imageDataUris.length > (input.mode === 'image' ? 1 : VIDEO_INPUT.maxImages)) invalid();
+    for (const uri of input.imageDataUris) {
     if (typeof uri !== 'string' || uri.length > Math.ceil(VIDEO_INPUT.maxImageBytes / 3) * 4 + 64) invalid();
     const match = /^data:(image\/(?:jpeg|png|webp));base64,([A-Za-z0-9+/]+={0,2})$/.exec(uri);
     if (!match) invalid();
     const bytes = Buffer.from(match[2], 'base64');
     if (bytes.toString('base64') !== match[2] || await validateImageFile({ type: match[1], size: bytes.length,
       slice: (start, end) => new Blob([new Uint8Array(bytes.subarray(start, end))]) })) invalid();
-    body.media = [uri];
+    }
+    body.media = input.imageDataUris;
   } else invalid();
   return body;
 }
@@ -108,8 +110,8 @@ export function createNexabotClient(options: { apiKey?: string; fetcher?: typeof
       const safeId = id(jobId);
       return request(`/api/v1/jobs/${safeId}`, 'GET', async response => {
         const job = record((await json(response)).job);
-        if (job.id !== safeId || !['queued', 'processing', 'done', 'failed'].includes(String(job.status)) || !['t2v', 'i2v'].includes(String(job.mode))) throw new Error('invalid job');
-        return { jobId: safeId, status: job.status as JobStatus, mode: job.mode as 't2v' | 'i2v' };
+        if (job.id !== safeId || !['queued', 'processing', 'done', 'failed'].includes(String(job.status)) || !['t2v', 'sfv', 'i2v'].includes(String(job.mode))) throw new Error('invalid job');
+        return { jobId: safeId, status: job.status as JobStatus, mode: job.mode as 't2v' | 'sfv' | 'i2v' };
       });
     },
     async getCredit() {
