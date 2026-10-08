@@ -1,11 +1,15 @@
 import 'server-only';
 import { createClient } from '@supabase/supabase-js';
 import { parsePaymentResponse } from './response';
+import { parsePaymentHistory } from './history';
 import { GenerationError } from '@/lib/generations/input';
-export async function operation(actor: string, action: string, body: Record<string, unknown> = {}) {
+function paymentClient() {
  const url=process.env.NEXT_PUBLIC_SUPABASE_URL, key=process.env.SUPABASE_SECRET_KEY;
  if(url!=='https://fyqvvkpzcwrmyozxlqkw.supabase.co'||!key) throw new GenerationError('unavailable',503);
- const client=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false},global:{fetch:(input,init)=>fetch(input,{...init,cache:'no-store',redirect:'error',signal:AbortSignal.timeout(10000)})}});
+ return createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false},global:{fetch:(input,init)=>fetch(input,{...init,cache:'no-store',redirect:'error',signal:AbortSignal.timeout(10000)})}});
+}
+export async function operation(actor: string, action: string, body: Record<string, unknown> = {}) {
+ const client=paymentClient();
  const {data,error}=await client.rpc('radas_v4_payment_contact_operation',{p_actor:actor,p_action:action,p_id:body.id??null,p_package:body.packageId??null,p_reference:body.reference??null,p_amount:body.amountSen??null,p_reason:body.reason??null,p_whatsapp:body.whatsapp??null});
  if(error) {
   if(error.code==='42501') throw new GenerationError('forbidden',403);
@@ -13,4 +17,10 @@ export async function operation(actor: string, action: string, body: Record<stri
   throw new GenerationError(expected?'payment_conflict':'unavailable',expected?409:503);
  }
  return parsePaymentResponse(data,actor,action);
+}
+
+export async function readPaymentHistory(actor:string,page:number,query:string) {
+ const {data,error}=await paymentClient().rpc('radas_v4_payment_history',{p_actor:actor,p_page:page,p_query:query});
+ if(error)throw new GenerationError(error.code==='42501'?'forbidden':'unavailable',error.code==='42501'?403:503);
+ try{return parsePaymentHistory(data);}catch{throw new GenerationError('unavailable',503);}
 }

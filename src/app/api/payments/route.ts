@@ -1,7 +1,7 @@
 import { schedulePaymentNotifications } from '@/lib/payments/telegram';
 import { requireRequestLimit } from '@/lib/protection/rate-limit';
 import { normalizeWhatsApp } from '@/lib/payments/contact';
-import { operation } from '@/lib/payments/service';
+import { operation, readPaymentHistory } from '@/lib/payments/service';
 import { verifiedUser, sameOrigin, PRIVATE_HEADERS, errorResponse } from '@/lib/generations/http';
 import { GenerationError } from '@/lib/generations/input';
 export const dynamic = 'force-dynamic';
@@ -10,8 +10,12 @@ export const maxDuration = 60;
 function enabled() { if (process.env.RADAS_PAYMENTS_ENABLED !== 'true') throw new GenerationError('payments_disabled',503); }
 export async function GET(request:Request) {
  try { const actor=await verifiedUser();enabled();const q=new URL(request.url).searchParams;
- if([...q.keys()].some(k=>k!=='admin')||q.getAll('admin').length>1||(q.has('admin')&&q.get('admin')!=='1')) throw new GenerationError('invalid_request',400);
- const data=await operation(actor,q.get('admin')==='1'?'admin_list':'list');
+ const history=q.get('history')==='1';
+ const allowed=history?['admin','history','page','q']:['admin'];
+ if([...q.keys()].some(k=>!allowed.includes(k)||q.getAll(k).length!==1)||
+   (q.has('admin')&&q.get('admin')!=='1')||(history&&q.get('admin')!=='1')||
+   (history&&(!/^[1-9][0-9]{0,5}$/.test(q.get('page')??'1')||Number(q.get('page')??'1')>100000||(q.get('q')??'').length>254)))throw new GenerationError('invalid_request',400);
+ const data=history?await readPaymentHistory(actor,Number(q.get('page')??'1'),(q.get('q')??'').trim()):await operation(actor,q.get('admin')==='1'?'admin_list':'list');
  if(q.get('admin')==='1')schedulePaymentNotifications(actor,null);
  return Response.json(data,{headers:PRIVATE_HEADERS});
  }catch(e){return errorResponse(e);}

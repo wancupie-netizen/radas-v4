@@ -5,7 +5,7 @@ import { normalizeWhatsApp } from '@/lib/payments/contact';
 import { PACKAGES, type Payment } from '@/lib/payments/packages';
 import { requestJson, RequestError, paymentIssue } from '@/lib/errors/client';
 const labels={pending:'Belum hantar rujukan',submitted:'Menunggu pengesahan',approved:'Selesai',rejected:'Ditolak'};
-export function PaymentPanel({admin=false,onCreditsChanged}:{admin?:boolean;onCreditsChanged?:()=>void}) {
+export function PaymentPanel({admin=false,onCreditsChanged,onReviewed}:{admin?:boolean;onCreditsChanged?:()=>void;onReviewed?:()=>void}) {
  const [payments,setPayments]=useState<Payment[]>([]),[isAdmin,setIsAdmin]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState('');
  const [reference,setReference]=useState(''),[amount,setAmount]=useState(''),[reason,setReason]=useState(''),[selected,setSelected]=useState('');
  const [whatsapp,setWhatsApp]=useState('');
@@ -28,7 +28,7 @@ export function PaymentPanel({admin=false,onCreditsChanged}:{admin?:boolean;onCr
   if(lock.current)return;lock.current=true;setBusy(true);setError('');
   try{
    await requestJson('/api/payments',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
-   if(await load()&&body.action!=='contact'){setReference('');setSelected('');}
+   if(await load()&&body.action!=='contact'){setReference('');setSelected('');if(body.action==='approve'||body.action==='reject')onReviewed?.();}
   }catch(error){setError(paymentIssue(error,true));if(error instanceof RequestError&&error.status===401)window.location.assign('/login');}
   finally{lock.current=false;setBusy(false);}
  }
