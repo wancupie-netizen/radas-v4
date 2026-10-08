@@ -43,7 +43,7 @@ export function VideoWorkspace({ accountEmail, accountName = '', initialCredits,
       <div className="mobile-account"><button onClick={() => profile.current?.showModal()}>Profile</button><form action={logoutAction}><button type="submit" disabled={logoutPending}>{logoutPending ? "Logging out…" : "Logout"}</button></form></div>
       <div className="workspace">
         <div hidden={tab!=='video'}>
-        <div className="page-heading"><WorkspaceGreeting name={accountName} onFindProducts={()=>setTab('affiliate')}/><span className="duration-badge">10 saat / video</span></div>
+        <div className="page-heading"><WorkspaceGreeting name={accountName} onFindProducts={()=>setTab('affiliate')}/><span className="duration-badge">Omni Flash 1.1</span></div>
         <VideoStudio credits={credits} generationEnabled={generationEnabled} onCreditsChanged={refreshCredits} />
         </div>
         {tab==='affiliate' && <AffiliatePanel accountName={accountName} balance={credits.status==='ready'?credits.balance:-1} onTopUp={topUp}/>}
