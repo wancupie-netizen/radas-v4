@@ -1,0 +1,2351 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Command Center</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root{
+      --bg:#f3f5f9;
+      --card:#ffffff;
+      --surface:#f8fafc;
+      --text:#0f1b33;
+      --text-2:#3b4863;
+      --muted:#66728a;
+      --line:#e3e8f0;
+      --line-strong:#cfd7e3;
+      --navy:#163A6B;
+      --navy-dark:#0f2c53;
+      --teal:#0e8f82;
+      --blue:#258CFF;
+      --danger:#dc2626;
+      --shadow-sm:0 1px 2px rgba(15,27,51,.05);
+      --shadow:0 1px 2px rgba(15,27,51,.04),0 8px 24px rgba(15,27,51,.05);
+      --radius:16px;
+      --font:"Plus Jakarta Sans",ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+    }
+
+    *{box-sizing:border-box}
+
+    html{-webkit-text-size-adjust:100%}
+
+    body{
+      margin:0;
+      font-family:var(--font);
+      font-size:15px;
+      line-height:1.55;
+      font-weight:400;
+      color:var(--text);
+      background:var(--bg);
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+      text-rendering:optimizeLegibility;
+    }
+
+    button,input,select,textarea{font-family:inherit}
+
+    .wrap{
+      width:min(1080px,calc(100% - 32px));
+      margin:0 auto;
+      padding:48px 0 64px;
+    }
+
+    /* ---------- Header ---------- */
+    .top{
+      text-align:center;
+      margin-bottom:8px;
+    }
+
+    .eyebrow{
+      font-size:13px;
+      font-weight:600;
+      letter-spacing:.01em;
+      color:var(--teal);
+      margin-bottom:6px;
+    }
+
+    h1{
+      margin:0 0 10px;
+      font-size:clamp(30px,4vw,40px);
+      font-weight:800;
+      line-height:1.12;
+      letter-spacing:-.035em;
+      color:var(--navy-dark);
+    }
+
+    h2,h3{
+      margin:0;
+      color:var(--text);
+      letter-spacing:-.02em;
+    }
+
+    h2{font-size:20px;font-weight:700;line-height:1.25}
+    h3{font-size:17px;font-weight:700;line-height:1.3;margin-bottom:12px}
+
+    .sub{
+      margin:0;
+      color:var(--muted);
+      font-size:16px;
+      font-weight:500;
+    }
+
+    /* ---------- Tabs (segmented control) ---------- */
+    .tabs{
+      display:flex;
+      justify-content:center;
+      gap:4px;
+      width:fit-content;
+      max-width:100%;
+      flex-wrap:wrap;
+      margin:28px auto 24px;
+      padding:4px;
+      background:#e8edf4;
+      border-radius:14px;
+    }
+
+    .tab{
+      appearance:none;
+      border:0;
+      background:transparent;
+      color:var(--muted);
+      padding:10px 26px;
+      border-radius:10px;
+      font-size:14px;
+      font-weight:600;
+      letter-spacing:-.005em;
+      cursor:pointer;
+      transition:background .18s ease,color .18s ease,box-shadow .18s ease;
+    }
+
+    .tab:hover{color:var(--navy)}
+
+    .tab.active{
+      color:#fff;
+      background:var(--navy);
+      font-weight:700;
+      box-shadow:0 2px 8px rgba(22,58,107,.25);
+    }
+
+    /* ---------- Project strip ---------- */
+    .project-strip{
+      position:relative;
+      background:var(--card);
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:20px 24px 20px 28px;
+      margin-bottom:18px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:16px;
+      flex-wrap:wrap;
+      overflow:hidden;
+    }
+
+    .project-strip::before{
+      content:"";
+      position:absolute;
+      inset:0 auto 0 0;
+      width:4px;
+      background:var(--navy);
+    }
+
+    .project-strip h2{
+      font-size:24px;
+      font-weight:800;
+      letter-spacing:-.03em;
+      color:var(--navy-dark);
+    }
+
+    .project-strip .week{
+      display:inline-flex;
+      align-items:center;
+      gap:4px;
+      color:var(--text-2);
+      font-size:13.5px;
+      font-weight:600;
+      background:var(--surface);
+      border:1px solid var(--line);
+      border-radius:999px;
+      padding:4px;
+    }
+
+    .week-text{
+      min-width:150px;
+      text-align:center;
+      padding:0 6px;
+      font-variant-numeric:tabular-nums;
+    }
+
+    .week-btn{
+      appearance:none;
+      width:30px;
+      height:30px;
+      border:0;
+      border-radius:50%;
+      background:transparent;
+      color:var(--navy);
+      font-size:20px;
+      font-weight:700;
+      line-height:1;
+      padding:0 0 2px;
+      cursor:pointer;
+      transition:background .15s ease;
+    }
+
+    .week-btn:hover{background:#e3eaf3}
+
+    .week-btn:focus-visible{
+      outline:2px solid var(--blue);
+      outline-offset:1px;
+    }
+
+    /* ---------- Cards ---------- */
+    .grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:18px;
+      margin-bottom:18px;
+    }
+
+    .card{
+      background:var(--card);
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      box-shadow:var(--shadow);
+      padding:24px;
+    }
+
+    .field-label{
+      display:block;
+      font-weight:600;
+      font-size:13.5px;
+      color:var(--text-2);
+      margin-bottom:7px;
+    }
+
+    textarea,input,select{
+      width:100%;
+      border:1px solid var(--line-strong);
+      border-radius:10px;
+      padding:11px 13px;
+      font-size:14.5px;
+      font-weight:500;
+      line-height:1.5;
+      color:var(--text);
+      background:#fff;
+      outline:none;
+      transition:border-color .15s ease,box-shadow .15s ease;
+    }
+
+    ::placeholder{color:#94a0b5;font-weight:400}
+
+    textarea{
+      min-height:96px;
+      resize:vertical;
+      background:var(--surface);
+    }
+
+    textarea:hover,input:hover,select:hover{border-color:#b7c2d3}
+
+    textarea:focus,input:focus,select:focus{
+      border-color:var(--blue);
+      background:#fff;
+      box-shadow:0 0 0 3px rgba(37,140,255,.16);
+    }
+
+    select{
+      appearance:none;
+      -webkit-appearance:none;
+      cursor:pointer;
+      padding-right:34px;
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%2366728a' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat:no-repeat;
+      background-position:right 12px center;
+    }
+
+    .actions{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top:14px;
+    }
+
+    /* ---------- Buttons ---------- */
+    .btn{
+      appearance:none;
+      border:1px solid transparent;
+      border-radius:10px;
+      padding:10px 16px;
+      font-size:14px;
+      font-weight:600;
+      letter-spacing:-.005em;
+      cursor:pointer;
+      transition:background .15s ease,border-color .15s ease,box-shadow .15s ease;
+    }
+
+    .btn-primary{
+      background:var(--navy);
+      color:#fff;
+      box-shadow:0 1px 2px rgba(15,44,83,.25);
+    }
+
+    .btn-primary:hover{background:var(--navy-dark)}
+
+    .btn-soft{
+      background:#fff;
+      color:var(--navy);
+      border-color:var(--line-strong);
+      box-shadow:var(--shadow-sm);
+    }
+
+    .btn-soft:hover{
+      background:#f1f5fa;
+      border-color:#b7c2d3;
+    }
+
+    .btn:focus-visible,.tab:focus-visible,.icon-btn:focus-visible{
+      outline:2px solid var(--blue);
+      outline-offset:2px;
+    }
+
+    /* ---------- Summary ---------- */
+    .summary-row{
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:12px;
+    }
+
+    .metric{
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:16px 18px;
+      background:var(--surface);
+    }
+
+    .metric span{
+      color:var(--muted);
+      font-size:13.5px;
+      font-weight:500;
+    }
+
+    .metric b{
+      display:block;
+      margin-top:2px;
+      font-size:30px;
+      font-weight:800;
+      line-height:1.2;
+      letter-spacing:-.03em;
+      color:var(--navy-dark);
+      font-variant-numeric:tabular-nums;
+    }
+
+    .metric-btn{margin-top:10px}
+
+    .goal{
+      display:grid;
+      grid-template-columns:1fr auto;
+      gap:14px;
+      align-items:center;
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:14px 16px;
+      background:#fff;
+      transition:border-color .15s ease,box-shadow .15s ease;
+    }
+
+    .goal:hover{
+      border-color:var(--line-strong);
+      box-shadow:var(--shadow-sm);
+    }
+
+    .goal-title{
+      font-size:15px;
+      font-weight:700;
+      letter-spacing:-.01em;
+      margin-bottom:8px;
+      overflow-wrap:anywhere;
+    }
+
+    .section-head{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      flex-wrap:wrap;
+      margin-bottom:18px;
+    }
+
+    /* ---------- Tasks ---------- */
+    .task-list{
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+
+    .task{
+      display:grid;
+      grid-template-columns:auto 1fr auto;
+      gap:14px;
+      align-items:start;
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:14px 16px;
+      background:#fff;
+      transition:border-color .15s ease,box-shadow .15s ease;
+    }
+
+    .task:hover{
+      border-color:var(--line-strong);
+      box-shadow:var(--shadow-sm);
+    }
+
+    .task.done{
+      background:var(--surface);
+      opacity:.7;
+    }
+
+    .task.done .task-title{
+      text-decoration:line-through;
+      text-decoration-color:#94a0b5;
+      color:var(--muted);
+    }
+
+    .task input[type="checkbox"],
+    .check-row input[type="checkbox"]{
+      appearance:none;
+      -webkit-appearance:none;
+      flex:none;
+      width:20px;
+      height:20px;
+      padding:0;
+      margin:1px 0 0;
+      border:1.5px solid #b7c2d3;
+      border-radius:6px;
+      background:#fff;
+      cursor:pointer;
+      display:grid;
+      place-content:center;
+    }
+
+    .task input[type="checkbox"]::after,
+    .check-row input[type="checkbox"]::after{
+      content:"";
+      width:9px;
+      height:5px;
+      border:solid #fff;
+      border-width:0 0 2px 2px;
+      transform:rotate(-45deg) translate(1px,-1px) scale(0);
+      transition:transform .12s ease;
+    }
+
+    .task input[type="checkbox"]:checked,
+    .check-row input[type="checkbox"]:checked{
+      background:var(--navy);
+      border-color:var(--navy);
+    }
+
+    .task input[type="checkbox"]:checked::after,
+    .check-row input[type="checkbox"]:checked::after{
+      transform:rotate(-45deg) translate(1px,-1px) scale(1);
+    }
+
+    .task-main{min-width:0}
+
+    .task-title{
+      font-size:15px;
+      font-weight:700;
+      line-height:1.4;
+      letter-spacing:-.01em;
+      margin-bottom:8px;
+      overflow-wrap:anywhere;
+    }
+
+    .tags{
+      display:flex;
+      gap:6px;
+      flex-wrap:wrap;
+    }
+
+    .tag{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      background:#eef2f7;
+      color:#475569;
+      border-radius:6px;
+      padding:3px 9px;
+      font-size:12px;
+      font-weight:600;
+      line-height:1.5;
+    }
+
+    .tag.high,.tag.medium,.tag.low{text-transform:capitalize}
+
+    .tag.high::before,.tag.medium::before,.tag.low::before{
+      content:"";
+      width:6px;
+      height:6px;
+      border-radius:50%;
+      background:currentColor;
+    }
+
+    .tag.high{background:#fef0f1;color:#b91c1c}
+    .tag.medium{background:#fff4e6;color:#b45309}
+    .tag.low{background:#eaf2ff;color:#1d4ed8}
+    .tag.money{background:#e7f8f0;color:#047857}
+
+    .task-actions{
+      display:flex;
+      gap:6px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+      align-items:center;
+    }
+
+    .icon-btn{
+      appearance:none;
+      border:1px solid var(--line-strong);
+      background:#fff;
+      color:var(--text-2);
+      border-radius:8px;
+      padding:7px 12px;
+      font-size:13px;
+      font-weight:600;
+      cursor:pointer;
+      transition:background .15s ease,border-color .15s ease,color .15s ease;
+    }
+
+    .icon-btn:hover{
+      background:#f1f5fa;
+      border-color:#b7c2d3;
+      color:var(--navy);
+    }
+
+    .task-actions .icon-btn:last-child:hover{
+      background:#fef0f1;
+      border-color:#f3b7bb;
+      color:var(--danger);
+    }
+
+    .status-select{
+      width:auto;
+      min-width:112px;
+      padding:7px 32px 7px 11px;
+      border-radius:8px;
+      font-size:13px;
+      font-weight:600;
+      background-position:right 10px center;
+    }
+
+    .empty{
+      border:1px dashed var(--line-strong);
+      border-radius:12px;
+      padding:28px 22px;
+      text-align:center;
+      color:var(--muted);
+      font-weight:500;
+      background:var(--surface);
+    }
+
+    .empty strong{color:var(--text-2);font-weight:700}
+
+    /* ---------- Dialog ---------- */
+    dialog{
+      border:0;
+      border-radius:18px;
+      width:min(560px,calc(100% - 28px));
+      padding:0;
+      color:var(--text);
+      font-family:var(--font);
+      box-shadow:0 24px 64px rgba(15,27,51,.3);
+    }
+
+    dialog::backdrop{
+      background:rgba(15,27,51,.5);
+      backdrop-filter:blur(2px);
+    }
+
+    .modal{padding:24px}
+
+    .modal .section-head{
+      padding-bottom:16px;
+      border-bottom:1px solid var(--line);
+      margin-bottom:20px;
+    }
+
+    .modal .icon-btn{
+      width:34px;
+      height:34px;
+      padding:0;
+      font-size:14px;
+      display:grid;
+      place-content:center;
+    }
+
+    .form-grid{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:16px 14px;
+    }
+
+    .full{grid-column:1/-1}
+
+    .check-row{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      font-size:14px;
+      font-weight:500;
+      color:var(--text-2);
+      cursor:pointer;
+    }
+
+    .check-row input{width:20px}
+
+    .footer{
+      text-align:center;
+      color:var(--muted);
+      font-size:13px;
+      font-weight:500;
+      margin-top:22px;
+    }
+
+
+
+    /* ---------- RADAS Product Database ---------- */
+    .project-title-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+    .radas-products-link{
+      appearance:none;border:1px solid var(--line-strong);background:#fff;color:var(--navy);
+      padding:7px 12px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;
+      box-shadow:var(--shadow-sm);transition:background .15s ease,border-color .15s ease,box-shadow .15s ease;
+    }
+    .radas-products-link:hover{background:#f1f5fa;border-color:#b7c2d3}
+    .radas-products-link.active{background:var(--navy);border-color:var(--navy);color:#fff;box-shadow:0 2px 8px rgba(22,58,107,.2)}
+    .product-toolbar{display:grid;grid-template-columns:minmax(220px,1.5fr) repeat(4,minmax(140px,.7fr)) auto;gap:10px;margin-bottom:16px;align-items:center}
+    .product-meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center;color:var(--muted);font-size:13px;font-weight:600}
+    .product-table-wrap{overflow:auto;border:1px solid var(--line);border-radius:12px;background:#fff}
+    .product-table{width:100%;border-collapse:separate;border-spacing:0;min-width:860px;font-size:12.5px}
+    .product-table th{position:sticky;top:0;z-index:3;background:var(--surface);color:var(--text-2);font-size:11px;text-transform:uppercase;letter-spacing:.035em;text-align:left;padding:9px 10px;border-bottom:1px solid var(--line);white-space:nowrap}
+    .product-table td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:middle}
+    .product-table tr:last-child td{border-bottom:0}
+    .product-table tr:hover td{background:#fbfcfe}
+    .product-main-cell{min-width:280px;max-width:360px}
+    .product-name{font-weight:700;color:var(--text);line-height:1.35;font-size:13px;overflow-wrap:anywhere}
+    .product-submeta{display:flex;gap:7px;align-items:center;flex-wrap:wrap;margin-top:3px;color:var(--muted);font-size:10.5px;font-weight:600;line-height:1.35}
+    .product-category{color:var(--muted);font-size:10.5px;font-weight:600}
+    .product-id{font-variant-numeric:tabular-nums;color:#8994a8;font-weight:700;font-size:10.5px}
+    .price-commission{min-width:112px;line-height:1.3;white-space:nowrap}
+    .price-commission .price{font-weight:700;color:var(--text)}
+    .price-commission .commission{margin-top:2px;color:var(--teal);font-weight:700;font-size:11px}
+    .product-number{font-variant-numeric:tabular-nums;white-space:nowrap}
+    .product-score{font-weight:800;color:var(--navy-dark);white-space:nowrap}
+    .product-badges{display:flex;gap:4px;flex-wrap:wrap;margin-top:5px}
+    .product-badges .tag{padding:2px 6px;font-size:10px}
+    .tag.watch{background:#fff4e6;color:#b45309}
+    .tag.source-note{background:#fef0f1;color:#b91c1c}
+    .product-status-cell{min-width:124px}
+    .product-status-cell .status-select{min-width:112px;padding:6px 28px 6px 9px;font-size:11.5px}
+    .product-actions{display:flex;gap:5px;align-items:center;white-space:nowrap}
+    .product-actions .icon-btn{padding:6px 9px;font-size:11.5px}
+    .product-more{position:relative;display:inline-block}
+    .product-more summary{list-style:none;cursor:pointer;border:1px solid var(--line-strong);background:#fff;color:var(--text-2);border-radius:8px;padding:5px 9px;font-size:16px;font-weight:700;line-height:1;user-select:none}
+    .product-more summary::-webkit-details-marker{display:none}
+    .product-more[open] summary{background:#f1f5fa;color:var(--navy)}
+    .product-more-menu{position:absolute;right:0;top:calc(100% + 5px);z-index:20;min-width:132px;padding:5px;background:#fff;border:1px solid var(--line);border-radius:9px;box-shadow:0 10px 28px rgba(15,27,51,.16)}
+    .product-more-menu button{display:block;width:100%;border:0;background:transparent;text-align:left;padding:7px 8px;border-radius:6px;font:inherit;font-size:11.5px;font-weight:600;color:var(--text-2);cursor:pointer}
+    .product-more-menu button:hover{background:var(--surface);color:var(--navy)}
+    .product-more-menu button.danger:hover{background:#fef0f1;color:var(--danger)}
+    .product-detail-row td{background:var(--surface)!important;padding:12px 16px 14px}
+    .product-detail-grid{display:grid;grid-template-columns:repeat(4,minmax(120px,1fr));gap:10px}
+    .product-detail-item{background:#fff;border:1px solid var(--line);border-radius:9px;padding:10px 12px}
+    .product-detail-item span{display:block;color:var(--muted);font-size:11.5px;font-weight:600;margin-bottom:2px}
+    .product-detail-item b{font-size:13px;color:var(--text-2);overflow-wrap:anywhere}
+
+    /* ---------- RADAS Nota ---------- */
+    .radas-note-link{
+      appearance:none;border:1px solid var(--line-strong);background:#fff;color:var(--navy);
+      border-radius:9px;padding:7px 11px;font-size:12px;font-weight:700;cursor:pointer;
+      transition:background .15s ease,border-color .15s ease,color .15s ease,box-shadow .15s ease;
+    }
+    .radas-note-link:hover{background:#f1f5fa;border-color:#b7c2d3}
+    .radas-note-link.active{background:var(--navy);border-color:var(--navy);color:#fff;box-shadow:0 2px 8px rgba(22,58,107,.2)}
+    .note-shell{max-width:880px;margin:0 auto}
+    .note-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+    .note-actions{display:flex;gap:8px;flex-wrap:wrap}
+    .note-content{font-size:14px;line-height:1.75;color:var(--text-2)}
+    .note-content h1{font-size:25px;margin:0 0 10px;color:var(--navy-dark);letter-spacing:-.025em}
+    .note-content h2{font-size:18px;margin:28px 0 10px;padding-top:4px;color:var(--navy-dark)}
+    .note-content h3{font-size:15px;margin:20px 0 8px;color:var(--text);letter-spacing:-.01em}
+    .note-content p{margin:8px 0 12px}
+    .note-content ul{margin:8px 0 16px;padding-left:22px}
+    .note-content li{margin:4px 0}
+    .note-content blockquote{margin:12px 0 18px;padding:12px 16px;border-left:4px solid var(--teal);background:#f0fbf8;border-radius:0 10px 10px 0;color:var(--navy-dark);font-weight:700}
+    .note-content hr{border:0;border-top:1px solid var(--line);margin:24px 0}
+    .note-content strong{color:var(--text)}
+    .note-section-risk,.note-section-caution,.note-section-good{border-radius:12px;padding:14px 16px;margin:16px 0;border:1px solid var(--line)}
+    .note-section-risk{background:#fff7f7;border-color:#f6d2d2}
+    .note-section-caution{background:#fffaf0;border-color:#f5dfb5}
+    .note-section-good{background:#f3fbf7;border-color:#cfe9da}
+    .note-empty{border:1px dashed var(--line-strong);border-radius:12px;padding:34px 24px;text-align:center;color:var(--muted);background:var(--surface)}
+    #noteEditor{min-height:60vh;font-family:var(--font);font-size:13.5px;line-height:1.6;white-space:pre-wrap}
+
+    /* ---------- RADAS Content List ---------- */
+    #radasContentEditor{min-height:260px;font-family:var(--font);font-size:13.5px;line-height:1.6;white-space:pre-wrap}
+
+    /* ---------- DexSato Content List ---------- */
+    .dexsato-content-link{
+      appearance:none;border:1px solid var(--line-strong);background:#fff;color:var(--navy);
+      border-radius:9px;padding:7px 11px;font-size:12px;font-weight:700;cursor:pointer;
+      transition:background .15s ease,border-color .15s ease,color .15s ease,box-shadow .15s ease;
+    }
+    .dexsato-content-link:hover{background:#f1f5fa;border-color:#b7c2d3}
+    .dexsato-content-link.active{background:var(--navy);border-color:var(--navy);color:#fff;box-shadow:0 2px 8px rgba(22,58,107,.2)}
+    .content-list-shell{max-width:880px;margin:0 auto}
+    .content-list-grid{display:flex;flex-direction:column;gap:12px}
+    .content-note-card{border:1px solid var(--line);border-radius:12px;padding:16px 18px;background:#fff;box-shadow:var(--shadow-sm)}
+    .content-note-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:8px}
+    .content-note-title{font-size:15px;font-weight:800;line-height:1.4;color:var(--navy-dark);overflow-wrap:anywhere}
+    .content-note-actions{display:flex;gap:6px;flex:none}
+    .content-note-actions .icon-btn{padding:6px 10px;font-size:11.5px}
+    .content-note-body{font-size:13.5px;line-height:1.65;color:var(--text-2)}
+    .content-note-body h1{font-size:18px;margin:12px 0 8px}.content-note-body h2{font-size:15px;margin:12px 0 7px}.content-note-body h3{font-size:14px;margin:10px 0 6px}
+    .content-note-body p{margin:6px 0 10px}.content-note-body ul{margin:6px 0 10px;padding-left:20px}.content-note-body li{margin:3px 0}
+    .content-note-body blockquote{margin:8px 0 12px;padding:9px 12px;border-left:3px solid var(--teal);background:#f0fbf8;border-radius:0 8px 8px 0}
+    #dexsatoNoteEditor{min-height:260px;font-family:var(--font);font-size:13.5px;line-height:1.6;white-space:pre-wrap}
+    @media(max-width:900px){.product-toolbar{grid-template-columns:1fr 1fr}.product-detail-grid{grid-template-columns:1fr 1fr}.product-table{min-width:800px}.product-main-cell{min-width:240px}}
+    @media(max-width:560px){.product-toolbar{grid-template-columns:1fr}.project-title-row{align-items:flex-start}.radas-products-link{padding:7px 10px}.product-detail-grid{grid-template-columns:1fr}}
+
+    @media(max-width:760px){
+      .wrap{width:min(100% - 20px,1080px);padding-top:28px}
+      .grid{grid-template-columns:1fr}
+      .summary-row{grid-template-columns:1fr}
+      .task{grid-template-columns:auto 1fr}
+      .task-actions{grid-column:2;justify-content:flex-start}
+      .goal{grid-template-columns:1fr}
+      .goal .task-actions{grid-column:1;justify-content:flex-start}
+      .form-grid{grid-template-columns:1fr}
+      .full{grid-column:auto}
+      .card{padding:20px}
+      .tab{padding:10px 18px}
+    }
+
+    @media(prefers-reduced-motion:reduce){
+      *{transition:none!important}
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <header class="top">
+      <div class="eyebrow">Personal Weekly Dashboard</div>
+      <h1>Command Center</h1>
+      <p class="sub">Tiga projek. Satu fokus setiap masa.</p>
+    </header>
+
+    <nav class="tabs" aria-label="Project tabs">
+      <button type="button" class="tab active" id="tab-radas" onclick="switchProject('radas')">RADAS</button>
+      <button type="button" class="tab" id="tab-biscotto" onclick="switchProject('biscotto')">Biscotto</button>
+      <button type="button" class="tab" id="tab-dexsato" onclick="switchProject('dexsato')">DexSato</button>
+      <button type="button" class="tab" id="tab-weight" onclick="switchProject('weight')">Lose Weight</button>
+    </nav>
+
+    <section class="project-strip">
+      <div>
+        <div class="eyebrow">Current Project</div>
+        <div class="project-title-row">
+          <h2 id="projectTitle">RADAS</h2>
+          <button type="button" class="radas-products-link" id="radasProductsLink" onclick="switchRadasView('products')" hidden>100 Produk</button>
+          <button type="button" class="radas-note-link" id="radasNoteLink" onclick="switchRadasView('notes')" hidden>Nota</button>
+          <button type="button" class="dexsato-content-link" id="radasContentLink" onclick="switchRadasView('content')" hidden>Content List</button>
+          <button type="button" class="dexsato-content-link" id="dexsatoContentLink" onclick="switchDexsatoView('content')" hidden>Content List</button>
+        </div>
+      </div>
+      <div class="week">
+        <button type="button" class="week-btn" onclick="shiftWeek(-1)" aria-label="Minggu sebelum">‹</button>
+        <span class="week-text" id="weekLabel" aria-live="polite"></span>
+        <button type="button" class="week-btn" onclick="shiftWeek(1)" aria-label="Minggu seterusnya">›</button>
+      </div>
+    </section>
+
+
+    <section class="card" id="radasProductsCard" style="margin-bottom:18px" hidden>
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">Product Database</div>
+          <h2>100 Produk Tinggi Komisen</h2>
+        </div>
+        <div class="product-meta"><span id="productCountLabel">100 produk</span><span>•</span><span>Data asal RADAS Product Database V1</span></div>
+      </div>
+
+      <div class="product-toolbar">
+        <input id="productSearch" type="search" placeholder="Cari nama / kategori..." oninput="renderProducts()" />
+        <select id="productCategoryFilter" onchange="renderProducts()">
+          <option value="all">Semua Kategori</option>
+        </select>
+        <select id="productStatusFilter" onchange="renderProducts()">
+          <option value="all">Semua Status</option>
+          <option value="untested">Belum Uji</option>
+          <option value="want">Nak Uji</option>
+          <option value="promoting">Sedang Promote</option>
+          <option value="done">Done</option>
+        </select>
+        <select id="productWatchFilter" onchange="renderProducts()">
+          <option value="all">Semua Produk</option>
+          <option value="watchlist">Watchlist Sahaja</option>
+          <option value="missing">Data Nama Tak Lengkap</option>
+        </select>
+        <select id="productSort" onchange="renderProducts()">
+          <option value="id">Susun: ID</option>
+          <option value="commission">Komisen RM Tertinggi</option>
+          <option value="score">Radar Score Tertinggi</option>
+          <option value="creator">Creator Tertinggi</option>
+          <option value="sold">Sold/Orders Tertinggi</option>
+        </select>
+        <button type="button" class="btn btn-primary" onclick="openProductDialog()">+ Tambah Produk</button>
+      </div>
+
+      <div class="product-table-wrap">
+        <table class="product-table">
+          <thead><tr><th>Produk</th><th>Harga / Komisen</th><th>Creator</th><th>Sold</th><th>Radar</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody id="productTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="card" id="radasNoteCard" style="margin-bottom:18px" hidden>
+      <div class="note-shell">
+        <div class="note-toolbar">
+          <div>
+            <div class="eyebrow">RADAS Reference Note</div>
+            <h2>TikTok Affiliate — Kategori Produk</h2>
+          </div>
+          <div class="note-actions">
+            <button type="button" class="btn btn-soft" onclick="openNoteEditor()">Edit Nota</button>
+            <button type="button" class="btn btn-soft" onclick="deleteRadasNote()">Delete</button>
+          </div>
+        </div>
+        <div id="radasNoteContent" class="note-content"></div>
+      </div>
+    </section>
+
+    <section class="card" id="radasContentCard" style="margin-bottom:18px" hidden>
+      <div class="content-list-shell">
+        <div class="note-toolbar">
+          <div>
+            <div class="eyebrow">RADAS Content Workspace</div>
+            <h2>Content List</h2>
+          </div>
+          <div class="note-actions">
+            <button type="button" class="btn btn-primary" onclick="openRadasContentEditor()">+ Tambah Nota</button>
+          </div>
+        </div>
+        <div id="radasContentList" class="content-list-grid"></div>
+      </div>
+    </section>
+
+    <section class="card" id="dexsatoContentCard" style="margin-bottom:18px" hidden>
+      <div class="content-list-shell">
+        <div class="note-toolbar">
+          <div>
+            <div class="eyebrow">DexSato Content Workspace</div>
+            <h2>Content List</h2>
+          </div>
+          <div class="note-actions">
+            <button type="button" class="btn btn-primary" onclick="openDexsatoNoteEditor()">+ Tambah Nota</button>
+          </div>
+        </div>
+        <div id="dexsatoContentList" class="content-list-grid"></div>
+      </div>
+    </section>
+
+    <dialog id="radasContentDialog">
+      <form class="modal" id="radasContentForm">
+        <div class="section-head">
+          <div>
+            <div class="eyebrow">RADAS Content List</div>
+            <h2 id="radasContentDialogTitle">Tambah Nota</h2>
+          </div>
+          <button type="button" class="icon-btn" onclick="closeRadasContentEditor()">✕</button>
+        </div>
+        <input type="hidden" id="radasContentId" />
+        <div class="form-grid">
+          <div class="full">
+            <label class="field-label" for="radasContentTitle">Tajuk</label>
+            <input id="radasContentTitle" required placeholder="Contoh: Bedah Produk — Produk A" />
+          </div>
+          <div class="full">
+            <label class="field-label" for="radasContentEditor">Nota</label>
+            <textarea id="radasContentEditor" placeholder="Tulis idea, draft, hook, angle atau content plan..."></textarea>
+            <div style="margin-top:7px;color:var(--muted);font-size:12px">Format ringkas Markdown disokong: # tajuk, ## sub-tajuk, - bullet, &gt; quote, **bold**.</div>
+          </div>
+        </div>
+        <div class="actions" style="justify-content:flex-end;margin-top:18px">
+          <button type="button" class="btn btn-soft" onclick="closeRadasContentEditor()">Batal</button>
+          <button type="submit" class="btn btn-primary">Simpan Nota</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="dexsatoNoteDialog">
+      <form class="modal" id="dexsatoNoteForm">
+        <div class="section-head">
+          <div>
+            <div class="eyebrow">DexSato Content List</div>
+            <h2 id="dexsatoNoteDialogTitle">Tambah Nota</h2>
+          </div>
+          <button type="button" class="icon-btn" onclick="closeDexsatoNoteEditor()">✕</button>
+        </div>
+        <input type="hidden" id="dexsatoNoteId" />
+        <div class="form-grid">
+          <div class="full">
+            <label class="field-label" for="dexsatoNoteTitle">Tajuk</label>
+            <input id="dexsatoNoteTitle" required placeholder="Contoh: DexSato Signal — $TOKEN" />
+          </div>
+          <div class="full">
+            <label class="field-label" for="dexsatoNoteEditor">Nota</label>
+            <textarea id="dexsatoNoteEditor" placeholder="Tulis idea, draft, signal, hook atau content plan..."></textarea>
+            <div style="margin-top:7px;color:var(--muted);font-size:12px">Format ringkas Markdown disokong: # tajuk, ## sub-tajuk, - bullet, &gt; quote, **bold**.</div>
+          </div>
+        </div>
+        <div class="actions" style="justify-content:flex-end;margin-top:18px">
+          <button type="button" class="btn btn-soft" onclick="closeDexsatoNoteEditor()">Batal</button>
+          <button type="submit" class="btn btn-primary">Simpan Nota</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="noteDialog">
+      <form class="modal" id="noteForm">
+        <div class="section-head">
+          <div>
+            <div class="eyebrow">RADAS Reference Note</div>
+            <h2>Edit Nota</h2>
+          </div>
+          <button type="button" class="icon-btn" onclick="closeNoteEditor()">✕</button>
+        </div>
+        <div class="full">
+          <label class="field-label" for="noteEditor">Nota</label>
+          <textarea id="noteEditor" required></textarea>
+          <div style="margin-top:7px;color:var(--muted);font-size:12px">Format ringkas Markdown disokong: # tajuk, ## sub-tajuk, - bullet, &gt; quote, **bold**.</div>
+        </div>
+        <div class="actions" style="justify-content:flex-end;margin-top:18px">
+          <button type="button" class="btn btn-soft" onclick="closeNoteEditor()">Batal</button>
+          <button type="submit" class="btn btn-primary">Simpan Nota</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="productDialog">
+      <form class="modal" id="productForm">
+        <div class="section-head">
+          <div>
+            <div class="eyebrow">RADAS Product Database</div>
+            <h2 id="productDialogTitle">Tambah Produk</h2>
+          </div>
+          <button type="button" class="icon-btn" onclick="closeProductDialog()">✕</button>
+        </div>
+
+        <input type="hidden" id="productEditId" />
+        <div class="form-grid">
+          <div class="full">
+            <label class="field-label" for="productNameInput">Nama Produk</label>
+            <input id="productNameInput" required placeholder="Contoh: Nama produk" />
+          </div>
+          <div>
+            <label class="field-label" for="productCategoryInput">Kategori</label>
+            <input id="productCategoryInput" list="productCategoryList" placeholder="Pilih atau taip kategori baru" />
+            <datalist id="productCategoryList"></datalist>
+            <div style="margin-top:6px;color:var(--muted);font-size:12px">Kategori baru yang ditaip akan disimpan dan tersedia untuk produk seterusnya.</div>
+          </div>
+          <div>
+            <label class="field-label" for="productPriceInput">Harga</label>
+            <input id="productPriceInput" placeholder="Contoh: RM59.90" />
+          </div>
+          <div>
+            <label class="field-label" for="productCommissionInput">Komisen RM</label>
+            <input id="productCommissionInput" placeholder="Contoh: RM10.00" />
+          </div>
+          <div>
+            <label class="field-label" for="productCommissionRateInput">Komisen %</label>
+            <input id="productCommissionRateInput" placeholder="Contoh: 15%" />
+          </div>
+          <div>
+            <label class="field-label" for="productCreatorInput">Creator</label>
+            <input id="productCreatorInput" placeholder="Contoh: 1.2K+" />
+          </div>
+          <div>
+            <label class="field-label" for="productSoldInput">Sold</label>
+            <input id="productSoldInput" placeholder="Contoh: 10.5K+" />
+          </div>
+          <div>
+            <label class="field-label" for="productRadarInput">Radar Score</label>
+            <input id="productRadarInput" placeholder="Contoh: 8.8 / 10" />
+          </div>
+          <div>
+            <label class="field-label" for="productStockInput">Stok</label>
+            <input id="productStockInput" placeholder="Jika ada" />
+          </div>
+          <div>
+            <label class="field-label" for="productReviewsInput">Positive Reviews</label>
+            <input id="productReviewsInput" placeholder="Contoh: 97%" />
+          </div>
+          <div>
+            <label class="field-label" for="productRankingInput">Ranking</label>
+            <input id="productRankingInput" placeholder="Jika ada" />
+          </div>
+          <label class="check-row"><input id="productWatchlistInput" type="checkbox" /><span>Watchlist</span></label>
+          <label class="check-row"><input id="productPremiumInput" type="checkbox" /><span>Premium</span></label>
+        </div>
+        <div class="actions" style="justify-content:flex-end;margin-top:18px">
+          <button type="button" class="btn btn-soft" onclick="closeProductDialog()">Batal</button>
+          <button type="submit" class="btn btn-primary">Simpan Produk</button>
+        </div>
+      </form>
+    </dialog>
+
+    <section class="card" id="weightCard" style="margin-bottom:18px" hidden>
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">Progress</div>
+          <h2>Berat Badan</h2>
+        </div>
+        <button type="button" class="btn btn-soft" onclick="openWeight('goal')">+ Tambah Target</button>
+      </div>
+      <div class="summary-row">
+        <div class="metric">
+          <span>Berat Semasa</span>
+          <b id="currentWeightVal">0 kg</b>
+          <button type="button" class="icon-btn metric-btn" onclick="openWeight('current')">Kemaskini</button>
+        </div>
+        <div class="metric">
+          <span>Target Seterusnya</span>
+          <b id="nextGoalVal">—</b>
+        </div>
+        <div class="metric">
+          <span>Baki Untuk Turun</span>
+          <b id="remainingVal">—</b>
+        </div>
+      </div>
+      <div id="goalList" class="task-list" style="margin-top:16px"></div>
+    </section>
+
+    <section class="grid dashboard-section" id="dashboardFocusSection">
+      <div class="card">
+        <div class="eyebrow">Focus</div>
+        <h3>Fokus Minggu Ini</h3>
+        <textarea id="focusInput"></textarea>
+        <div class="actions">
+          <button type="button" class="btn btn-soft" onclick="saveFocus()">Simpan Fokus</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="eyebrow">Target</div>
+        <h3>Weekly Target</h3>
+        <textarea id="targetInput"></textarea>
+        <div class="actions">
+          <button type="button" class="btn btn-soft" onclick="saveTarget()">Simpan Target</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="card dashboard-section" id="dashboardSummarySection" style="margin-bottom:18px">
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">Weekly Summary</div>
+          <h2>Ringkasan</h2>
+        </div>
+      </div>
+      <div class="summary-row">
+        <div class="metric">
+          <span>Jumlah Task</span>
+          <b id="totalCount">0</b>
+        </div>
+        <div class="metric">
+          <span>Task Siap</span>
+          <b id="doneCount">0</b>
+        </div>
+        <div class="metric">
+          <span>Progress</span>
+          <b id="progressCount">0%</b>
+        </div>
+      </div>
+    </section>
+
+    <section class="card dashboard-section" id="dashboardTaskSection">
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">Execution</div>
+          <h2>Task Minggu Ini</h2>
+        </div>
+        <button type="button" class="btn btn-primary" onclick="openAddTask()">+ Tambah Task</button>
+      </div>
+      <div id="taskList" class="task-list"></div>
+    </section>
+
+    <p class="footer">Data disimpan dalam browser ini menggunakan localStorage.</p>
+  </main>
+
+  <dialog id="weightDialog">
+    <form class="modal" id="weightForm">
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">Berat Badan</div>
+          <h2 id="weightDialogTitle">Kemaskini Berat</h2>
+        </div>
+        <button type="button" class="icon-btn" onclick="closeWeightDialog()">✕</button>
+      </div>
+
+      <input type="hidden" id="weightMode" />
+      <input type="hidden" id="weightId" />
+
+      <div class="form-grid">
+        <div class="full" id="weightNameWrap">
+          <label class="field-label" for="weightName">Nama Target</label>
+          <input id="weightName" placeholder="Contoh: Target 2" />
+        </div>
+
+        <div class="full">
+          <label class="field-label" for="weightValue">Berat (kg)</label>
+          <input id="weightValue" type="number" inputmode="decimal" step="0.1" min="20" max="400" required placeholder="Contoh: 95" />
+        </div>
+      </div>
+
+      <div class="actions" style="justify-content:flex-end;margin-top:18px">
+        <button type="button" class="btn btn-soft" onclick="closeWeightDialog()">Batal</button>
+        <button type="submit" class="btn btn-primary">Simpan</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="taskDialog">
+    <form class="modal" id="taskForm">
+      <div class="section-head">
+        <div>
+          <div class="eyebrow">Custom Task</div>
+          <h2 id="dialogTitle">Tambah Task</h2>
+        </div>
+        <button type="button" class="icon-btn" onclick="closeDialog()">✕</button>
+      </div>
+
+      <input type="hidden" id="taskId" />
+
+      <div class="form-grid">
+        <div class="full">
+          <label class="field-label" for="taskTitle">Task</label>
+          <input id="taskTitle" required placeholder="Contoh: Generate 3 video affiliate" />
+        </div>
+
+        <div>
+          <label class="field-label" for="taskCategory">Kategori</label>
+          <input id="taskCategory" placeholder="Content / Sales / Product" />
+        </div>
+
+        <div>
+          <label class="field-label" for="taskPriority">Priority</label>
+          <select id="taskPriority">
+            <option value="high">High</option>
+            <option value="medium" selected>Medium</option>
+            <option value="low">Low</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="field-label" for="taskStatus">Status</label>
+          <select id="taskStatus">
+            <option value="todo">To Do</option>
+            <option value="doing">Doing</option>
+            <option value="done">Done</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="field-label" for="taskDue">Due Date</label>
+          <input id="taskDue" type="date" />
+        </div>
+
+        <div class="full">
+          <label class="field-label" for="taskNotes">Nota</label>
+          <textarea id="taskNotes" placeholder="Nota ringkas jika perlu"></textarea>
+        </div>
+
+        <label class="check-row full">
+          <input id="taskMoney" type="checkbox" />
+          <span>Tandakan sebagai task yang berkait terus dengan revenue</span>
+        </label>
+      </div>
+
+      <div class="actions" style="justify-content:flex-end;margin-top:18px">
+        <button type="button" class="btn btn-soft" onclick="closeDialog()">Batal</button>
+        <button type="submit" class="btn btn-primary">Simpan Task</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script>
+    "use strict";
+
+    const STORAGE_KEY = "radasCommandCenterV2";
+
+    const DEFAULTS = {
+      radas: {
+        focus: "Gerakkan aktiviti affiliate dan produk digital yang paling hampir kepada revenue.",
+        target: "Pilih produk, hasilkan content, publish dan ukur respons.",
+        tasks: [
+          { title:"Pilih produk affiliate untuk dipromosikan", category:"Affiliate", priority:"high", status:"todo", due:"", notes:"", money:true },
+          { title:"Generate video affiliate", category:"Content", priority:"high", status:"todo", due:"", notes:"", money:true },
+          { title:"Tulis copywriting / hook", category:"Content", priority:"medium", status:"todo", due:"", notes:"", money:true },
+          { title:"Publish content", category:"Distribution", priority:"high", status:"todo", due:"", notes:"", money:true },
+          { title:"Promote produk digital RADAS", category:"Digital Product", priority:"high", status:"todo", due:"", notes:"", money:true },
+          { title:"AI Video Studio — task penting sahaja", category:"Product", priority:"low", status:"todo", due:"", notes:"", money:false }
+        ]
+      },
+      biscotto: {
+        focus: "Konsisten upload video TikTok.",
+        target: "5–7 video TikTok minggu ini.",
+        tasks: [
+          { title:"Upload video ke TikTok", category:"TikTok", priority:"high", status:"todo", due:"", notes:"", money:true }
+        ]
+      },
+      weight: {
+        focus: "Turunkan berat badan dengan konsisten, sedikit demi sedikit.",
+        target: "Capai Target 1 (95 kg) melalui aktiviti harian dan pemakanan terkawal.",
+        tasks: [
+          { title:"Brisk walk", category:"Exercise", priority:"high", status:"todo", due:"", notes:"", money:false },
+          { title:"Jaga calorie intake", category:"Diet", priority:"high", status:"todo", due:"", notes:"", money:false },
+          { title:"Gula sederhana", category:"Diet", priority:"medium", status:"todo", due:"", notes:"", money:false }
+        ]
+      },
+      dexsato: {
+        focus: "Perkenalkan DexSato sambil selesaikan blocker subscription.",
+        target: "Selesaikan task subscription penting dan teruskan content pengenalan.",
+        tasks: [
+          { title:"Selesaikan subscription flow", category:"Subscription", priority:"high", status:"todo", due:"", notes:"", money:true },
+          { title:"Test subscription", category:"Testing", priority:"high", status:"todo", due:"", notes:"", money:false },
+          { title:"Publish DexSato Signal", category:"Growth", priority:"high", status:"todo", due:"", notes:"", money:true },
+          { title:"Generate market content", category:"Content", priority:"medium", status:"todo", due:"", notes:"", money:true },
+          { title:"Perkenalkan DexSato", category:"Awareness", priority:"medium", status:"todo", due:"", notes:"", money:true }
+        ]
+      }
+    };
+
+    const RADAS_PRODUCTS = [{"id":1,"name":"LUQFA BEAUTY PDRN Whitening Lotion SPF30 PA+++","price":"RM53.99","commission":"RM10.60","commissionRate":"","creator":"17,200+","sold":"","radarScore":"9.8/10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":2,"name":"LUQFA BEAUTY Glowy Sunscreen SPF50+","price":"RM59.90","commission":"RM10.78","commissionRate":"","creator":"11,000+","sold":"","radarScore":"9.5/10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":3,"name":"Rizwan + Sexy Scandalous Bundle","price":"RM99.50","commission":"RM14.92","commissionRate":"","creator":"4100+","sold":"","radarScore":"8.8/10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":4,"name":"Hillside Honey Shilajit Sticks Gold","price":"RM37.20","commission":"RM5.21","commissionRate":"","creator":"3800+","sold":"","radarScore":"8.4 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":5,"name":"BeFocusPro+ Bantu Tidur Lena","price":"RM58.90","commission":"RM7.08","commissionRate":"","creator":"11100+","sold":"","radarScore":"9.2 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":6,"name":"Royal Khalta Booster (Prince & Princess)","price":"RM65.00","commission":"RM16.25","commissionRate":"25%","creator":"152","sold":"2,249","radarScore":"8.0 / 10","stock":"30.3K","reviews":"","ranking":"","watchlist":true,"premium":false,"sourceMissingName":false},{"id":7,"name":"Convithera HQ Original","price":"RM170.00","commission":"RM44.00","commissionRate":"22%","creator":"318","sold":"3,971","radarScore":"8.6 / 10","stock":"1.3K","reviews":"","ranking":"","watchlist":true,"premium":false,"sourceMissingName":false},{"id":8,"name":"D'LARA Set Telekung Rizqa Cotton Ribbed Soft Awning","price":"RM49.90","commission":"RM7.48","commissionRate":"15%","creator":"484","sold":"9,785","radarScore":"8.7 / 10nmjytg5gfrfd2saz","stock":"590","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":9,"name":"Suamiku Dajjal (Kompilasi 4 Jilid Novel)","price":"RM54.54","commission":"RM9.82","commissionRate":"","creator":"103","sold":"1,089","radarScore":"7.9 / 10","stock":"844","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":10,"name":"Buku 90 Hari Rahsia Berjaya Dalam TikTok Shop","price":"RM69.00","commission":"RM11.73","commissionRate":"","creator":"258","sold":"921","radarScore":"8.2 / 10","stock":"1.1K","reviews":"","ranking":"","watchlist":true,"premium":false,"sourceMissingName":false},{"id":11,"name":"Legendary EDP Perfume (Jojo Ghazali Edition)","price":"RM65.50","commission":"RM9.82","commissionRate":"","creator":"1,000+","sold":"35.7K+","radarScore":"9.1 / 10","stock":"257","reviews":"","ranking":"","watchlist":true,"premium":false,"sourceMissingName":false},{"id":12,"name":"PROBIO+PLUS Probiotic Capsule HALAL JAKIM","price":"RM56.00","commission":"RM8.70","commissionRate":"","creator":"716","sold":"5.6K+","radarScore":"8.8 / 10","stock":"382","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":13,"name":"KITSUI Belloss Fiber + KMRP","price":"RM71.80","commission":"RM11.97","commissionRate":"","creator":"1.3K+","sold":"61.5K+","radarScore":"9.3 / 10","stock":"2.2K","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":14,"name":"Nicholas's Combo (Phenom + Aven EDP Perfume)","price":"RM85.00","commission":"RM12.75","commissionRate":"","creator":"141","sold":"57.4K+","radarScore":"9.0 / 10","stock":"139","reviews":"","ranking":"","watchlist":true,"premium":false,"sourceMissingName":false},{"id":15,"name":"Famagen NMN Glowz","price":"RM99.00","commission":"RM19.80","commissionRate":"","creator":"470","sold":"7,374","radarScore":"9.1 / 10","stock":"Data tidak kelihatan","reviews":"","ranking":"","watchlist":true,"premium":false,"sourceMissingName":false},{"id":16,"name":"Infinity Tiger Milk Mushroom Plus","price":"RM71.11","commission":"RM27.96","commissionRate":"","creator":"1.0K+","sold":"10.5K+","radarScore":"9.6 / 10","stock":"597","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":17,"name":"ONYX Grips (1 Pair Non-Slip Wrist Grips)","price":"RM66.25","commission":"RM13.25","commissionRate":"","creator":"477","sold":"10.6K+","radarScore":"9.2 / 10","stock":"3.3K","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":18,"name":"PHERO DIAMOND Premium For Him (Edition 2)","price":"RM35.90","commission":"RM7.18","commissionRate":"","creator":"9.2K+","sold":"215.0K+","radarScore":"9.4 / 10","stock":"3.6K","reviews":"","ranking":"","watchlist":true,"premium":false,"sourceMissingName":false},{"id":19,"name":"PHERO DIAMOND Premium For Her","price":"RM35.89","commission":"RM7.18","commissionRate":"","creator":"3.9K+","sold":"52.9K+","radarScore":"8.9 / 10","stock":"1.3K","reviews":"","ranking":"","watchlist":true,"premium":false,"sourceMissingName":false},{"id":20,"name":"Dr.Lan Serum Rambut Pati Ginseng & Bijian Hitam","price":"RM19.90 / RM36.90 / RM45.90","commission":"RM161.59","commissionRate":"8%","creator":"10.6K+","sold":"51.4K+","radarScore":"9.7 / 10","stock":"43.4K","reviews":"","ranking":"","watchlist":true,"premium":true,"sourceMissingName":false},{"id":21,"name":"GaztroPlus+ Eaze","price":"RM79.00","commission":"RM11.85","commissionRate":"","creator":"1.7K+","sold":"35.0K+","radarScore":"9.2 / 10","stock":"56.0K","reviews":"97%","ranking":"","watchlist":true,"premium":false,"sourceMissingName":false},{"id":22,"name":"Nama produk tidak dinyatakan","price":"RM31.50","commission":"RM13.00","commissionRate":"41.27%","creator":"23.4K+","sold":"386.5K+","radarScore":"9.9 / 10","stock":"28.0K","reviews":"97%","ranking":"Top Selling #5 (Bath & Body Care)","watchlist":false,"premium":false,"sourceMissingName":true},{"id":23,"name":"MEMORA Happy Gut Smarter You","price":"RM58.98","commission":"RM11.80","commissionRate":"","creator":"3.2K+","sold":"27.8K+","radarScore":"9.3 / 10","stock":"104.4K","reviews":"98%","ranking":"","watchlist":true,"premium":false,"sourceMissingName":false},{"id":24,"name":"Infinity Sacha Inchi Oil 1000mg + Vitamin D3 1000IU","price":"RM62.21","commission":"RM24.46","commissionRate":"","creator":"474","sold":"2,481","radarScore":"7.8 / 10","stock":"918","reviews":"97%","ranking":"","watchlist":true,"premium":false,"sourceMissingName":false},{"id":25,"name":"Pureglo ProbioFIT 2 x 15's (Twin Pack)","price":"RM128.99","commission":"RM25.80","commissionRate":"","creator":"1.0K","sold":"33.8K","radarScore":"8.8 / 10","stock":"742","reviews":"99%","ranking":"Nutrition & Wellness","watchlist":true,"premium":false,"sourceMissingName":false},{"id":26,"name":"Nama produk tidak dinyatakan","price":"RM71.80","commission":"RM11.97","commissionRate":"15%","creator":"1.5K","sold":"69.5K","radarScore":"","stock":"2.3K","reviews":"98%","ranking":"#8 Nutrition & Wellness","watchlist":false,"premium":false,"sourceMissingName":true},{"id":27,"name":"Pembersih Telinga 30ML Antikerak","price":"RM29.00","commission":"RM5.80","commissionRate":"20%","creator":"492","sold":"46.3K","radarScore":"","stock":"4.3K","reviews":"93%","ranking":"#15 Eye & Ear Care","watchlist":true,"premium":false,"sourceMissingName":false},{"id":28,"name":"Minyak Saraf Jungle Girl Massage Oil 100ml","price":"RM68.50","commission":"RM15.00","commissionRate":"","creator":"556+","sold":"2.2K","radarScore":"7.6 / 10","stock":"","reviews":"96%","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":29,"name":"Infinity JT-Guardz (60 Capsules)","price":"RM88.90","commission":"RM34.96","commissionRate":"","creator":"854+","sold":"15.5K","radarScore":"8.1 / 10","stock":"","reviews":"97%","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":30,"name":"NMNREV500 Forte Premium Anti-Aging & Energy Supplement","price":"RM250.91","commission":"RM43.20","commissionRate":"","creator":"536+","sold":"1.8K","radarScore":"7.8 / 10","stock":"","reviews":"100%","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":31,"name":"Shampoo Treatment JUNGLE GIRL 500g (JG06)","price":"RM35.50","commission":"RM10.00","commissionRate":"","creator":"2.2K+","sold":"26.8K","radarScore":"8.4 / 10","stock":"","reviews":"97%","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":32,"name":"Losyen Panas Aromaterapi Halia & Lemon 200ML","price":"RM17.90","commission":"RM5.37","commissionRate":"","creator":"1.0K+","sold":"4.9K","radarScore":"7.9 / 10","stock":"","reviews":"97%","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":33,"name":"Randika Set Rambut Pakej Lengkap (Shampoo 2in1 + Hair Care Set)","price":"RM79.00","commission":"RM15.80","commissionRate":"","creator":"1.1K+","sold":"45.4K","radarScore":"8.8 / 10","stock":"","reviews":"95%","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":34,"name":"Infinity Supa-EFA Omega 3 EPA & DHA Plus E","price":"RM65.09","commission":"RM21.70 – RM24.50","commissionRate":"","creator":"3000+","sold":"28.8k","radarScore":"8.8 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":35,"name":"SiDEZ ONYX BLACK SLIDE SANDAL","price":"RM95.00","commission":"RM13.30","commissionRate":"","creator":"563+","sold":"10.2k","radarScore":"7.8 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":36,"name":"Coschic Men’s Handbag, Sling Bag & Clutch Pouch","price":"RM31.90","commission":"RM5.99","commissionRate":"","creator":"2100+","sold":"37.7k","radarScore":"7.6 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":37,"name":"Kasut Kasual Berlubang Jaringan Lelaki","price":"RM27.89","commission":"RM6.97","commissionRate":"","creator":"518+","sold":"14.6k","radarScore":"7.4 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":38,"name":"Beg Galas Perjalanan Perniagaan Kapasiti Besar (16 inci)","price":"RM68.89","commission":"RM5.51","commissionRate":"","creator":"1,900+","sold":"30.5k","radarScore":"7.8 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":39,"name":"COROLLA Jalin Kasut Sukan Bertapak Tebal Lightweight","price":"RM70.99","commission":"RM8.60","commissionRate":"","creator":"3,400+","sold":"25.0k","radarScore":"7.6 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":40,"name":"Pembesar Suara Megafon Tanpa Wayar Mini + Mikrofon Lavalier","price":"RM66.58","commission":"RM7.20","commissionRate":"","creator":"471+","sold":"13.0k","radarScore":"8.4 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":41,"name":"POCKET WIFI FLYMODEM M86","price":"RM150.00","commission":"RM14.85","commissionRate":"","creator":"534+","sold":"4.8k","radarScore":"8.3 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":42,"name":"Card Drive USB Flash Drive 2.0 (Small & Compact)","price":"RM79.00","commission":"RM7.90","commissionRate":"","creator":"949+","sold":"5.7K+","radarScore":"7.2 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":43,"name":"Cincin Tasbih Digital Tahan Air (Zikir Ring)","price":"RM102.90","commission":"RM10.29 – RM15.44","commissionRate":"","creator":"433+","sold":"5.9K+","radarScore":"8.1 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":44,"name":"EDIFIER X3 Pro Wireless Active Noise Cancellation Earbuds","price":"RM109.00","commission":"RM8.72","commissionRate":"","creator":"235+","sold":"61.1K+","radarScore":"8.0 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":45,"name":"EMEET Piko+ 4K AI Webcam","price":"RM160.11","commission":"RM12.00","commissionRate":"","creator":"1.2K+","sold":"3.3K+","radarScore":"7.8 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":46,"name":"RODVUE DWO Dual-View Pocket Camera 4K","price":"RM232.00","commission":"RM16.24","commissionRate":"","creator":"4.8K+","sold":"14.2K+","radarScore":"9.0 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":47,"name":"Baseus Bass BP1 Pro ANC Earbuds","price":"RM120.00","commission":"RM9.03","commissionRate":"","creator":"522+","sold":"6.3K+","radarScore":"8.2 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":48,"name":"Xpanse X1 Lightweight Wireless Gaming Mouse","price":"RM101.92","commission":"RM7.19","commissionRate":"","creator":"153","sold":"1.1K+","radarScore":"7.4 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":49,"name":"EMEET Webcam 4K UHD With Microphone & Privacy Cover","price":"RM87.00","commission":"RM9.90","commissionRate":"","creator":"716","sold":"98.6K+","radarScore":"8.7 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":50,"name":"Eastel Prepaid SIM Kad 4G/5G (Free RM10 Kredit Topup)","price":"RM10.00","commission":"RM8.00","commissionRate":"","creator":"780","sold":"9.3K+","radarScore":"8.4 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":51,"name":"K-POCKET 4K Pocket Camera Ultra HD","price":"RM334.99","commission":"RM18.25","commissionRate":"","creator":"877","sold":"965+","radarScore":"8.8 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":52,"name":"RoadCam RidePro S1 4K Motor Rider Cam","price":"RM224.00","commission":"RM15.68","commissionRate":"","creator":"97","sold":"1.7K+","radarScore":"8.3 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":53,"name":"Kereta Carpet Premium Quality Car Rear Trunk Cargo Boot Tray","price":"RM49.88","commission":"RM8.23","commissionRate":"","creator":"4.1K","sold":"83.6K+","radarScore":"7.4 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":54,"name":"MOTION Premixed Long-Life Coolant Radiator 2L (Ready To Use)","price":"RM22.50","commission":"RM4.50","commissionRate":"","creator":"6.2K","sold":"374.3K+","radarScore":"8.2 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":55,"name":"Car Bright Headlight Y7DH4 Set of 2PCS H4 LED","price":"RM57.90","commission":"RM5.79","commissionRate":"","creator":"414","sold":"4.0K+","radarScore":"8.3 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":56,"name":"LOTUS Spark Plug Iridium Compatible with Proton (Original Upgrade)","price":"RM92.00","commission":"RM18.40","commissionRate":"","creator":"229","sold":"3.9K+","radarScore":"8.9 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":57,"name":"NJX Aegis NPH02 Pemegang Telefon Anti Gegar Motosikal","price":"RM49.39","commission":"RM9.88","commissionRate":"","creator":"1.8K","sold":"31.2K+","radarScore":"8.5 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":58,"name":"TOYO-G Lithium EP Grease (EAJ7000 EP2) 450g","price":"RM23.31","commission":"RM7.77","commissionRate":"","creator":"569","sold":"16.1K+","radarScore":"8.3 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":59,"name":"S2 Kamera Papan Pemuka Stinger S2 4K WiFi Dual-Channel Dashcam","price":"RM173.39","commission":"RM12.24","commissionRate":"","creator":"332","sold":"5.7K+","radarScore":"8.7 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":60,"name":"[Carton Deal] Dynamo Liquid Detergent 3.9KG (4 Bottles)","price":"RM119.98","commission":"RM10.24","commissionRate":"","creator":"1.2K","sold":"13.1K+","radarScore":"9.0 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":61,"name":"Grosure SR Plus Chocolate/Vanilla/Coffee 800g (Susu Peria Katak)","price":"RM78.90","commission":"RM10.52","commissionRate":"","creator":"5.9K","sold":"90.1K+","radarScore":"9.4 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":62,"name":"KARIHOME Gold 3 Goat's Milk Growing-Up Formula","price":"RM137.60","commission":"RM6.88","commissionRate":"","creator":"560","sold":"8.5K+","radarScore":"7.8 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":63,"name":"Mama's Choice Almond Milk Booster (Almond Milk Powder)","price":"RM35.90","commission":"RM4.93","commissionRate":"","creator":"4.4K","sold":"77.7K+","radarScore":"7.2 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":64,"name":"TROPIKA Body Oil Lavender VCO 30ml","price":"RM20.00","commission":"RM6.00","commissionRate":"","creator":"6.5K","sold":"63.2K+","radarScore":"7.5 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":65,"name":"EEVENTUS Hair Cream (Essential Oil Untuk Membantu Anak Fokus & Relaks)","price":"RM55.19","commission":"RM12.35","commissionRate":"","creator":"3.9K","sold":"46.1K+","radarScore":"8.4 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":66,"name":"Mine Fuel 2X Brain Boost Kids Official MommyHana","price":"RM89.00","commission":"RM8.90","commissionRate":"","creator":"5.8K","sold":"69.2K+","radarScore":"8.1 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":67,"name":"Dark Psychology & Manipulation (Edisi Bahasa Melayu)","price":"RM52.25","commission":"RM9.40","commissionRate":"","creator":"1.7K","sold":"11.3K+","radarScore":"8.2 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":68,"name":"HoriZon Too Ampaian Baju Keluli Tahan Karat 3 Batang Heavy Duty","price":"RM89.23","commission":"RM15.68","commissionRate":"","creator":"624","sold":"3.6K+","radarScore":"9.0 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":69,"name":"6000W Super Long Distance Flashlight with Powerbank Function","price":"RM62.00","commission":"RM8.68","commissionRate":"","creator":"2.4K","sold":"31.0K+","radarScore":"7.9 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":70,"name":"AL FALAH Jam Azan Digital Dinding (30 Juzuk)","price":"RM183.08","commission":"RM19.90","commissionRate":"","creator":"4.5K","sold":"22.8K+","radarScore":"9.3 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":71,"name":"Buku Formula Mudah Bercakap Ikut Karakter Dia","price":"RM50.00","commission":"RM10.00","commissionRate":"","creator":"415","sold":"6.9K+","radarScore":"8.8 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":72,"name":"COD Foldable Camping Wagon Big Wheel Outdoor Trolley Shopping Cart","price":"RM57.90","commission":"RM7.89","commissionRate":"","creator":"1.0K","sold":"3.9K+","radarScore":"8.6 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":73,"name":"Narcissist, Kali Ini Kau Kalah! : Dulu Aku Dipijak, Sekarang Aku Bangkit dan Melawan","price":"RM47.50","commission":"RM8.55","commissionRate":"","creator":"406","sold":"1.6K+","radarScore":"8.4 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":74,"name":"Buku Kit Makanan 6-12 Bulan oleh Dr Amalina Mohd Daud","price":"RM42.99","commission":"RM12.90","commissionRate":"","creator":"1.3K","sold":"21.6K+","radarScore":"8.5 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":75,"name":"Buku Rahsia Suami Isteri – Ilmu Perkahwinan Berdasarkan Iman","price":"RM89.00","commission":"RM17.80","commissionRate":"","creator":"412","sold":"10.1K+","radarScore":"8.8 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":76,"name":"Buku Real Stori 95kg to 65kg","price":"RM35.00","commission":"RM7.00","commissionRate":"","creator":"273","sold":"5.9K+","radarScore":"8.6 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":77,"name":"PerySmith G1 Pro Anti-Burn Steam Generator Iron","price":"RM179.35","commission":"RM24.43","commissionRate":"","creator":"4.4K","sold":"12.7K+","radarScore":"9.4 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":78,"name":"Solat: Sebuah Refleksi","price":"RM44.59","commission":"RM11.15","commissionRate":"","creator":"171","sold":"798+","radarScore":"9.3 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":79,"name":"DESSINI Italy Granite Aluminium Non Stick Cookware Set","price":"RM131.82","commission":"RM9.30","commissionRate":"","creator":"55.5K","sold":"698.6K+","radarScore":"8.8 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":80,"name":"Unit Sold","price":"RM169.00","commission":"RM53.70","commissionRate":"","creator":"1.1K","sold":"14.2K+","radarScore":"9.4 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":81,"name":"Unit Sold","price":"RM149.28","commission":"RM14.93","commissionRate":"","creator":"1.8K","sold":"48.7K+","radarScore":"9.1 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":82,"name":"Unit Sold","price":"RM69.00","commission":"RM15.87","commissionRate":"","creator":"336","sold":"5.1K+","radarScore":"9.7 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":83,"name":"Unit Sold","price":"RM49.90","commission":"RM11.98","commissionRate":"","creator":"1.1K","sold":"18.3K+","radarScore":"8.9 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":84,"name":"Unit Sold","price":"RM69.00","commission":"RM13.80","commissionRate":"","creator":"379","sold":"3.6K+","radarScore":"7.6 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":85,"name":"Unit Sold","price":"RM75.00","commission":"RM7.50","commissionRate":"","creator":"1.1K","sold":"30.8K+","radarScore":"8.7 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":86,"name":"Unit Sold","price":"RM204.00","commission":"RM19.60","commissionRate":"","creator":"8.2K","sold":"27.7K+","radarScore":"7.8 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":87,"name":"Unit Sold","price":"RM99.00","commission":"RM10.90","commissionRate":"","creator":"334","sold":"1.3K+","radarScore":"6.9 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":88,"name":"Unit Sold","price":"RM122.32","commission":"RM7.16","commissionRate":"","creator":"1.4K","sold":"18.3K+","radarScore":"8.4 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":89,"name":"Unit Sold","price":"RM298.00","commission":"RM44.70","commissionRate":"","creator":"1.9K","sold":"46.2K+","radarScore":"8.3 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":90,"name":"Unit Sold","price":"RM206.55","commission":"RM19.84","commissionRate":"","creator":"493","sold":"1.8K+","radarScore":"7.6 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":91,"name":"Orders 30 Hari","price":"RM69.90","commission":"RM10.48","commissionRate":"","creator":"13.5K","sold":"2.4K","radarScore":"8.1 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":92,"name":"Orders 30 Hari","price":"RM69.90","commission":"RM5.59","commissionRate":"","creator":"1.7K","sold":"995","radarScore":"7.4 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":93,"name":"Orders 30 Hari","price":"RM99.99","commission":"RM11.00","commissionRate":"","creator":"5.0K","sold":"6.5K","radarScore":"8.5 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":94,"name":"Orders 30 Hari","price":"RM160.56","commission":"RM12.59","commissionRate":"","creator":"7.4K","sold":"3.1K","radarScore":"7.8 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":95,"name":"Orders 30 Hari","price":"RM110.02","commission":"RM28.73","commissionRate":"","creator":"1.3K","sold":"688","radarScore":"9.0 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":96,"name":"Orders 30 Hari","price":"RM79.00","commission":"RM9.90","commissionRate":"","creator":"3.5K","sold":"5.4K","radarScore":"7.8 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":97,"name":"Orders 30 Hari","price":"RM158.34","commission":"RM16.19","commissionRate":"","creator":"1.1K","sold":"635","radarScore":"8.6 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":98,"name":"Orders 30 Hari","price":"RM106.46","commission":"RM9.81","commissionRate":"","creator":"511","sold":"648","radarScore":"8.1 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":99,"name":"Orders 30 Hari","price":"RM187.00","commission":"RM19.80","commissionRate":"","creator":"2.0K","sold":"353","radarScore":"8.8 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false},{"id":100,"name":"Orders 30 Hari","price":"RM70.00","commission":"RM14.00","commissionRate":"","creator":"293","sold":"141","radarScore":"6.8 / 10","stock":"","reviews":"","ranking":"","watchlist":false,"premium":false,"sourceMissingName":false} ];
+
+    const PRODUCT_NAME_FIXES = {
+      80:"Madu Pahit Manis Dr. Bazrul",
+      81:"Olive House Olivie Plus 30X Extra Virgin Olive Oil",
+      82:"OXY SHIFAA (Pati Delima, Kurma & Arabic Gum)",
+      83:"Madu ApisMiel De Marhaen 1.3KG",
+      84:"MASKHAL Premium Date Vinegar (Cuka Kurma 375ml)",
+      85:"SEJADAH RAUDHAH MADA PERCUMA KOTAK & WANGIAN",
+      86:"GOOJODOQ 720P SMART PROJECTOR",
+      87:"TRANYOO GaN 100W FAST CHARGER (4 PORT)",
+      88:"HUAWEI BAND 11 SERIES SMARTWATCH",
+      89:"GT11 OUTDOOR SMART WATCH",
+      90:"GOOJODOQ ANDROID 11 SMART PROJECTOR",
+      91:"AMGRAS METAFAN III PRO STROLLER FAN",
+      92:"AMGRAS METAHELD FAN PRO (Turbo Fan)",
+      93:"CATO PREMIUM CAT FOOD 8KG",
+      94:"KAMATTO CLASSIC HOT CAR FLOOR MAT",
+      95:"PERODUA DELUXE MAT (5 YEAR WARRANTY)",
+      96:"EXCEL NEUROFLEX",
+      97:"KEKILI MEMANCING BERPUTAR LOGAM (SEASIR CONTRA MAX)",
+      98:"SEASIR REXCAST 20KG MAX DRAG (JORAN PANCING)",
+      99:"SEASIR DCAST DC BAITCASTING REEL",
+      100:"KENKO MINI WATER FILTER 8 LAYER ORI HQ"
+    };
+
+    function buildDefaultProducts(){
+      return RADAS_PRODUCTS.map(item=>({
+        ...item,
+        name:PRODUCT_NAME_FIXES[item.id] || item.name,
+        radarScore:item.id === 8 ? "8.7 / 10" : item.radarScore,
+        category:item.category || ""
+      }));
+    }
+
+    function products(){
+      if(!Array.isArray(state.radasProducts)) state.radasProducts = buildDefaultProducts();
+      return state.radasProducts;
+    }
+
+    function makeId(){
+      return "t_" + Date.now().toString(36) + "_" + Math.random().toString(36).slice(2,8);
+    }
+
+    function mondayOfCurrentWeek(){
+      const now = new Date();
+      const day = now.getDay();
+      const diff = day === 0 ? -6 : 1 - day;
+      const monday = new Date(now);
+      monday.setDate(now.getDate() + diff);
+      monday.setHours(0,0,0,0);
+      return toLocalISO(monday);
+    }
+
+    function toLocalISO(date){
+      const y = date.getFullYear();
+      const m = String(date.getMonth() + 1).padStart(2,"0");
+      const d = String(date.getDate()).padStart(2,"0");
+      return y + "-" + m + "-" + d;
+    }
+
+    function shiftWeek(delta){
+      const start = new Date(state.weekStart + "T00:00:00");
+      start.setDate(start.getDate() + delta * 7);
+      state.weekStart = toLocalISO(start);
+      saveState();
+      renderHeader();
+    }
+
+    function makeProject(key){
+      const d = DEFAULTS[key];
+      const project = {
+        focus: d.focus,
+        target: d.target,
+        tasks: d.tasks.map(task=>({
+          id: makeId(),
+          ...task
+        }))
+      };
+
+      if(key === "weight"){
+        project.currentWeight = 105;
+        project.goals = [{ id: makeId(), name: "Target 1", kg: 95 }];
+      }
+
+      return project;
+    }
+
+    const DEFAULT_RADAS_NOTE = '# TikTok Affiliate — Kategori Produk Dicadangkan & Perlu Dielakkan\n\n## Tujuan Nota\nGunakan nota ini sebagai filter awal semasa mencari produk untuk TikTok Affiliate.\n\nPrinsip utama:\n\n> Pilih produk yang boleh dijual melalui **demonstrasi, kegunaan, visual, problem-solving dan experience**.\n\nElakkan produk yang terlalu bergantung kepada:\n\n- Medical claim\n- Weight-loss claim\n- Sexual claim\n- Body transformation claim\n- Exaggerated result\n- Restricted / prohibited category\n\n---\n\n# 🔴 Kategori Yang Sebaiknya Dielakkan\n\n## 1. Produk Kurus / Weight Management\nContoh:\n\n- Slimming coffee\n- Detox drink\n- Pil kurus\n- Gummy kurus\n- Jelly kurus\n- Slimming powder\n- Slimming patch\n- Slimming oil\n- Fat burner\n- Produk yang claim turun berat badan\n\n**Risiko:** Sangat tinggi\n\n---\n\n## 2. Produk Kuat Lelaki / Sexual Enhancement\nContoh:\n\n- Minyak kuat\n- Pil tahan lama\n- Supplement tenaga batin\n- Produk pembesar\n- Produk enhancement seksual\n- Produk rangsangan seksual\n\n**Risiko:** Sangat tinggi\n\n---\n\n## 3. Adult / Sexual Wellness\nContoh:\n\n- Sex toys\n- Erotic massage products\n- Fetish products\n- Adult stimulation products\n\n**Risiko:** Sangat tinggi\n\n---\n\n## 4. Rokok / Vape / Smoking Products\nContoh:\n\n- Vape\n- Pod\n- Vape liquid\n- Rokok\n- E-cigarette\n- Shisha\n- Smoking accessories tertentu\n\n**Risiko:** Sangat tinggi\n\n---\n\n## 5. Senjata / Self-Defence Weapon\nContoh:\n\n- Taser\n- Pepper spray\n- Brass knuckle\n- Weapon-style knives\n- Senjata tersembunyi\n- Produk pertahanan diri yang dikategorikan sebagai weapon\n\n**Risiko:** Sangat tinggi\n\n---\n\n## 6. Alkohol\nContoh:\n\n- Beer\n- Wine\n- Liquor\n- Spirits\n- Minuman beralkohol\n\n**Risiko:** Sangat tinggi\n\n---\n\n## 7. Produk Kewangan Tertentu\nContoh:\n\n- Crypto / Bitcoin investment services\n- Loan products\n- Securities\n- Investment schemes\n- Financial services tertentu\n\n**Risiko:** Tinggi hingga sangat tinggi\n\n---\n\n## 8. Mystery Box / Random Product\nContoh:\n\n- Mystery box tanpa kandungan jelas\n- Surprise bundle\n- Random item bundle\n\n**Risiko:** Tinggi\n\n---\n\n## 9. Mystical / Supernatural Products\nContoh:\n\n- Black magic products\n- Witchcraft products\n- Produk supernatural\n- Barang yang claim kuasa ghaib\n\n**Risiko:** Tinggi\n\n---\n\n## 10. Counterfeit / Replica Products\nContoh:\n\n- Fake branded bag\n- Fake branded shoes\n- Replica watch\n- Imitation branded accessories\n- Produk menggunakan trademark tanpa kebenaran\n\n**Risiko:** Sangat tinggi\n\n---\n\n# 🟠 Kategori Boleh Promote Tetapi Perlu Berhati-hati\n\n## 1. Supplement / Health Products\nContoh:\n\n- Collagen\n- Vitamins\n- Probiotics\n- Herbal supplements\n- Tongkat Ali\n- Joint supplements\n- Sleep supplements\n- Women\'s health supplements\n- Fitness supplements\n\n### Elakkan claim seperti:\n\n- "Turunkan gula darah"\n- "Rawat diabetes"\n- "Sembuhkan gout"\n- "Hilangkan darah tinggi"\n- "Rawat penyakit"\n- "Confirm berkesan"\n- "3 hari terus nampak hasil"\n\n### Pendekatan lebih selamat:\n\nFokus kepada:\n\n- Ingredient\n- Cara penggunaan\n- Packaging\n- Taste\n- Convenience\n- Personal experience\n- General wellness tanpa medical claim\n\n---\n\n## 2. Beauty / Skincare\nContoh:\n\n- Serum\n- Moisturizer\n- Cleanser\n- Toner\n- Sunscreen\n- Haircare\n- Bodycare\n\n### Elakkan claim seperti:\n\n- "Hilangkan jerawat dalam 3 hari"\n- "Buang parut terus"\n- "Cure eczema"\n- "Rawat psoriasis"\n- "Kulit putih dalam 7 hari"\n- "Confirm hilang pigmentation"\n\n### Pendekatan lebih selamat:\n\nFokus kepada:\n\n- Texture\n- Packaging\n- Absorption\n- Moisturizing feel\n- Ease of use\n- Routine\n- Personal experience\n\n---\n\n# 🟢 Kategori Produk Yang Dicadangkan\n\n## 1. Home & Living\nProduk:\n\n- Storage organiser\n- Drawer organiser\n- Cleaning tools\n- Mop\n- Rack\n- Shoe rack\n- Kitchen organiser\n- Vacuum accessories\n- Laundry accessories\n- Clothes organiser\n- Hanger\n- Bathroom organiser\n- Cleaning brush\n- Dust remover\n- Storage box\n\n### Kelebihan\n\n- Mudah demo\n- Banyak problem-solving angle\n- Sesuai untuk UGC\n- Sesuai untuk POV\n- Kurang bergantung kepada claim\n\n---\n\n## 2. Kitchen\nProduk:\n\n- Food chopper\n- Food container\n- Knife sharpener\n- Oil dispenser\n- Sink accessories\n- Kitchen gadgets\n- Cutting board\n- Spice organiser\n- Dish rack\n- Silicone kitchen tools\n- Food storage\n- Bottle organiser\n- Kitchen cleaning tools\n\n### Kelebihan\n\nSangat sesuai dengan format:\n\n> Problem → Demo → Result → CTA\n\n---\n\n## 3. Car Accessories\nProduk:\n\n- Phone holder\n- Car organiser\n- Cleaning brush\n- Car vacuum accessories\n- Sunshade\n- Seat accessories\n- Dashboard organiser\n- Cup holder\n- Cable organiser\n- Car storage\n- Windshield cleaning tools\n\n### Kelebihan\n\n- Strong visual demo\n- Mudah buat POV\n- Banyak pain point\n- Mudah buat before/after fungsi\n\n---\n\n## 4. Phone & Desk Accessories\nProduk:\n\n- Phone stand\n- Cable organiser\n- Laptop stand\n- Mousepad\n- Desk organiser\n- Tablet stand\n- Keyboard accessories\n- Charging cable organiser\n- Desk storage\n- Gadget pouch\n- Phone holder\n\n### Kelebihan\n\n- Evergreen\n- Mudah buat demo\n- Sesuai untuk AI video\n- Sesuai untuk content desk setup\n\n---\n\n## 5. Beauty Tools\nFokus kepada tools, bukan medical / transformation claim.\n\nProduk:\n\n- Makeup organiser\n- Hair brush\n- Beauty storage\n- Cosmetic bag\n- Makeup mirror\n- Hair accessories\n- Makeup sponge holder\n- Brush cleaner\n- Beauty travel organiser\n\n### Kelebihan\n\n- Visual menarik\n- Sesuai dengan content UGC\n- Tidak perlu strong claim\n\n---\n\n## 6. Fashion Accessories\nProduk:\n\n- Handbag\n- Wallet\n- Tudung accessories\n- Brooch\n- Sunglasses\n- Cap\n- Simple jewellery\n- Belt\n- Card holder\n- Fashion pouch\n\n### Kelebihan\n\n- Mudah buat showcase\n- Mudah buat lifestyle content\n- Banyak variasi creative angle\n\n---\n\n## 7. Pet Accessories\nProduk:\n\n- Pet brush\n- Feeding bowl\n- Pet mat\n- Grooming tools\n- Pet cleaning tools\n- Pet storage\n- Pet carrier accessories\n- Water bowl\n- Pet hair remover\n\n### Kelebihan\n\n- Visual kuat\n- Mudah buat demo\n- Banyak problem-solving angle\n- Emotional appeal tinggi tanpa perlu medical claim\n\n---\n\n# RADAS Product Safety Filter\n\nSebelum pilih sesuatu produk, semak:\n\n## 5 Red Flag Filter\n\n**WEIGHT**\n\nAdakah produk berkaitan slimming, detox, fat loss atau turun berat badan?\n\n**SEX**\n\nAdakah produk berkaitan sexual enhancement atau adult product?\n\n**MEDICAL**\n\nAdakah produk memerlukan claim rawatan, penyakit atau penyembuhan?\n\n**WEAPON**\n\nAdakah produk dikategorikan sebagai weapon atau self-defence weapon?\n\n**SMOKE**\n\nAdakah produk berkaitan vape, cigarette, tobacco atau smoking?\n\nJika **YA** kepada salah satu:\n\n> ⚠️ SKIP / REVIEW MANUALLY\n\n---\n\n# Claim Check\n\nTanya:\n\n> "Untuk menjual produk ini, adakah content perlu claim produk boleh menyembuhkan penyakit, mengurus berat badan, meningkatkan fungsi seksual atau menghasilkan perubahan tubuh tertentu?"\n\nJika **YA**:\n\n> ⚠️ HIGH RISK — ELAKKAN\n\nJika **TIDAK** dan produk boleh dijual melalui:\n\n- Demonstration\n- Function\n- Convenience\n- Problem solving\n- Visual transformation produk\n- Experience\n- Lifestyle\n\nMaka:\n\n> ✅ LAYAK DIPERTIMBANGKAN\n\n---\n\n# Preferred Product Profile\n\nUntuk TikTok Affiliate, utamakan produk yang mempunyai ciri:\n\n- Mudah difahami dalam 3 saat\n- Ada masalah yang jelas\n- Boleh ditunjukkan penggunaannya\n- Ada visual demo\n- Ada "before vs after" dari segi fungsi, bukan tubuh\n- Harga mudah impulse buy\n- Tidak memerlukan medical claim\n- Tidak memerlukan exaggerated claim\n- Sesuai untuk UGC\n- Sesuai untuk POV\n- Sesuai untuk short-form video\n\n---\n\n# Prinsip Utama\n\n> **Pilih produk yang menjual melalui DEMO, bukan CLAIM.**\n\nFormat content pilihan:\n\n**Hook → Problem → Demo → Result → CTA**\n\nContoh:\n\n> "Kalau meja selalu penuh dengan kabel macam ni…"\n\n→ Tunjuk masalah  \n→ Gunakan produk  \n→ Tunjuk meja lebih kemas  \n→ CTA\n\nIni lebih selamat dan lebih scalable untuk TikTok Affiliate.';
+
+
+    const DEFAULT_DEXSATO_CONTENT_NOTES = [
+      { title:"1. What Is a DEX?", content:"Phase 1 — Foundation" },
+      { title:"2. CEX vs DEX", content:"Phase 1 — Foundation" },
+      { title:"3. How Liquidity Pools Work", content:"Phase 1 — Foundation" },
+      { title:"4. What Is Slippage?", content:"Phase 1 — Foundation" },
+      { title:"5. Market Cap vs FDV", content:"Phase 1 — Foundation" },
+      { title:"6. Why Liquidity Matters", content:"Phase 1 — Foundation" },
+      { title:"7. What Is Buy Pressure?", content:"Phase 1 — Foundation" },
+      { title:"8. How DEX Volume Works", content:"Phase 1 — Foundation" },
+      { title:"9. What Is a Liquidity Provider?", content:"Phase 1 — Foundation" },
+      { title:"10. How Token Price Is Actually Determined", content:"Phase 1 — Foundation" },
+      { title:"11. Why Volume Can Be Misleading", content:"Phase 2 — Intelligence" },
+      { title:"12. Anatomy of a Crypto Pump", content:"Phase 2 — Intelligence" },
+      { title:"13. Why Tokens Collapse After Pumping", content:"Phase 2 — Intelligence" },
+      { title:"14. How Whales Move Small Markets", content:"Phase 2 — Intelligence" },
+      { title:"15. What Happens When Liquidity Disappears", content:"Phase 2 — Intelligence" },
+      { title:"16. Organic Volume vs Artificial Activity", content:"Phase 2 — Intelligence" },
+      { title:"17. Why Market Cap Doesn't Tell the Whole Story", content:"Phase 2 — Intelligence" },
+      { title:"18. How Traders Read DEX Activity", content:"Phase 2 — Intelligence" },
+      { title:"19. Why Some Tokens Move Faster Than Others", content:"Phase 2 — Intelligence" },
+      { title:"20. How On-Chain Data Tells a Story", content:"Phase 2 — Intelligence" },
+      { title:"21. How Uniswap Changed Crypto", content:"Phase 3 — History / Storytelling" },
+      { title:"22. The Birth of DeFi", content:"Phase 3 — History / Storytelling" },
+      { title:"23. The Rise of Solana", content:"Phase 3 — History / Storytelling" },
+      { title:"24. The Collapse of Terra Luna", content:"Phase 3 — History / Storytelling" },
+      { title:"25. The FTX Collapse Explained", content:"Phase 3 — History / Storytelling" },
+      { title:"26. How Meme Coins Became a Market", content:"Phase 3 — History / Storytelling" },
+      { title:"27. The History of Decentralized Exchanges", content:"Phase 3 — History / Storytelling" },
+      { title:"28. How Automated Market Makers Changed Trading", content:"Phase 3 — History / Storytelling" },
+      { title:"29. The DeFi Summer of 2020", content:"Phase 3 — History / Storytelling" },
+      { title:"30. How Solana Became a DEX Powerhouse", content:"Phase 3 — History / Storytelling" }
+    ];
+
+    function makeDefaultDexsatoContentNotes(){
+      return DEFAULT_DEXSATO_CONTENT_NOTES.map(item=>({id:makeId(),title:item.title,content:item.content}));
+    }
+
+    function createInitialState(){
+      const projects = {};
+      Object.keys(DEFAULTS).forEach(project=>{
+        projects[project] = makeProject(project);
+      });
+
+      return {
+        activeProject:"radas",
+        radasView:"dashboard",
+        radasContentNotes:[],
+        dexsatoView:"dashboard",
+        dexsatoContentNotes:makeDefaultDexsatoContentNotes(),
+        dexsatoContentSeedVersion:1,
+        radasNote:DEFAULT_RADAS_NOTE,
+        productStatuses:{},
+        radasProducts:buildDefaultProducts(),
+        weekStart:mondayOfCurrentWeek(),
+        projects
+      };
+    }
+
+    function loadState(){
+      try{
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if(!raw) return createInitialState();
+        const parsed = JSON.parse(raw);
+
+        if(
+          !parsed ||
+          !parsed.projects ||
+          !parsed.projects.radas ||
+          !parsed.projects.biscotto ||
+          !parsed.projects.dexsato
+        ){
+          return createInitialState();
+        }
+
+        // Betulkan data lama yang tersimpan sebagai hari Ahad (bug zon masa)
+        if(parsed.weekStart){
+          const ws = new Date(parsed.weekStart + "T00:00:00");
+          if(ws.getDay() === 0){
+            ws.setDate(ws.getDate() + 1);
+            parsed.weekStart = toLocalISO(ws);
+          }
+        }
+
+        if(!parsed.radasView) parsed.radasView = "dashboard";
+        if(!Array.isArray(parsed.radasContentNotes)) parsed.radasContentNotes = [];
+        if(!parsed.dexsatoView) parsed.dexsatoView = "dashboard";
+        if(!Array.isArray(parsed.dexsatoContentNotes)) parsed.dexsatoContentNotes = [];
+        if(Number(parsed.dexsatoContentSeedVersion || 0) < 1){
+          const existingTitles = new Set(parsed.dexsatoContentNotes.map(item=>String(item.title || "").trim().toLowerCase()));
+          DEFAULT_DEXSATO_CONTENT_NOTES.forEach(item=>{
+            if(!existingTitles.has(item.title.toLowerCase())){
+              parsed.dexsatoContentNotes.push({id:makeId(),title:item.title,content:item.content});
+            }
+          });
+          parsed.dexsatoContentSeedVersion = 1;
+        }
+        if(typeof parsed.radasNote !== "string") parsed.radasNote = DEFAULT_RADAS_NOTE;
+        if(!parsed.productStatuses) parsed.productStatuses = {};
+        if(!Array.isArray(parsed.radasProducts)) parsed.radasProducts = buildDefaultProducts();
+
+        // Tambah projek baharu (cth. Lose Weight) pada data lama
+        Object.keys(DEFAULTS).forEach(key=>{
+          if(!parsed.projects[key]) parsed.projects[key] = makeProject(key);
+        });
+
+        return parsed;
+      }catch(error){
+        return createInitialState();
+      }
+    }
+
+    let state = loadState();
+
+    function saveState(){
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    function projectName(key){
+      if(key === "radas") return "RADAS";
+      if(key === "biscotto") return "Biscotto";
+      if(key === "weight") return "Lose Weight";
+      return "DexSato";
+    }
+
+    function escapeHtml(value){
+      const div = document.createElement("div");
+      div.textContent = String(value ?? "");
+      return div.innerHTML;
+    }
+
+    function formatWeek(){
+      const start = new Date(state.weekStart + "T00:00:00");
+      const end = new Date(start);
+      end.setDate(end.getDate() + 6);
+
+      return start.toLocaleDateString("ms-MY",{day:"2-digit",month:"short"}) +
+        " – " +
+        end.toLocaleDateString("ms-MY",{day:"2-digit",month:"short",year:"numeric"});
+    }
+
+    function switchProject(project){
+      if(!state.projects[project]) return;
+      state.activeProject = project;
+      if(project === "radas") state.radasView = "dashboard";
+      if(project === "dexsato") state.dexsatoView = "dashboard";
+      saveState();
+      render();
+    }
+
+    function renderTabs(){
+      ["radas","biscotto","dexsato","weight"].forEach(project=>{
+        const button = document.getElementById("tab-" + project);
+        button.classList.toggle("active", state.activeProject === project);
+      });
+    }
+
+    function renderHeader(){
+      document.getElementById("projectTitle").textContent = projectName(state.activeProject);
+      document.getElementById("weekLabel").textContent = formatWeek();
+
+      const current = state.projects[state.activeProject];
+      document.getElementById("focusInput").value = current.focus || "";
+      document.getElementById("targetInput").value = current.target || "";
+    }
+
+    function renderSummary(){
+      const tasks = state.projects[state.activeProject].tasks;
+      const done = tasks.filter(task=>task.status === "done").length;
+      const progress = tasks.length ? Math.round((done / tasks.length) * 100) : 0;
+
+      document.getElementById("totalCount").textContent = tasks.length;
+      document.getElementById("doneCount").textContent = done;
+      document.getElementById("progressCount").textContent = progress + "%";
+    }
+
+    function renderTasks(){
+      const list = document.getElementById("taskList");
+      const tasks = state.projects[state.activeProject].tasks;
+
+      if(!tasks.length){
+        list.innerHTML = '<div class="empty">Belum ada task. Klik <strong>+ Tambah Task</strong>.</div>';
+        return;
+      }
+
+      list.innerHTML = tasks.map(task=>{
+        return `
+          <article class="task ${task.status === "done" ? "done" : ""}">
+            <input
+              type="checkbox"
+              ${task.status === "done" ? "checked" : ""}
+              onchange="toggleDone('${task.id}', this.checked)"
+              aria-label="Mark task done"
+            />
+
+            <div class="task-main">
+              <div class="task-title">${escapeHtml(task.title)}</div>
+
+              <div class="tags">
+                <span class="tag">${escapeHtml(task.category || "General")}</span>
+                <span class="tag ${task.priority}">${escapeHtml(task.priority)}</span>
+                ${task.money ? '<span class="tag money">Revenue</span>' : ""}
+                ${task.due ? `<span class="tag">Due: ${escapeHtml(task.due)}</span>` : ""}
+              </div>
+
+              ${task.notes ? `<div style="margin-top:8px;color:var(--muted);font-size:13px">${escapeHtml(task.notes)}</div>` : ""}
+            </div>
+
+            <div class="task-actions">
+              <select class="status-select" onchange="setStatus('${task.id}', this.value)">
+                <option value="todo" ${task.status === "todo" ? "selected" : ""}>To Do</option>
+                <option value="doing" ${task.status === "doing" ? "selected" : ""}>Doing</option>
+                <option value="done" ${task.status === "done" ? "selected" : ""}>Done</option>
+              </select>
+
+              <button type="button" class="icon-btn" onclick="editTask('${task.id}')">Edit</button>
+              <button type="button" class="icon-btn" onclick="deleteTask('${task.id}')">Delete</button>
+            </div>
+          </article>
+        `;
+      }).join("");
+    }
+
+    function render(){
+      renderTabs();
+      renderHeader();
+      renderSummary();
+      renderTasks();
+      renderWeight();
+      renderRadasProducts();
+      renderDexsatoContentView();
+    }
+
+
+
+    /* ---------- RADAS 100 Produk ---------- */
+    function switchRadasView(view){
+      if(view !== "dashboard" && view !== "products" && view !== "notes" && view !== "content") return;
+      state.radasView = view;
+      saveState();
+      renderRadasProducts();
+    }
+
+    function numericValue(value){
+      const s = String(value || "").toUpperCase().replace(/,/g,"");
+      const m = s.match(/([0-9]+(?:\.[0-9]+)?)/);
+      if(!m) return -1;
+      let n = Number(m[1]);
+      if(s.includes("K")) n *= 1000;
+      return n;
+    }
+
+    function commissionValue(value){
+      const nums = String(value || "").match(/[0-9]+(?:\.[0-9]+)?/g);
+      return nums ? Math.max(...nums.map(Number)) : -1;
+    }
+
+    function scoreValue(value){
+      const m = String(value || "").match(/[0-9]+(?:\.[0-9]+)?/);
+      return m ? Number(m[0]) : -1;
+    }
+
+    function productStatus(id){ return state.productStatuses[id] || "untested"; }
+
+    function setProductStatus(id,status){
+      state.productStatuses[id] = status;
+      saveState();
+      renderProducts();
+    }
+
+    function productStatusLabel(status){
+      return ({untested:"Belum Uji",want:"Nak Uji",promoting:"Sedang Promote",done:"Done"})[status] || "Belum Uji";
+    }
+
+    function toggleProductDetail(id){
+      const row = document.getElementById("product-detail-" + id);
+      if(row) row.hidden = !row.hidden;
+    }
+
+    function addProductToTask(id){
+      const product = products().find(item=>item.id === id);
+      if(!product) return;
+      const tasks = state.projects.radas.tasks;
+      const marker = "Produk #" + String(id).padStart(3,"0");
+      const existing = tasks.find(task => String(task.notes || "").includes(marker));
+      if(existing){
+        window.alert("Produk ini sudah ada dalam Task Minggu Ini.");
+        return;
+      }
+      tasks.push({
+        id:makeId(),
+        title:"Promote: " + product.name,
+        category:"Affiliate",
+        priority:"high",
+        status:"todo",
+        due:"",
+        notes:marker + (product.commission ? " • Komisen " + product.commission : ""),
+        money:true
+      });
+      state.productStatuses[id] = "want";
+      saveState();
+      render();
+      window.alert("Produk ditambah ke Task Minggu Ini.");
+    }
+
+
+    function categoryValues(){
+      return [...new Set(products().map(item=>String(item.category || "").trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,"ms"));
+    }
+
+    function refreshCategoryControls(){
+      const values = categoryValues();
+      const filter = document.getElementById("productCategoryFilter");
+      if(filter){
+        const current = filter.value || "all";
+        filter.innerHTML = '<option value="all">Semua Kategori</option>' + values.map(cat=>`<option value="${escapeHtml(cat)}">${escapeHtml(cat)}</option>`).join("");
+        filter.value = values.includes(current) ? current : "all";
+      }
+      const list = document.getElementById("productCategoryList");
+      if(list) list.innerHTML = values.map(cat=>`<option value="${escapeHtml(cat)}"></option>`).join("");
+    }
+
+    const productDialog = document.getElementById("productDialog");
+    const productForm = document.getElementById("productForm");
+
+    function openProductDialog(id){
+      productForm.reset();
+      refreshCategoryControls();
+      document.getElementById("productEditId").value = id || "";
+      const product = id ? products().find(item=>item.id === id) : null;
+      document.getElementById("productDialogTitle").textContent = product ? "Edit Produk" : "Tambah Produk";
+      if(product){
+        document.getElementById("productNameInput").value = product.name || "";
+        document.getElementById("productCategoryInput").value = product.category || "";
+        document.getElementById("productPriceInput").value = product.price || "";
+        document.getElementById("productCommissionInput").value = product.commission || "";
+        document.getElementById("productCommissionRateInput").value = product.commissionRate || "";
+        document.getElementById("productCreatorInput").value = product.creator || "";
+        document.getElementById("productSoldInput").value = product.sold || "";
+        document.getElementById("productRadarInput").value = product.radarScore || "";
+        document.getElementById("productStockInput").value = product.stock || "";
+        document.getElementById("productReviewsInput").value = product.reviews || "";
+        document.getElementById("productRankingInput").value = product.ranking || "";
+        document.getElementById("productWatchlistInput").checked = !!product.watchlist;
+        document.getElementById("productPremiumInput").checked = !!product.premium;
+      }
+      productDialog.showModal();
+    }
+
+    function closeProductDialog(){ productDialog.close(); }
+
+    function deleteProduct(id){
+      const product = products().find(item=>item.id === id);
+      if(!product) return;
+      if(!window.confirm(`Padam produk #${String(id).padStart(3,"0")} — ${product.name}?`)) return;
+      state.radasProducts = products().filter(item=>item.id !== id);
+      delete state.productStatuses[id];
+      saveState();
+      refreshCategoryControls();
+      renderProducts();
+    }
+
+    productForm.addEventListener("submit",function(event){
+      event.preventDefault();
+      const editId = Number(document.getElementById("productEditId").value) || 0;
+      const name = document.getElementById("productNameInput").value.trim();
+      if(!name) return;
+      const data = {
+        name,
+        category:document.getElementById("productCategoryInput").value.trim(),
+        price:document.getElementById("productPriceInput").value.trim(),
+        commission:document.getElementById("productCommissionInput").value.trim(),
+        commissionRate:document.getElementById("productCommissionRateInput").value.trim(),
+        creator:document.getElementById("productCreatorInput").value.trim(),
+        sold:document.getElementById("productSoldInput").value.trim(),
+        radarScore:document.getElementById("productRadarInput").value.trim(),
+        stock:document.getElementById("productStockInput").value.trim(),
+        reviews:document.getElementById("productReviewsInput").value.trim(),
+        ranking:document.getElementById("productRankingInput").value.trim(),
+        watchlist:document.getElementById("productWatchlistInput").checked,
+        premium:document.getElementById("productPremiumInput").checked,
+        sourceMissingName:false
+      };
+      if(editId){
+        const index = products().findIndex(item=>item.id === editId);
+        if(index !== -1) state.radasProducts[index] = {...state.radasProducts[index],...data};
+      }else{
+        const nextId = products().reduce((max,item)=>Math.max(max,Number(item.id)||0),0) + 1;
+        state.radasProducts.push({id:nextId,...data});
+      }
+      saveState();
+      closeProductDialog();
+      refreshCategoryControls();
+      renderProducts();
+    });
+
+    function renderSimpleMarkdown(markdown){
+      const source = String(markdown || "").replace(/\r\n?/g,"\n");
+      if(!source.trim()) return '<div class="note-empty"><strong>Nota telah dipadam.</strong><br>Klik Edit Nota untuk tambah semula kandungan.</div>';
+      const inline = value => escapeHtml(value)
+        .replace(/\*\*(.+?)\*\*/g,"<strong>$1</strong>");
+      const lines = source.split("\n");
+      let html = "";
+      let inList = false;
+      let sectionClass = "";
+      const closeList = ()=>{ if(inList){ html += "</ul>"; inList=false; } };
+      for(const raw of lines){
+        const line = raw.trimEnd();
+        if(!line.trim()){ closeList(); continue; }
+        if(line === "---"){ closeList(); html += "<hr>"; continue; }
+        if(line.startsWith("# ")){
+          closeList();
+          const title = line.slice(2);
+          sectionClass = title.startsWith("🔴") ? "note-section-risk" : title.startsWith("🟠") ? "note-section-caution" : title.startsWith("🟢") ? "note-section-good" : "";
+          html += `<h1 class="${sectionClass}">${inline(title)}</h1>`;
+          continue;
+        }
+        if(line.startsWith("## ")){ closeList(); html += `<h2>${inline(line.slice(3))}</h2>`; continue; }
+        if(line.startsWith("### ")){ closeList(); html += `<h3>${inline(line.slice(4))}</h3>`; continue; }
+        if(line.startsWith("> ")){ closeList(); html += `<blockquote>${inline(line.slice(2))}</blockquote>`; continue; }
+        if(line.startsWith("- ")){
+          if(!inList){ html += "<ul>"; inList=true; }
+          html += `<li>${inline(line.slice(2))}</li>`;
+          continue;
+        }
+        closeList();
+        html += `<p>${inline(line)}</p>`;
+      }
+      closeList();
+      return html;
+    }
+
+    const noteDialog = document.getElementById("noteDialog");
+    const noteForm = document.getElementById("noteForm");
+
+    function openNoteEditor(){
+      document.getElementById("noteEditor").value = state.radasNote || "";
+      noteDialog.showModal();
+    }
+
+    function closeNoteEditor(){ noteDialog.close(); }
+
+    function deleteRadasNote(){
+      if(!window.confirm("Padam nota RADAS ini?")) return;
+      state.radasNote = "";
+      saveState();
+      renderRadasNote();
+    }
+
+    noteForm.addEventListener("submit",function(event){
+      event.preventDefault();
+      state.radasNote = document.getElementById("noteEditor").value;
+      saveState();
+      closeNoteEditor();
+      renderRadasNote();
+    });
+
+    function renderRadasNote(){
+      const target = document.getElementById("radasNoteContent");
+      if(target) target.innerHTML = renderSimpleMarkdown(state.radasNote || "");
+    }
+
+    /* ---------- RADAS Content List ---------- */
+    const radasContentDialog = document.getElementById("radasContentDialog");
+    const radasContentForm = document.getElementById("radasContentForm");
+
+    function openRadasContentEditor(id){
+      radasContentForm.reset();
+      document.getElementById("radasContentId").value = id || "";
+      const note = id ? state.radasContentNotes.find(item=>item.id === id) : null;
+      document.getElementById("radasContentDialogTitle").textContent = note ? "Edit Nota" : "Tambah Nota";
+      if(note){
+        document.getElementById("radasContentTitle").value = note.title || "";
+        document.getElementById("radasContentEditor").value = note.content || "";
+      }
+      radasContentDialog.showModal();
+    }
+
+    function closeRadasContentEditor(){ radasContentDialog.close(); }
+
+    function deleteRadasContentNote(id){
+      const note = state.radasContentNotes.find(item=>item.id === id);
+      if(!note) return;
+      if(!window.confirm(`Padam nota “${note.title}”?`)) return;
+      state.radasContentNotes = state.radasContentNotes.filter(item=>item.id !== id);
+      saveState();
+      renderRadasContentList();
+    }
+
+    radasContentForm.addEventListener("submit",function(event){
+      event.preventDefault();
+      const id = document.getElementById("radasContentId").value;
+      const title = document.getElementById("radasContentTitle").value.trim();
+      const content = document.getElementById("radasContentEditor").value.trim();
+      if(!title) return;
+      if(id){
+        const note = state.radasContentNotes.find(item=>item.id === id);
+        if(note){ note.title = title; note.content = content; }
+      }else{
+        state.radasContentNotes.unshift({id:makeId(),title,content});
+      }
+      saveState();
+      closeRadasContentEditor();
+      renderRadasContentList();
+    });
+
+    function renderRadasContentList(){
+      const list = document.getElementById("radasContentList");
+      if(!list) return;
+      const notes = state.radasContentNotes || [];
+      if(!notes.length){
+        list.innerHTML = '<div class="note-empty"><strong>Belum ada nota content.</strong><br>Klik <strong>+ Tambah Nota</strong> untuk mula bina Content List RADAS.</div>';
+        return;
+      }
+      list.innerHTML = notes.map(note=>`
+        <article class="content-note-card">
+          <div class="content-note-head">
+            <div class="content-note-title">${escapeHtml(note.title)}</div>
+            <div class="content-note-actions">
+              <button type="button" class="icon-btn" onclick="openRadasContentEditor('${note.id}')">Edit</button>
+              <button type="button" class="icon-btn" onclick="deleteRadasContentNote('${note.id}')">Delete</button>
+            </div>
+          </div>
+          <div class="content-note-body">${renderSimpleMarkdown(note.content || "")}</div>
+        </article>
+      `).join("");
+    }
+
+
+    function renderRadasProducts(){
+      const isRadas = state.activeProject === "radas";
+      const view = state.radasView || "dashboard";
+      const card = document.getElementById("radasProductsCard");
+      const noteCard = document.getElementById("radasNoteCard");
+      const contentCard = document.getElementById("radasContentCard");
+      const productLink = document.getElementById("radasProductsLink");
+      const noteLink = document.getElementById("radasNoteLink");
+      const contentLink = document.getElementById("radasContentLink");
+
+      productLink.hidden = !isRadas;
+      noteLink.hidden = !isRadas;
+      contentLink.hidden = !isRadas;
+      productLink.classList.toggle("active", isRadas && view === "products");
+      noteLink.classList.toggle("active", isRadas && view === "notes");
+      contentLink.classList.toggle("active", isRadas && view === "content");
+      card.hidden = !(isRadas && view === "products");
+      noteCard.hidden = !(isRadas && view === "notes");
+      contentCard.hidden = !(isRadas && view === "content");
+
+      document.querySelectorAll(".dashboard-section").forEach(section=>{
+        section.hidden = isRadas && (view === "products" || view === "notes" || view === "content");
+      });
+
+      if(isRadas && view === "products") renderProducts();
+      if(isRadas && view === "notes") renderRadasNote();
+      if(isRadas && view === "content") renderRadasContentList();
+    }
+
+    /* ---------- DexSato Content List ---------- */
+    function switchDexsatoView(view){
+      if(view !== "dashboard" && view !== "content") return;
+      state.dexsatoView = view;
+      saveState();
+      renderDexsatoContentView();
+    }
+
+    const dexsatoNoteDialog = document.getElementById("dexsatoNoteDialog");
+    const dexsatoNoteForm = document.getElementById("dexsatoNoteForm");
+
+    function openDexsatoNoteEditor(id){
+      dexsatoNoteForm.reset();
+      document.getElementById("dexsatoNoteId").value = id || "";
+      const note = id ? state.dexsatoContentNotes.find(item=>item.id === id) : null;
+      document.getElementById("dexsatoNoteDialogTitle").textContent = note ? "Edit Nota" : "Tambah Nota";
+      if(note){
+        document.getElementById("dexsatoNoteTitle").value = note.title || "";
+        document.getElementById("dexsatoNoteEditor").value = note.content || "";
+      }
+      dexsatoNoteDialog.showModal();
+    }
+
+    function closeDexsatoNoteEditor(){ dexsatoNoteDialog.close(); }
+
+    function deleteDexsatoNote(id){
+      const note = state.dexsatoContentNotes.find(item=>item.id === id);
+      if(!note) return;
+      if(!window.confirm(`Padam nota “${note.title}”?`)) return;
+      state.dexsatoContentNotes = state.dexsatoContentNotes.filter(item=>item.id !== id);
+      saveState();
+      renderDexsatoContentList();
+    }
+
+    dexsatoNoteForm.addEventListener("submit",function(event){
+      event.preventDefault();
+      const id = document.getElementById("dexsatoNoteId").value;
+      const title = document.getElementById("dexsatoNoteTitle").value.trim();
+      const content = document.getElementById("dexsatoNoteEditor").value.trim();
+      if(!title) return;
+      if(id){
+        const note = state.dexsatoContentNotes.find(item=>item.id === id);
+        if(note){ note.title = title; note.content = content; }
+      }else{
+        state.dexsatoContentNotes.unshift({id:makeId(),title,content});
+      }
+      saveState();
+      closeDexsatoNoteEditor();
+      renderDexsatoContentList();
+    });
+
+    function renderDexsatoContentList(){
+      const list = document.getElementById("dexsatoContentList");
+      if(!list) return;
+      const notes = state.dexsatoContentNotes || [];
+      if(!notes.length){
+        list.innerHTML = '<div class="note-empty"><strong>Belum ada nota content.</strong><br>Klik <strong>+ Tambah Nota</strong> untuk mula bina Content List DexSato.</div>';
+        return;
+      }
+      list.innerHTML = notes.map(note=>`
+        <article class="content-note-card">
+          <div class="content-note-head">
+            <div class="content-note-title">${escapeHtml(note.title)}</div>
+            <div class="content-note-actions">
+              <button type="button" class="icon-btn" onclick="openDexsatoNoteEditor('${note.id}')">Edit</button>
+              <button type="button" class="icon-btn" onclick="deleteDexsatoNote('${note.id}')">Delete</button>
+            </div>
+          </div>
+          <div class="content-note-body">${renderSimpleMarkdown(note.content || "")}</div>
+        </article>
+      `).join("");
+    }
+
+    function renderDexsatoContentView(){
+      const isDexsato = state.activeProject === "dexsato";
+      const view = state.dexsatoView || "dashboard";
+      const link = document.getElementById("dexsatoContentLink");
+      const card = document.getElementById("dexsatoContentCard");
+      link.hidden = !isDexsato;
+      link.classList.toggle("active", isDexsato && view === "content");
+      card.hidden = !(isDexsato && view === "content");
+      if(isDexsato){
+        document.querySelectorAll(".dashboard-section").forEach(section=>{
+          section.hidden = view === "content";
+        });
+      }
+      if(isDexsato && view === "content") renderDexsatoContentList();
+    }
+
+    function renderProducts(){
+      const body = document.getElementById("productTableBody");
+      if(!body) return;
+      const search = (document.getElementById("productSearch").value || "").trim().toLowerCase();
+      const categoryFilter = document.getElementById("productCategoryFilter").value;
+      const statusFilter = document.getElementById("productStatusFilter").value;
+      const watchFilter = document.getElementById("productWatchFilter").value;
+      const sort = document.getElementById("productSort").value;
+
+      refreshCategoryControls();
+      let rows = products().filter(product=>{
+        const haystack = (product.name + " " + (product.category || "")).toLowerCase();
+        if(search && !haystack.includes(search) && !String(product.id).includes(search)) return false;
+        if(categoryFilter !== "all" && (product.category || "") !== categoryFilter) return false;
+        if(statusFilter !== "all" && productStatus(product.id) !== statusFilter) return false;
+        if(watchFilter === "watchlist" && !product.watchlist) return false;
+        if(watchFilter === "missing" && !product.sourceMissingName) return false;
+        return true;
+      });
+
+      rows.sort((a,b)=>{
+        if(sort === "commission") return commissionValue(b.commission) - commissionValue(a.commission) || a.id-b.id;
+        if(sort === "score") return scoreValue(b.radarScore) - scoreValue(a.radarScore) || a.id-b.id;
+        if(sort === "creator") return numericValue(b.creator) - numericValue(a.creator) || a.id-b.id;
+        if(sort === "sold") return numericValue(b.sold) - numericValue(a.sold) || a.id-b.id;
+        return a.id-b.id;
+      });
+
+      document.getElementById("productCountLabel").textContent = rows.length + " dipaparkan • " + products().length + " jumlah";
+      if(!rows.length){
+        body.innerHTML = '<tr><td colspan="7"><div class="empty">Tiada produk sepadan dengan filter.</div></td></tr>';
+        return;
+      }
+
+      body.innerHTML = rows.map(product=>{
+        const status = productStatus(product.id);
+        const badges = [
+          product.watchlist ? '<span class="tag watch">Watchlist</span>' : '',
+          product.premium ? '<span class="tag money">Premium</span>' : '',
+          product.sourceMissingName ? '<span class="tag source-note">Nama tiada dalam sumber</span>' : '',
+          product.commissionRate ? `<span class="tag">${escapeHtml(product.commissionRate)} rate</span>` : ''
+        ].join("");
+        const detailItems = [
+          ["Commission Rate",product.commissionRate],
+          ["Stok",product.stock],
+          ["Positive Reviews",product.reviews],
+          ["Ranking",product.ranking]
+        ].filter(item=>item[1]);
+        const details = detailItems.length ? detailItems.map(item=>`<div class="product-detail-item"><span>${escapeHtml(item[0])}</span><b>${escapeHtml(item[1])}</b></div>`).join("") : '<div class="product-detail-item"><span>Maklumat tambahan</span><b>Tiada dalam nota sumber</b></div>';
+        return `
+          <tr>
+            <td class="product-main-cell">
+              <div class="product-name">${escapeHtml(product.name)}</div>
+              <div class="product-submeta">
+                <span class="product-id">#${String(product.id).padStart(3,"0")}</span>
+                <span class="product-category">Kategori: ${escapeHtml(product.category || "—")}</span>
+              </div>
+              <div class="product-badges">${badges}</div>
+            </td>
+            <td class="price-commission">
+              <div class="price">${escapeHtml(product.price || "—")}</div>
+              <div class="commission">Komisen: ${escapeHtml(product.commission || "—")}</div>
+            </td>
+            <td class="product-number">${escapeHtml(product.creator || "—")}</td>
+            <td class="product-number">${escapeHtml(product.sold || "—")}</td>
+            <td class="product-score">${escapeHtml(product.radarScore || "—")}</td>
+            <td class="product-status-cell">
+              <select class="status-select" onchange="setProductStatus(${product.id},this.value)" aria-label="Status produk ${product.id}">
+                <option value="untested" ${status === "untested" ? "selected" : ""}>Belum Uji</option>
+                <option value="want" ${status === "want" ? "selected" : ""}>Nak Uji</option>
+                <option value="promoting" ${status === "promoting" ? "selected" : ""}>Sedang Promote</option>
+                <option value="done" ${status === "done" ? "selected" : ""}>Done</option>
+              </select>
+            </td>
+            <td>
+              <div class="product-actions">
+                <button type="button" class="icon-btn" onclick="toggleProductDetail(${product.id})">Detail</button>
+                <button type="button" class="icon-btn" onclick="openProductDialog(${product.id})">Edit</button>
+                <details class="product-more">
+                  <summary aria-label="Lagi tindakan">⋯</summary>
+                  <div class="product-more-menu">
+                    <button type="button" onclick="addProductToTask(${product.id});this.closest('details').removeAttribute('open')">+ Tambah Task</button>
+                    <button type="button" class="danger" onclick="deleteProduct(${product.id})">Delete</button>
+                  </div>
+                </details>
+              </div>
+            </td>
+          </tr>
+          <tr class="product-detail-row" id="product-detail-${product.id}" hidden><td colspan="7"><div class="product-detail-grid">${details}</div></td></tr>`;
+      }).join("");
+    }
+
+    /* ---------- Lose Weight ---------- */
+    function fmtKg(value){
+      return Number(Number(value).toFixed(1)) + " kg";
+    }
+
+    function renderWeight(){
+      const card = document.getElementById("weightCard");
+      const isWeight = state.activeProject === "weight";
+      card.hidden = !isWeight;
+
+      // Tandaan "revenue" tidak relevan untuk Lose Weight
+      document.querySelector(".check-row").style.display = isWeight ? "none" : "";
+
+      if(!isWeight) return;
+
+      const w = state.projects.weight;
+      const current = Number(w.currentWeight) || 0;
+      const goals = w.goals || [];
+
+      const pending = goals
+        .filter(goal=>Number(goal.kg) < current)
+        .sort((a,b)=>Number(b.kg) - Number(a.kg));
+      const next = pending[0];
+
+      document.getElementById("currentWeightVal").textContent = fmtKg(current);
+      document.getElementById("nextGoalVal").textContent = next ? fmtKg(next.kg) : "—";
+      document.getElementById("remainingVal").textContent =
+        next ? fmtKg(current - Number(next.kg)) : (goals.length ? "Tercapai" : "—");
+
+      const list = document.getElementById("goalList");
+
+      if(!goals.length){
+        list.innerHTML = '<div class="empty">Belum ada target. Klik <strong>+ Tambah Target</strong>.</div>';
+        return;
+      }
+
+      list.innerHTML = goals.map(goal=>{
+        const diff = current - Number(goal.kg);
+        const status = diff > 0
+          ? `<span class="tag high">Baki ${escapeHtml(fmtKg(diff))}</span>`
+          : '<span class="tag money">Tercapai</span>';
+
+        return `
+          <article class="goal">
+            <div>
+              <div class="goal-title">${escapeHtml(goal.name)}</div>
+              <div class="tags">
+                <span class="tag">${escapeHtml(fmtKg(goal.kg))}</span>
+                ${status}
+              </div>
+            </div>
+            <div class="task-actions">
+              <button type="button" class="icon-btn" onclick="openWeight('goal','${goal.id}')">Edit</button>
+              <button type="button" class="icon-btn" onclick="deleteGoal('${goal.id}')">Delete</button>
+            </div>
+          </article>
+        `;
+      }).join("");
+    }
+
+    const weightDialog = document.getElementById("weightDialog");
+    const weightForm = document.getElementById("weightForm");
+
+    function openWeight(mode,id){
+      const w = state.projects.weight;
+      const nameWrap = document.getElementById("weightNameWrap");
+      const nameInput = document.getElementById("weightName");
+      const valueInput = document.getElementById("weightValue");
+
+      weightForm.reset();
+      document.getElementById("weightMode").value = mode;
+      document.getElementById("weightId").value = id || "";
+
+      if(mode === "current"){
+        document.getElementById("weightDialogTitle").textContent = "Kemaskini Berat Semasa";
+        nameWrap.hidden = true;
+        nameInput.required = false;
+        valueInput.value = w.currentWeight;
+      }else{
+        nameWrap.hidden = false;
+        nameInput.required = true;
+        const goal = id ? w.goals.find(item=>item.id === id) : null;
+
+        if(goal){
+          document.getElementById("weightDialogTitle").textContent = "Edit Target";
+          nameInput.value = goal.name;
+          valueInput.value = goal.kg;
+        }else{
+          document.getElementById("weightDialogTitle").textContent = "Tambah Target";
+          nameInput.value = "Target " + (w.goals.length + 1);
+        }
+      }
+
+      weightDialog.showModal();
+    }
+
+    function closeWeightDialog(){
+      weightDialog.close();
+    }
+
+    function deleteGoal(id){
+      if(!window.confirm("Padam target ini?")) return;
+
+      const w = state.projects.weight;
+      w.goals = w.goals.filter(item=>item.id !== id);
+      saveState();
+      render();
+    }
+
+    weightForm.addEventListener("submit",function(event){
+      event.preventDefault();
+
+      const w = state.projects.weight;
+      const mode = document.getElementById("weightMode").value;
+      const id = document.getElementById("weightId").value;
+      const kg = parseFloat(document.getElementById("weightValue").value);
+
+      if(!(kg > 0)) return;
+
+      if(mode === "current"){
+        w.currentWeight = kg;
+      }else{
+        const name = document.getElementById("weightName").value.trim();
+        if(!name) return;
+
+        const goal = id ? w.goals.find(item=>item.id === id) : null;
+        if(goal){
+          goal.name = name;
+          goal.kg = kg;
+        }else{
+          w.goals.push({ id:makeId(), name, kg });
+        }
+      }
+
+      saveState();
+      closeWeightDialog();
+      render();
+    });
+
+    function saveFocus(){
+      state.projects[state.activeProject].focus = document.getElementById("focusInput").value.trim();
+      saveState();
+    }
+
+    function saveTarget(){
+      state.projects[state.activeProject].target = document.getElementById("targetInput").value.trim();
+      saveState();
+    }
+
+    function toggleDone(id,checked){
+      const task = state.projects[state.activeProject].tasks.find(item=>item.id === id);
+      if(!task) return;
+
+      task.status = checked ? "done" : "todo";
+      saveState();
+      render();
+    }
+
+    function setStatus(id,status){
+      const task = state.projects[state.activeProject].tasks.find(item=>item.id === id);
+      if(!task) return;
+
+      task.status = status;
+      saveState();
+      render();
+    }
+
+    function deleteTask(id){
+      if(!window.confirm("Padam task ini?")) return;
+
+      state.projects[state.activeProject].tasks =
+        state.projects[state.activeProject].tasks.filter(item=>item.id !== id);
+
+      saveState();
+      render();
+    }
+
+    const dialog = document.getElementById("taskDialog");
+    const form = document.getElementById("taskForm");
+
+    function openAddTask(){
+      form.reset();
+      document.getElementById("dialogTitle").textContent = "Tambah Task";
+      document.getElementById("taskId").value = "";
+      document.getElementById("taskPriority").value = "medium";
+      document.getElementById("taskStatus").value = "todo";
+      dialog.showModal();
+    }
+
+    function editTask(id){
+      const task = state.projects[state.activeProject].tasks.find(item=>item.id === id);
+      if(!task) return;
+
+      document.getElementById("dialogTitle").textContent = "Edit Task";
+      document.getElementById("taskId").value = task.id;
+      document.getElementById("taskTitle").value = task.title;
+      document.getElementById("taskCategory").value = task.category || "";
+      document.getElementById("taskPriority").value = task.priority || "medium";
+      document.getElementById("taskStatus").value = task.status || "todo";
+      document.getElementById("taskDue").value = task.due || "";
+      document.getElementById("taskNotes").value = task.notes || "";
+      document.getElementById("taskMoney").checked = !!task.money;
+
+      dialog.showModal();
+    }
+
+    function closeDialog(){
+      dialog.close();
+    }
+
+    form.addEventListener("submit",function(event){
+      event.preventDefault();
+
+      const id = document.getElementById("taskId").value;
+      const title = document.getElementById("taskTitle").value.trim();
+
+      if(!title) return;
+
+      const taskData = {
+        title,
+        category:document.getElementById("taskCategory").value.trim() || "General",
+        priority:document.getElementById("taskPriority").value,
+        status:document.getElementById("taskStatus").value,
+        due:document.getElementById("taskDue").value,
+        notes:document.getElementById("taskNotes").value.trim(),
+        money:document.getElementById("taskMoney").checked
+      };
+
+      const tasks = state.projects[state.activeProject].tasks;
+
+      if(id){
+        const index = tasks.findIndex(item=>item.id === id);
+        if(index !== -1){
+          tasks[index] = {
+            ...tasks[index],
+            ...taskData
+          };
+        }
+      }else{
+        tasks.push({
+          id:makeId(),
+          ...taskData
+        });
+      }
+
+      saveState();
+      closeDialog();
+      render();
+    });
+
+    saveState();
+    render();
+
+    window.switchProject = switchProject;
+    window.openRadasContentEditor = openRadasContentEditor;
+    window.closeRadasContentEditor = closeRadasContentEditor;
+    window.deleteRadasContentNote = deleteRadasContentNote;
+    window.switchDexsatoView = switchDexsatoView;
+    window.openDexsatoNoteEditor = openDexsatoNoteEditor;
+    window.closeDexsatoNoteEditor = closeDexsatoNoteEditor;
+    window.deleteDexsatoNote = deleteDexsatoNote;
+    window.saveFocus = saveFocus;
+    window.saveTarget = saveTarget;
+    window.toggleDone = toggleDone;
+    window.setStatus = setStatus;
+    window.deleteTask = deleteTask;
+    window.openAddTask = openAddTask;
+    window.editTask = editTask;
+    window.closeDialog = closeDialog;
+    window.openWeight = openWeight;
+    window.closeWeightDialog = closeWeightDialog;
+    window.deleteGoal = deleteGoal;
+    window.switchRadasView = switchRadasView;
+    window.openNoteEditor = openNoteEditor;
+    window.closeNoteEditor = closeNoteEditor;
+    window.deleteRadasNote = deleteRadasNote;
+    window.renderProducts = renderProducts;
+    window.setProductStatus = setProductStatus;
+    window.toggleProductDetail = toggleProductDetail;
+    window.addProductToTask = addProductToTask;
+    window.openProductDialog = openProductDialog;
+    window.closeProductDialog = closeProductDialog;
+    window.deleteProduct = deleteProduct;
+  </script>
+</body>
+</html>
