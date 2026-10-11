@@ -1,4 +1,5 @@
 import 'server-only';
+import { generationLog } from './log';
 import { createClient } from '@supabase/supabase-js';
 import { parseGeneration, UUID, type Generation } from './types';
 import { GenerationError } from './input';
@@ -10,7 +11,7 @@ export function createGenerationStore(): GenerationStore {
   const client = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }, global: { fetch: (input, init) => fetch(input, { ...init, cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(15_000) }) } });
   return { async operation(action, userId, id, details = {}) {
     const { data, error } = await client.rpc('radas_v4_generation_operation', { p_action: action, p_user_id: userId, p_id: id, p_data: details });
-    if (error) throw new GenerationError('unavailable');
+    if (error) { generationLog(`database_${action}`, { requestId: id, error: new GenerationError('unavailable'), sqlState: error.code }); throw new GenerationError('unavailable'); }
     if (data?.error) {
       const status = { insufficient_credits: 402, active_generation: 409, request_conflict: 409, not_found: 404, expired: 410 }[data.error as string];
       throw new GenerationError(status ? data.error : 'unavailable', status ?? 503, data.error === 'active_generation' && typeof data.activeId === 'string' && UUID.test(data.activeId) ? data.activeId : undefined);

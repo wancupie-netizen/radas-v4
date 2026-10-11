@@ -6,7 +6,7 @@ export type JobStatus = 'queued' | 'processing' | 'done' | 'failed';
 export type VideoRequest = { prompt: string; orientation: VideoOrientation; resolution: VideoResolution } &
   ({ mode: 'text'; imageDataUris?: never } | { mode: 'image' | 'ingredients'; imageDataUris: string[] });
 export class NexabotError extends Error {
-  constructor(public readonly code: string, public readonly outcome: 'rejected' | 'unknown' | 'read' = 'read') {
+  constructor(public readonly code: string, public readonly outcome: 'rejected' | 'unknown' | 'read' = 'read', public diagnostic?: { kind: 'timeout' | 'network' | 'http' | 'invalid_response'; httpStatus?: number }) {
     super(`NexaBot: ${code}`); this.name = 'NexabotError';
   }
 }
@@ -54,11 +54,14 @@ export function createNexabotClient(options: { apiKey?: string; fetcher?: typeof
   const timeoutMs = options.timeoutMs ?? 15_000;
   async function request<T>(path: string, method: 'GET' | 'POST', parse: (response: Response) => Promise<T>, body?: unknown): Promise<T> {
     const controller = new AbortController();
+    let responseStatus: number | undefined;
+    let received = false;
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     try {
       let response = await fetcher(BASE + path, { method, cache: 'no-store', redirect: 'manual', signal: controller.signal,
         headers: { 'x-api-key': key!, ...(body ? { 'Content-Type': 'application/json' } : {}) },
         ...(body ? { body: JSON.stringify(body) } : {}) });
+      received = true; responseStatus = response.status;
       // Download redirects may remain on NexaBot; never send the key to another host.
       if (method === 'GET' && path.endsWith('/download')) {
         for (let hop = 0; response.status >= 300 && response.status < 400 && hop < 3; hop++) {
@@ -73,12 +76,13 @@ export function createNexabotClient(options: { apiKey?: string; fetcher?: typeof
       if (!response.ok) {
         await response.body?.cancel();
         const rejected = [400, 401, 402, 403, 404, 429].includes(response.status);
-        throw new NexabotError(`HTTP_${response.status}`, method === 'POST' ? (rejected ? 'rejected' : 'unknown') : 'read');
+        throw new NexabotError(`HTTP_${response.status}`, method === 'POST' ? (rejected ? 'rejected' : 'unknown') : 'read', { kind: 'http', httpStatus: response.status });
       }
       return await parse(response);
     } catch (error) {
-      if (error instanceof NexabotError) throw error;
-      throw new NexabotError(controller.signal.aborted ? 'TIMEOUT' : 'INVALID_OR_UNAVAILABLE_RESPONSE', method === 'POST' ? 'unknown' : 'read');
+      const diagnostic = { kind: controller.signal.aborted ? 'timeout' as const : received ? 'invalid_response' as const : 'network' as const, ...(responseStatus ? { httpStatus: responseStatus } : {}) };
+      if (error instanceof NexabotError) { error.diagnostic ??= diagnostic; throw error; }
+      throw new NexabotError(controller.signal.aborted ? 'TIMEOUT' : 'INVALID_OR_UNAVAILABLE_RESPONSE', method === 'POST' ? 'unknown' : 'read', diagnostic);
     } finally { clearTimeout(timer); }
   }
   async function json(response: Response) {
@@ -102,7 +106,7 @@ export function createNexabotClient(options: { apiKey?: string; fetcher?: typeof
         return { jobId, status: 'queued' as const, creditCost: amount(data.credit_cost), creditBalance: amount(data.credit_balance), estimatedSeconds: amount(data.est_seconds) };
       }, body).catch(error => {
         // A malformed accepted job ID is an unknown submission, never a safe rejection.
-        if (error instanceof NexabotError && error.code === 'INVALID_INPUT') throw new NexabotError('INVALID_OR_UNAVAILABLE_RESPONSE', 'unknown');
+        if (error instanceof NexabotError && error.code === 'INVALID_INPUT') throw new NexabotError('INVALID_OR_UNAVAILABLE_RESPONSE', 'unknown', error.diagnostic);
         throw error;
       });
     },

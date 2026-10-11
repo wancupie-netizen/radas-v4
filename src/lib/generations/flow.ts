@@ -1,10 +1,12 @@
 import 'server-only';
+import { generationLog, observeGeneration } from './log';
 import { randomUUID } from 'node:crypto';
 import { createNexabotClient, NexabotError, type VideoRequest } from '../nexabot/client';
 import { parseGeneration } from './types';
 import { GenerationError } from './input';
 import type { GenerationStore, StoredGeneration } from './store';
-export function createGenerationFlow(store: GenerationStore, provider: ReturnType<typeof createNexabotClient>) {
+export function createGenerationFlow(rawStore: GenerationStore, provider: ReturnType<typeof createNexabotClient>) {
+  const store: GenerationStore = { operation: (action, userId, id, data) => observeGeneration(`database_${action}`, id, () => rawStore.operation(action, userId, id, data)) };
   async function save(userId: string, id: string, data: Record<string, unknown>) {
     // Retrying a database transition is safe; this never retries the provider POST.
     try { return await store.operation('transition', userId, id, data); }
@@ -14,9 +16,11 @@ export function createGenerationFlow(store: GenerationStore, provider: ReturnTyp
     const generation = await store.operation(reconcile ? 'reconcile' : 'poll', userId, id);
     if (!generation.pollAllowed || !generation.providerJobId) return parseGeneration(generation);
     let job;
-    try { job = await provider.getJob(generation.providerJobId); }
+    try { job = await observeGeneration('provider_poll', id, () => provider.getJob(generation.providerJobId!), false); }
     catch { return { ...parseGeneration(generation), pollUnavailable: true }; }
-    return parseGeneration(await save(userId, id, { status: job.status, providerJobId: generation.providerJobId }));
+    const saved = await save(userId, id, { status: job.status, providerJobId: generation.providerJobId });
+    if (['done', 'failed'].includes(saved.status)) generationLog('generation_outcome', { requestId: id, status: saved.status, providerJobId: generation.providerJobId });
+    return parseGeneration(saved);
   }
   return {
     async submit(userId: string, requestId: string, input: VideoRequest, hash: string) {
@@ -25,7 +29,7 @@ export function createGenerationFlow(store: GenerationStore, provider: ReturnTyp
       try { existing = await store.operation('read', userId, requestId); }
       catch (error) { if (!(error instanceof GenerationError) || error.code !== 'not_found') throw error; }
       if (!existing) {
-        const credit = await provider.getCredit();
+        const credit = await observeGeneration('provider_credit', requestId, () => provider.getCredit(), true);
         if (credit.creditCost !== 0.15 || credit.credit < credit.creditCost) throw new GenerationError('provider_unavailable');
       }
       const details = { hash, mode: input.mode, prompt: input.prompt, orientation: input.orientation, resolution: Number(input.resolution) };
@@ -42,7 +46,7 @@ export function createGenerationFlow(store: GenerationStore, provider: ReturnTyp
       if (generation.status !== 'reserved') return parseGeneration(generation);
       if (existing) {
         try {
-          const credit = await provider.getCredit();
+          const credit = await observeGeneration('provider_credit', requestId, () => provider.getCredit(), true);
           if (credit.creditCost !== 0.15 || credit.credit < credit.creditCost) throw new GenerationError('provider_unavailable');
         } catch {
           // Cancel only if still unclaimed; a competing claimant's job is never refunded here.
@@ -58,10 +62,12 @@ export function createGenerationFlow(store: GenerationStore, provider: ReturnTyp
       catch { claim = await store.operation('claim', userId, requestId, { claimToken }); }
       if (!claim.claimAllowed) return parseGeneration(claim);
       let accepted;
-      try { accepted = await provider.submitVideo(input); }
+      try { accepted = await observeGeneration('provider_submit', requestId, () => provider.submitVideo(input), true); }
       catch (error) {
         const status = error instanceof NexabotError && error.outcome === 'rejected' ? 'rejected' : 'unknown';
-        return parseGeneration(await save(userId, requestId, { status, claimToken }));
+        const saved = await save(userId, requestId, { status, claimToken });
+        generationLog('generation_outcome', { requestId, status: saved.status });
+        return parseGeneration(saved);
       }
       // If persistence fails after acceptance, preserve the reservation; never refund/resubmit.
       return parseGeneration(await save(userId, requestId, { status: 'queued', providerJobId: accepted.jobId, claimToken }));
