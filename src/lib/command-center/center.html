@@ -744,7 +744,7 @@
     <header class="top">
       <div class="eyebrow">Personal Weekly Dashboard</div>
       <h1>Command Center</h1>
-      <p class="sub">Tiga projek. Satu fokus setiap masa.</p>
+      <p class="sub">Satu fokus setiap masa.</p>
     </header>
 
     <nav class="tabs" aria-label="Project tabs">
@@ -752,6 +752,7 @@
       <button type="button" class="tab" id="tab-biscotto" onclick="switchProject('biscotto')">Biscotto</button>
       <button type="button" class="tab" id="tab-dexsato" onclick="switchProject('dexsato')">DexSato</button>
       <button type="button" class="tab" id="tab-weight" onclick="switchProject('weight')">Lose Weight</button>
+      <button type="button" class="tab" id="tab-isteri" onclick="switchProject('isteri')">Isteri Malam</button>
     </nav>
 
     <section class="project-strip">
@@ -763,6 +764,7 @@
           <button type="button" class="radas-note-link" id="radasNoteLink" onclick="switchRadasView('notes')" hidden>Nota</button>
           <button type="button" class="dexsato-content-link" id="radasContentLink" onclick="switchRadasView('content')" hidden>Content List</button>
           <button type="button" class="dexsato-content-link" id="dexsatoContentLink" onclick="switchDexsatoView('content')" hidden>Content List</button>
+          <button type="button" class="isteri-content-link" id="isteriContentLink" onclick="switchIsteriView('content')" hidden>Content List</button>
         </div>
       </div>
       <div class="week">
@@ -863,6 +865,21 @@
       </div>
     </section>
 
+    <section class="card" id="isteriContentCard" style="margin-bottom:18px" hidden>
+      <div class="content-list-shell">
+        <div class="note-toolbar">
+          <div>
+            <div class="eyebrow">Isteri Malam Content Workspace</div>
+            <h2>Content List</h2>
+          </div>
+          <div class="note-actions">
+            <button type="button" class="btn btn-primary" onclick="openIsteriNoteEditor()">+ Tambah Nota</button>
+          </div>
+        </div>
+        <div id="isteriContentList" class="content-list-grid"></div>
+      </div>
+    </section>
+
     <dialog id="radasContentDialog">
       <form class="modal" id="radasContentForm">
         <div class="section-head">
@@ -914,6 +931,34 @@
         </div>
         <div class="actions" style="justify-content:flex-end;margin-top:18px">
           <button type="button" class="btn btn-soft" onclick="closeDexsatoNoteEditor()">Batal</button>
+          <button type="submit" class="btn btn-primary">Simpan Nota</button>
+        </div>
+      </form>
+    </dialog>
+
+    <dialog id="isteriNoteDialog">
+      <form class="modal" id="isteriNoteForm">
+        <div class="section-head">
+          <div>
+            <div class="eyebrow">Isteri Malam Content List</div>
+            <h2 id="isteriNoteDialogTitle">Tambah Nota</h2>
+          </div>
+          <button type="button" class="icon-btn" onclick="closeIsteriNoteEditor()">✕</button>
+        </div>
+        <input type="hidden" id="isteriNoteId" />
+        <div class="form-grid">
+          <div class="full">
+            <label class="field-label" for="isteriNoteTitle">Tajuk</label>
+            <input id="isteriNoteTitle" required placeholder="Contoh: Idea content Isteri Malam" />
+          </div>
+          <div class="full">
+            <label class="field-label" for="isteriNoteEditor">Nota</label>
+            <textarea id="isteriNoteEditor" placeholder="Tulis idea, draft, signal, hook atau content plan..."></textarea>
+            <div style="margin-top:7px;color:var(--muted);font-size:12px">Format ringkas Markdown disokong: # tajuk, ## sub-tajuk, - bullet, &gt; quote, **bold**.</div>
+          </div>
+        </div>
+        <div class="actions" style="justify-content:flex-end;margin-top:18px">
+          <button type="button" class="btn btn-soft" onclick="closeIsteriNoteEditor()">Batal</button>
           <button type="submit" class="btn btn-primary">Simpan Nota</button>
         </div>
       </form>
@@ -1212,6 +1257,11 @@
           { title:"Upload video ke TikTok", category:"TikTok", priority:"high", status:"todo", due:"", notes:"", money:true }
         ]
       },
+      isteri: {
+        focus: "",
+        target: "",
+        tasks: []
+      },
       weight: {
         focus: "Turunkan berat badan dengan konsisten, sedikit demi sedikit.",
         target: "Capai Target 1 (95 kg) melalui aktiviti harian dan pemakanan terkawal.",
@@ -1372,6 +1422,8 @@
         activeProject:"radas",
         radasView:"dashboard",
         radasContentNotes:[],
+        isteriView:"dashboard",
+        isteriContentNotes:[],
         dexsatoView:"dashboard",
         dexsatoContentNotes:makeDefaultDexsatoContentNotes(),
         dexsatoContentSeedVersion:1,
@@ -1410,6 +1462,8 @@
 
         if(!parsed.radasView) parsed.radasView = "dashboard";
         if(!Array.isArray(parsed.radasContentNotes)) parsed.radasContentNotes = [];
+        if(!parsed.isteriView) parsed.isteriView = "dashboard";
+        if(!Array.isArray(parsed.isteriContentNotes)) parsed.isteriContentNotes = [];
         if(!parsed.dexsatoView) parsed.dexsatoView = "dashboard";
         if(!Array.isArray(parsed.dexsatoContentNotes)) parsed.dexsatoContentNotes = [];
         if(Number(parsed.dexsatoContentSeedVersion || 0) < 1){
@@ -1443,6 +1497,7 @@
     }
 
     function projectName(key){
+      if(key === "isteri") return "Isteri Malam";
       if(key === "radas") return "RADAS";
       if(key === "biscotto") return "Biscotto";
       if(key === "weight") return "Lose Weight";
@@ -1470,12 +1525,13 @@
       state.activeProject = project;
       if(project === "radas") state.radasView = "dashboard";
       if(project === "dexsato") state.dexsatoView = "dashboard";
+      if(project === "isteri") state.isteriView = "dashboard";
       saveState();
       render();
     }
 
     function renderTabs(){
-      ["radas","biscotto","dexsato","weight"].forEach(project=>{
+      ["radas","biscotto","dexsato","weight","isteri"].forEach(project=>{
         const button = document.getElementById("tab-" + project);
         button.classList.toggle("active", state.activeProject === project);
       });
@@ -1555,6 +1611,7 @@
       renderWeight();
       renderRadasProducts();
       renderDexsatoContentView();
+      renderIsteriContentView();
     }
 
 
@@ -1969,6 +2026,95 @@
         });
       }
       if(isDexsato && view === "content") renderDexsatoContentList();
+    }
+
+    /* ---------- Isteri Malam Content List ---------- */
+    function switchIsteriView(view){
+      if(view !== "dashboard" && view !== "content") return;
+      state.isteriView = view;
+      saveState();
+      renderIsteriContentView();
+    }
+
+    const isteriNoteDialog = document.getElementById("isteriNoteDialog");
+    const isteriNoteForm = document.getElementById("isteriNoteForm");
+
+    function openIsteriNoteEditor(id){
+      isteriNoteForm.reset();
+      document.getElementById("isteriNoteId").value = id || "";
+      const note = id ? state.isteriContentNotes.find(item=>item.id === id) : null;
+      document.getElementById("isteriNoteDialogTitle").textContent = note ? "Edit Nota" : "Tambah Nota";
+      if(note){
+        document.getElementById("isteriNoteTitle").value = note.title || "";
+        document.getElementById("isteriNoteEditor").value = note.content || "";
+      }
+      isteriNoteDialog.showModal();
+    }
+
+    function closeIsteriNoteEditor(){ isteriNoteDialog.close(); }
+
+    function deleteIsteriNote(id){
+      const note = state.isteriContentNotes.find(item=>item.id === id);
+      if(!note) return;
+      if(!window.confirm(`Padam nota “${note.title}”?`)) return;
+      state.isteriContentNotes = state.isteriContentNotes.filter(item=>item.id !== id);
+      saveState();
+      renderIsteriContentList();
+    }
+
+    isteriNoteForm.addEventListener("submit",function(event){
+      event.preventDefault();
+      const id = document.getElementById("isteriNoteId").value;
+      const title = document.getElementById("isteriNoteTitle").value.trim();
+      const content = document.getElementById("isteriNoteEditor").value.trim();
+      if(!title) return;
+      if(id){
+        const note = state.isteriContentNotes.find(item=>item.id === id);
+        if(note){ note.title = title; note.content = content; }
+      }else{
+        state.isteriContentNotes.unshift({id:makeId(),title,content});
+      }
+      saveState();
+      closeIsteriNoteEditor();
+      renderIsteriContentList();
+    });
+
+    function renderIsteriContentList(){
+      const list = document.getElementById("isteriContentList");
+      if(!list) return;
+      const notes = state.isteriContentNotes || [];
+      if(!notes.length){
+        list.innerHTML = '<div class="note-empty"><strong>Belum ada nota content.</strong><br>Klik <strong>+ Tambah Nota</strong> untuk mula bina Content List Isteri Malam.</div>';
+        return;
+      }
+      list.innerHTML = notes.map(note=>`
+        <article class="content-note-card">
+          <div class="content-note-head">
+            <div class="content-note-title">${escapeHtml(note.title)}</div>
+            <div class="content-note-actions">
+              <button type="button" class="icon-btn" onclick="openIsteriNoteEditor('${note.id}')">Edit</button>
+              <button type="button" class="icon-btn" onclick="deleteIsteriNote('${note.id}')">Delete</button>
+            </div>
+          </div>
+          <div class="content-note-body">${renderSimpleMarkdown(note.content || "")}</div>
+        </article>
+      `).join("");
+    }
+
+    function renderIsteriContentView(){
+      const isIsteri = state.activeProject === "isteri";
+      const view = state.isteriView || "dashboard";
+      const link = document.getElementById("isteriContentLink");
+      const card = document.getElementById("isteriContentCard");
+      link.hidden = !isIsteri;
+      link.classList.toggle("active", isIsteri && view === "content");
+      card.hidden = !(isIsteri && view === "content");
+      if(isIsteri){
+        document.querySelectorAll(".dashboard-section").forEach(section=>{
+          section.hidden = view === "content";
+        });
+      }
+      if(isIsteri && view === "content") renderIsteriContentList();
     }
 
     function renderProducts(){
