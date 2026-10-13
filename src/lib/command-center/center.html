@@ -706,6 +706,13 @@
     .dexsato-content-link:hover{background:#f1f5fa;border-color:#b7c2d3}
     .dexsato-content-link.active{background:var(--navy);border-color:var(--navy);color:#fff;box-shadow:0 2px 8px rgba(22,58,107,.2)}
     .content-list-shell{max-width:880px;margin:0 auto}
+    .isteri-idea-list{margin:0;padding-left:34px}
+    .isteri-idea-row{position:relative;padding:14px 100px 14px 4px;border-bottom:1px solid var(--line)}
+    .isteri-idea-row::marker{font-weight:800;color:var(--navy-dark)}
+    .isteri-idea-category{display:inline-block;font-size:11px;font-weight:700;color:var(--teal);margin-bottom:5px}
+    .isteri-idea-row .content-note-actions{position:absolute;right:0;top:14px}
+    .isteri-idea-row .content-note-body p{margin:5px 0 0}
+    @media(max-width:600px){.isteri-idea-row{padding-right:4px}.isteri-idea-row .content-note-actions{position:static;margin-top:8px}}
     .content-list-grid{display:flex;flex-direction:column;gap:12px}
     .content-note-card{border:1px solid var(--line);border-radius:12px;padding:16px 18px;background:#fff;box-shadow:var(--shadow-sm)}
     .content-note-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:8px}
@@ -1412,6 +1419,612 @@
       return DEFAULT_DEXSATO_CONTENT_NOTES.map(item=>({id:makeId(),title:item.title,content:item.content}));
     }
 
+    const DEFAULT_ISTERI_CONTENT_NOTES = [
+  {
+    "id": "gambir-idea-1",
+    "category": "Awareness",
+    "title": "Apa sebenarnya Gambir Sarawak?",
+    "content": "Reel pengenalan ringkas produk."
+  },
+  {
+    "id": "gambir-idea-2",
+    "category": "Awareness",
+    "title": "Pernah dengar nama, tapi tak tahu produknya?",
+    "content": "Video untuk orang yang baru mengenali gambir."
+  },
+  {
+    "id": "gambir-idea-3",
+    "category": "Awareness",
+    "title": "Kenapa lelaki segan bertanya tentang cepat pancut?",
+    "content": "Buka perbualan tanpa memperlekehkan."
+  },
+  {
+    "id": "gambir-idea-4",
+    "category": "Awareness",
+    "title": "Tahan lama saja ke yang penting?",
+    "content": "Bincangkan perhatian dan keselesaan pasangan."
+  },
+  {
+    "id": "gambir-idea-5",
+    "category": "Awareness",
+    "title": "Produk kecil, banyak persoalan",
+    "content": "Paparkan lima soalan lazim tentang Gambir Sarawak."
+  },
+  {
+    "id": "gambir-idea-6",
+    "category": "Awareness",
+    "title": "Gambir Sarawak dalam 15 saat",
+    "content": "Tunjukkan rupa, saiz dan maklumat pada label."
+  },
+  {
+    "id": "gambir-idea-7",
+    "category": "Awareness",
+    "title": "Siapa di sebalik jenama ini?",
+    "content": "Founder memperkenalkan bisnes."
+  },
+  {
+    "id": "gambir-idea-8",
+    "category": "Awareness",
+    "title": "Kenapa kami pilih nama Gel Gambir?",
+    "content": "Cerita identiti produk."
+  },
+  {
+    "id": "gambir-idea-9",
+    "category": "Awareness",
+    "title": "Kenali dulu sebelum cuba",
+    "content": "Video membaca label dan maklumat produk."
+  },
+  {
+    "id": "gambir-idea-10",
+    "category": "Awareness",
+    "title": "Soalan yang malu nak tanya",
+    "content": "Jemput audiens bertanya melalui DM."
+  },
+  {
+    "id": "gambir-idea-11",
+    "category": "Education",
+    "title": "Apa maksud ejakulasi pramatang?",
+    "content": "Penerangan mudah berdasarkan sumber kesihatan."
+  },
+  {
+    "id": "gambir-idea-12",
+    "category": "Education",
+    "title": "Sekali cepat habis, terus dianggap bermasalah?",
+    "content": "Bezakan kejadian sesekali dengan masalah berulang."
+  },
+  {
+    "id": "gambir-idea-13",
+    "category": "Education",
+    "title": "Bolehkah rasa cemas mempengaruhi pengalaman bersama?",
+    "content": "Content tentang tekanan prestasi."
+  },
+  {
+    "id": "gambir-idea-14",
+    "category": "Education",
+    "title": "Kenapa membandingkan diri dengan orang lain boleh menambah tekanan?",
+    "content": "Bincangkan tekanan daripada perbandingan."
+  },
+  {
+    "id": "gambir-idea-15",
+    "category": "Education",
+    "title": "Adakah hubungan intim mempunyai tempoh “wajib”?",
+    "content": "Jelaskan variasi pengalaman pasangan."
+  },
+  {
+    "id": "gambir-idea-16",
+    "category": "Education",
+    "title": "Cara bercakap dengan isteri tentang perkara sensitif",
+    "content": "Contoh pembuka perbualan."
+  },
+  {
+    "id": "gambir-idea-17",
+    "category": "Education",
+    "title": "Keselesaan pasangan: soalan yang patut ditanya",
+    "content": "Fokus komunikasi."
+  },
+  {
+    "id": "gambir-idea-18",
+    "category": "Education",
+    "title": "Bila masalah cepat pancut patut dibincangkan dengan doktor?",
+    "content": "Pendidikan berdasarkan sumber kesihatan."
+  },
+  {
+    "id": "gambir-idea-19",
+    "category": "Education",
+    "title": "Kenapa produk sapuan perlu digunakan ikut label?",
+    "content": "Pendidikan penggunaan bertanggungjawab."
+  },
+  {
+    "id": "gambir-idea-20",
+    "category": "Education",
+    "title": "“Natural” bermaksud pasti selamat?",
+    "content": "Terangkan kenapa bahan dan arahan tetap penting."
+  },
+  {
+    "id": "gambir-idea-21",
+    "category": "Product Education",
+    "title": "Apa yang ada dalam satu bungkusan?",
+    "content": "Unboxing dengan penerangan."
+  },
+  {
+    "id": "gambir-idea-22",
+    "category": "Product Education",
+    "title": "Baca label bersama kami",
+    "content": "Close-up maklumat sebenar produk."
+  },
+  {
+    "id": "gambir-idea-23",
+    "category": "Product Education",
+    "title": "Apakah bahan yang disenaraikan?",
+    "content": "Terangkan bahan berdasarkan maklumat pengeluar."
+  },
+  {
+    "id": "gambir-idea-24",
+    "category": "Product Education",
+    "title": "Gel, spray dan gambir mentah: apa bezanya?",
+    "content": "Carousel perbandingan bentuk produk."
+  },
+  {
+    "id": "gambir-idea-25",
+    "category": "Product Education",
+    "title": "Cara penggunaan mengikut arahan pengeluar",
+    "content": "Video demonstrasi menggunakan prop."
+  },
+  {
+    "id": "gambir-idea-26",
+    "category": "Product Education",
+    "title": "Maklumat yang perlu disemak sebelum membeli",
+    "content": "Bahan, pengeluar dan arahan."
+  },
+  {
+    "id": "gambir-idea-27",
+    "category": "Product Education",
+    "title": "Cara menyimpan produk mengikut label",
+    "content": "Reel pendek."
+  },
+  {
+    "id": "gambir-idea-28",
+    "category": "Product Education",
+    "title": "Apa yang perlu dibuat jika berlaku iritasi?",
+    "content": "Content pendidikan dengan sumber kesihatan."
+  },
+  {
+    "id": "gambir-idea-29",
+    "category": "Product Education",
+    "title": "Kenapa tak boleh janji hasil sama untuk semua orang?",
+    "content": "Terangkan variasi tindak balas."
+  },
+  {
+    "id": "gambir-idea-30",
+    "category": "Product Education",
+    "title": "Produk ini boleh dan tidak boleh menjanjikan apa?",
+    "content": "Jelaskan batas manfaat yang disokong bukti."
+  },
+  {
+    "id": "gambir-idea-31",
+    "category": "UGC",
+    "title": "“Saya pernah dengar, tapi baru pertama kali tengok.”",
+    "content": "Reaksi melihat produk."
+  },
+  {
+    "id": "gambir-idea-32",
+    "category": "UGC",
+    "title": "Unboxing dari sudut pandang pembeli",
+    "content": "Rakaman telefon tanpa produksi berat."
+  },
+  {
+    "id": "gambir-idea-33",
+    "category": "UGC",
+    "title": "“Sebelum beli, tiga benda ni saya semak.”",
+    "content": "UGC tentang proses membuat pilihan."
+  },
+  {
+    "id": "gambir-idea-34",
+    "category": "UGC",
+    "title": "First impression pada pembungkusan",
+    "content": "Fokus rupa dan saiz sebenar."
+  },
+  {
+    "id": "gambir-idea-35",
+    "category": "UGC",
+    "title": "“Saya jenis banyak tanya sebelum checkout.”",
+    "content": "Lakonan pelanggan bertanya."
+  },
+  {
+    "id": "gambir-idea-36",
+    "category": "UGC",
+    "title": "UGC membaca arahan penggunaan",
+    "content": "Tunjukkan pengguna menyemak label."
+  },
+  {
+    "id": "gambir-idea-37",
+    "category": "UGC",
+    "title": "“Ingatkan susah nak order, rupanya…”",
+    "content": "Demonstrasi proses tempahan sebenar."
+  },
+  {
+    "id": "gambir-idea-38",
+    "category": "UGC",
+    "title": "Pengalaman menerima parcel",
+    "content": "Pelanggan sebenar berkongsi pengalaman penghantaran."
+  },
+  {
+    "id": "gambir-idea-39",
+    "category": "UGC",
+    "title": "Review servis pelanggan",
+    "content": "Fokus layanan dan jawapan yang diterima."
+  },
+  {
+    "id": "gambir-idea-40",
+    "category": "UGC",
+    "title": "“Benda paling saya suka: boleh tanya dulu.”",
+    "content": "UGC tentang pengalaman mendapatkan maklumat."
+  },
+  {
+    "id": "gambir-idea-41",
+    "category": "Carousel",
+    "title": "5 perkara untuk semak sebelum membeli produk intim.",
+    "content": "Carousel checklist pembelian."
+  },
+  {
+    "id": "gambir-idea-42",
+    "category": "Carousel",
+    "title": "5 soalan tentang Gambir Sarawak yang selalu ditanya.",
+    "content": "Carousel soalan lazim."
+  },
+  {
+    "id": "gambir-idea-43",
+    "category": "Carousel",
+    "title": "Mitos atau fakta: tahan lama bermaksud pasangan pasti puas?",
+    "content": "Carousel perbincangan."
+  },
+  {
+    "id": "gambir-idea-44",
+    "category": "Carousel",
+    "title": "4 cara membuka perbualan sensitif dengan pasangan.",
+    "content": "Contoh pembuka perbualan."
+  },
+  {
+    "id": "gambir-idea-45",
+    "category": "Carousel",
+    "title": "Jangan terus percaya: kenali claim yang terlalu hebat.",
+    "content": "Panduan menilai claim."
+  },
+  {
+    "id": "gambir-idea-46",
+    "category": "Carousel",
+    "title": "Checklist membaca label produk sapuan.",
+    "content": "Carousel yang boleh disimpan."
+  },
+  {
+    "id": "gambir-idea-47",
+    "category": "Carousel",
+    "title": "Cepat pancut: bila perlu dapatkan nasihat profesional?",
+    "content": "Penerangan berdasarkan sumber kesihatan."
+  },
+  {
+    "id": "gambir-idea-48",
+    "category": "Carousel",
+    "title": "Apa beza maklumat produk, testimoni dan bukti kajian?",
+    "content": "Carousel perbandingan."
+  },
+  {
+    "id": "gambir-idea-49",
+    "category": "Carousel",
+    "title": "Langkah tempahan dari website hingga pengesahan.",
+    "content": "Panduan tempahan."
+  },
+  {
+    "id": "gambir-idea-50",
+    "category": "Carousel",
+    "title": "Kenali produk dalam 6 slide",
+    "content": "Rupa, bahan, arahan, penyimpanan, harga dan tempahan."
+  },
+  {
+    "id": "gambir-idea-51",
+    "category": "Storytelling",
+    "title": "Suami yang selalu mengelak perbualan sensitif",
+    "content": "Cerita tentang akhirnya berani bercakap."
+  },
+  {
+    "id": "gambir-idea-52",
+    "category": "Storytelling",
+    "title": "Isteri ingat suami tak berminat, rupanya dia rasa cemas",
+    "content": "Cerita salah faham."
+  },
+  {
+    "id": "gambir-idea-53",
+    "category": "Storytelling",
+    "title": "“Bertahun kahwin, baru sekarang kami belajar berbincang.”",
+    "content": "Kisah fiksyen berlabel."
+  },
+  {
+    "id": "gambir-idea-54",
+    "category": "Storytelling",
+    "title": "Pelanggan yang membaca semua maklumat sebelum membeli",
+    "content": "Cerita proses membuat keputusan."
+  },
+  {
+    "id": "gambir-idea-55",
+    "category": "Storytelling",
+    "title": "Soalan pertama yang masuk ke inbox kami",
+    "content": "Gunakan soalan sebenar tanpa identiti."
+  },
+  {
+    "id": "gambir-idea-56",
+    "category": "Storytelling",
+    "title": "Kenapa bisnes ini diwujudkan?",
+    "content": "Cerita founder."
+  },
+  {
+    "id": "gambir-idea-57",
+    "category": "Storytelling",
+    "title": "Daripada segan bertanya kepada berani mendapatkan maklumat",
+    "content": "Cerita pelanggan dengan izin."
+  },
+  {
+    "id": "gambir-idea-58",
+    "category": "Storytelling",
+    "title": "Malam tanpa telefon",
+    "content": "Cerita pasangan memberi masa untuk satu sama lain."
+  },
+  {
+    "id": "gambir-idea-59",
+    "category": "Storytelling",
+    "title": "Bila suami berhenti membandingkan diri dengan orang lain",
+    "content": "Cerita tentang keyakinan."
+  },
+  {
+    "id": "gambir-idea-60",
+    "category": "Storytelling",
+    "title": "Satu soalan isteri yang mengubah cara suami berfikir",
+    "content": "“Abang sebenarnya risau apa?”"
+  },
+  {
+    "id": "gambir-idea-61",
+    "category": "POV / Humor",
+    "title": "POV: isteri dah panggil, suami masih scroll telefon.",
+    "content": "Lakonan pasangan."
+  },
+  {
+    "id": "gambir-idea-62",
+    "category": "POV / Humor",
+    "title": "POV: nak tanya pasal produk, taip kemudian padam lima kali.",
+    "content": "Lakonan pelanggan."
+  },
+  {
+    "id": "gambir-idea-63",
+    "category": "POV / Humor",
+    "title": "Suami yakin bercakap dengan kawan, tapi malu nak DM seller.",
+    "content": "Video humor."
+  },
+  {
+    "id": "gambir-idea-64",
+    "category": "POV / Humor",
+    "title": "Isteri: “Saya suruh duduk dekat, bukan sambung tengok bola.”",
+    "content": "Lakonan santai."
+  },
+  {
+    "id": "gambir-idea-65",
+    "category": "POV / Humor",
+    "title": "Bila parcel sampai, suami tiba-tiba rajin buka pintu.",
+    "content": "Video humor."
+  },
+  {
+    "id": "gambir-idea-66",
+    "category": "POV / Humor",
+    "title": "POV: sebelum beli, abang jadi penyiasat label produk.",
+    "content": "Lakonan membaca label."
+  },
+  {
+    "id": "gambir-idea-67",
+    "category": "POV / Humor",
+    "title": "Suami jawab “tak ada apa”, tapi ada sepuluh soalan dalam kepala.",
+    "content": "Video humor."
+  },
+  {
+    "id": "gambir-idea-68",
+    "category": "POV / Humor",
+    "title": "Bila pasangan cuba berbincang, tapi dua-dua tersipu.",
+    "content": "Lakonan pasangan."
+  },
+  {
+    "id": "gambir-idea-69",
+    "category": "POV / Humor",
+    "title": "“Abang, malam ni telefon rehat dulu.”",
+    "content": "Lakonan isteri manja."
+  },
+  {
+    "id": "gambir-idea-70",
+    "category": "POV / Humor",
+    "title": "Expectation vs reality membeli online",
+    "content": "Bezakan sangkaan dengan proses sebenar."
+  },
+  {
+    "id": "gambir-idea-71",
+    "category": "Engagement",
+    "title": "Poll: lebih selesa bertanya melalui komen atau DM?",
+    "content": "Undian audiens."
+  },
+  {
+    "id": "gambir-idea-72",
+    "category": "Engagement",
+    "title": "“Apa perkara pertama yang anda semak sebelum membeli?”",
+    "content": "Soalan kepada audiens."
+  },
+  {
+    "id": "gambir-idea-73",
+    "category": "Engagement",
+    "title": "Kotak soalan anonim",
+    "content": "Kumpulkan persoalan untuk dijawab dalam siri content."
+  },
+  {
+    "id": "gambir-idea-74",
+    "category": "Engagement",
+    "title": "Pilih topik seterusnya: bahan, penggunaan atau penghantaran?",
+    "content": "Undian topik."
+  },
+  {
+    "id": "gambir-idea-75",
+    "category": "Engagement",
+    "title": "“Pernah dengar Gambir Sarawak dari siapa?”",
+    "content": "Soalan awareness."
+  },
+  {
+    "id": "gambir-idea-76",
+    "category": "Engagement",
+    "title": "Kuiz: testimoni sahaja cukup untuk membuktikan manfaat produk?",
+    "content": "Kuiz pendidikan."
+  },
+  {
+    "id": "gambir-idea-77",
+    "category": "Engagement",
+    "title": "“Ayat mana lebih mudah untuk mula berbincang dengan pasangan?”",
+    "content": "Pilihan ayat."
+  },
+  {
+    "id": "gambir-idea-78",
+    "category": "Engagement",
+    "title": "Sambung ayat: masa berkualiti bagi saya ialah…",
+    "content": "Interaksi audiens."
+  },
+  {
+    "id": "gambir-idea-79",
+    "category": "Engagement",
+    "title": "Jawab satu komen dalam satu video",
+    "content": "Siri mingguan."
+  },
+  {
+    "id": "gambir-idea-80",
+    "category": "Engagement",
+    "title": "“Apa yang membuatkan anda yakin membeli daripada sesuatu seller?”",
+    "content": "Soalan membina kepercayaan."
+  },
+  {
+    "id": "gambir-idea-81",
+    "category": "Trust / Behind the Scenes",
+    "title": "Cara kami membungkus pesanan",
+    "content": "Rakaman proses sebenar."
+  },
+  {
+    "id": "gambir-idea-82",
+    "category": "Trust / Behind the Scenes",
+    "title": "Semakan label sebelum parcel dihantar",
+    "content": "Tunjukkan apa yang diperiksa."
+  },
+  {
+    "id": "gambir-idea-83",
+    "category": "Trust / Behind the Scenes",
+    "title": "Sehari mengurus pesanan Gambir Sarawak",
+    "content": "Mini vlog."
+  },
+  {
+    "id": "gambir-idea-84",
+    "category": "Trust / Behind the Scenes",
+    "title": "Bagaimana kami menjawab soalan pelanggan?",
+    "content": "Contoh tanpa mendedahkan data."
+  },
+  {
+    "id": "gambir-idea-85",
+    "category": "Trust / Behind the Scenes",
+    "title": "Tunjukkan saiz sebenar produk di tangan",
+    "content": "Bantu elakkan salah jangkaan."
+  },
+  {
+    "id": "gambir-idea-86",
+    "category": "Trust / Behind the Scenes",
+    "title": "Close-up pembungkusan dari semua sudut",
+    "content": "Video tanpa filter berlebihan."
+  },
+  {
+    "id": "gambir-idea-87",
+    "category": "Trust / Behind the Scenes",
+    "title": "Maklumat pengeluar yang pelanggan boleh semak",
+    "content": "Paparkan maklumat yang sah."
+  },
+  {
+    "id": "gambir-idea-88",
+    "category": "Trust / Behind the Scenes",
+    "title": "Kenapa kami tidak menggunakan testimoni rekaan?",
+    "content": "Content pendirian jenama."
+  },
+  {
+    "id": "gambir-idea-89",
+    "category": "Trust / Behind the Scenes",
+    "title": "Apa yang berlaku selepas pelanggan membuat tempahan?",
+    "content": "Cerita proses pesanan."
+  },
+  {
+    "id": "gambir-idea-90",
+    "category": "Trust / Behind the Scenes",
+    "title": "FAQ yang kami kemas kini daripada pertanyaan sebenar",
+    "content": "Tunjukkan jenama mendengar pelanggan."
+  },
+  {
+    "id": "gambir-idea-91",
+    "category": "Soft Sell / Sale",
+    "title": "Baru kenal Gambir Sarawak? Mulakan dengan baca maklumat produk.",
+    "content": "CTA untuk kenali produk."
+  },
+  {
+    "id": "gambir-idea-92",
+    "category": "Soft Sell / Sale",
+    "title": "Masih ada soalan sebelum membeli? Tanya kami dahulu.",
+    "content": "CTA pertanyaan."
+  },
+  {
+    "id": "gambir-idea-93",
+    "category": "Soft Sell / Sale",
+    "title": "Nak tahu harga? Ini produk dan pilihan tempahan yang tersedia.",
+    "content": "Penerangan harga sebenar."
+  },
+  {
+    "id": "gambir-idea-94",
+    "category": "Soft Sell / Sale",
+    "title": "Cara order melalui website dalam satu video pendek.",
+    "content": "Demonstrasi tempahan."
+  },
+  {
+    "id": "gambir-idea-95",
+    "category": "Soft Sell / Sale",
+    "title": "COD atau postage?",
+    "content": "Jelaskan pilihan dan kawasan yang benar-benar tersedia."
+  },
+  {
+    "id": "gambir-idea-96",
+    "category": "Soft Sell / Sale",
+    "title": "Untuk yang sedang mencari produk berkaitan tahan lama",
+    "content": "Kenalkan produk tanpa menjamin hasil."
+  },
+  {
+    "id": "gambir-idea-97",
+    "category": "Soft Sell / Sale",
+    "title": "“Dah tengok, tapi masih belum pasti?”",
+    "content": "Jawab tiga persoalan pembeli."
+  },
+  {
+    "id": "gambir-idea-98",
+    "category": "Soft Sell / Sale",
+    "title": "Satu produk, satu penerangan lengkap",
+    "content": "Video jualan dengan maklumat yang disahkan."
+  },
+  {
+    "id": "gambir-idea-99",
+    "category": "Soft Sell / Sale",
+    "title": "Reminder untuk yang pernah bertanya",
+    "content": "Jemput mereka kembali menyemak produk."
+  },
+  {
+    "id": "gambir-idea-100",
+    "category": "Soft Sell / Sale",
+    "title": "Kenali dulu, pilih bila yakin",
+    "content": "Penutup jualan natural dengan CTA ke https://gambirsarawak.vercel.app/."
+  }
+];
+    function makeDefaultIsteriContentNotes(){
+      return DEFAULT_ISTERI_CONTENT_NOTES.map(note=>({...note}));
+    }
+
     function createInitialState(){
       const projects = {};
       Object.keys(DEFAULTS).forEach(project=>{
@@ -1423,7 +2036,8 @@
         radasView:"dashboard",
         radasContentNotes:[],
         isteriView:"dashboard",
-        isteriContentNotes:[],
+        isteriContentNotes:makeDefaultIsteriContentNotes(),
+        isteriContentSeedVersion:1,
         dexsatoView:"dashboard",
         dexsatoContentNotes:makeDefaultDexsatoContentNotes(),
         dexsatoContentSeedVersion:1,
@@ -1464,6 +2078,14 @@
         if(!Array.isArray(parsed.radasContentNotes)) parsed.radasContentNotes = [];
         if(!parsed.isteriView) parsed.isteriView = "dashboard";
         if(!Array.isArray(parsed.isteriContentNotes)) parsed.isteriContentNotes = [];
+        if(Number(parsed.isteriContentSeedVersion || 0) < 1){
+          const existingIds = new Set(parsed.isteriContentNotes.map(note=>note.id));
+          parsed.isteriContentNotes = [
+            ...makeDefaultIsteriContentNotes().filter(note=>!existingIds.has(note.id)),
+            ...parsed.isteriContentNotes
+          ];
+          parsed.isteriContentSeedVersion = 1;
+        }
         if(!parsed.dexsatoView) parsed.dexsatoView = "dashboard";
         if(!Array.isArray(parsed.dexsatoContentNotes)) parsed.dexsatoContentNotes = [];
         if(Number(parsed.dexsatoContentSeedVersion || 0) < 1){
@@ -2084,21 +2706,22 @@
       if(!list) return;
       const notes = state.isteriContentNotes || [];
       if(!notes.length){
-        list.innerHTML = '<div class="note-empty"><strong>Belum ada nota content.</strong><br>Klik <strong>+ Tambah Nota</strong> untuk mula bina Content List Isteri Malam.</div>';
+        list.innerHTML = '<div class="note-empty">Belum ada nota content. Klik + Tambah Nota untuk mula.</div>';
         return;
       }
-      list.innerHTML = notes.map(note=>`
-        <article class="content-note-card">
-          <div class="content-note-head">
+      list.innerHTML = '<ol class="isteri-idea-list">' + notes.map(note=>`
+        <li class="isteri-idea-row">
+          <div class="isteri-idea-main">
+            <span class="isteri-idea-category">${escapeHtml(note.category || "Nota")}</span>
             <div class="content-note-title">${escapeHtml(note.title)}</div>
-            <div class="content-note-actions">
-              <button type="button" class="icon-btn" onclick="openIsteriNoteEditor('${note.id}')">Edit</button>
-              <button type="button" class="icon-btn" onclick="deleteIsteriNote('${note.id}')">Delete</button>
-            </div>
+            <div class="content-note-body">${renderSimpleMarkdown(note.content || "")}</div>
           </div>
-          <div class="content-note-body">${renderSimpleMarkdown(note.content || "")}</div>
-        </article>
-      `).join("");
+          <div class="content-note-actions">
+            <button type="button" class="icon-btn" onclick="openIsteriNoteEditor('${note.id}')">Edit</button>
+            <button type="button" class="icon-btn" onclick="deleteIsteriNote('${note.id}')">Delete</button>
+          </div>
+        </li>
+      `).join("") + '</ol>';
     }
 
     function renderIsteriContentView(){
