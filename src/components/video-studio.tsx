@@ -1,4 +1,5 @@
 'use client';
+import { GENERATION_TIMEOUTS } from '@/lib/generations/timeouts';
 
 import Image from 'next/image';
 import './ingredients.css';
@@ -112,7 +113,7 @@ export function VideoStudio({ credits, generationEnabled, onCreditsChanged }: { 
     }
     submittingNow.current = true; setSubmitting(true); setFlowError(''); setGeneration(null); setSelectedHistoryId(null);
     try {
-      const data = await requestJson('/api/generations', { method: 'POST', body: pending.current.form }, 45_000);
+      const data = await requestJson('/api/generations', { method: 'POST', body: pending.current.form }, GENERATION_TIMEOUTS.browserSubmitMs);
       const next = parseRequestedGeneration(data, pending.current.id);
       const form = pending.current.form;
       details.current = { id: next.id, prompt: String(form.get('prompt')).trim(), mode: form.get('mode') as VideoMode,

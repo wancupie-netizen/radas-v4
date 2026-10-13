@@ -1,0 +1,24 @@
+// Virtual time; exercise real transport and browser request helper without live services or waiting minutes.
+const assert=require('node:assert/strict'),fs=require('node:fs'),path=require('node:path'),Module=require('node:module'),ts=require('typescript');
+const cache=new Map();
+function load(file){file=path.resolve(file);if(cache.has(file))return cache.get(file).exports;const mod=new Module(file);cache.set(file,mod);const native=Module.createRequire(file);mod.require=name=>{if(name==='server-only')return{};const resolved=name.startsWith('@/')?path.resolve('src',name.slice(2)+'.ts'):name.startsWith('.')?path.resolve(path.dirname(file),name+'.ts'):null;return resolved?load(resolved):native(name);};mod._compile(ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,esModuleInterop:true}}).outputText,file);return mod.exports;}
+const {createNexabotClient,NexabotError}=load('src/lib/nexabot/client.ts'),{requestJson,RequestError}=load('src/lib/errors/client.ts'),{GENERATION_TIMEOUTS:budgets}=load('src/lib/generations/timeouts.ts');
+const originalSet=global.setTimeout,originalClear=global.clearTimeout,originalTimeout=AbortSignal.timeout,originalFetch=global.fetch;
+let now=0,serial=0,timers=new Map(),calls=0;
+const later=(fn,ms)=>{const id=++serial;timers.set(id,{fn,at:now+ms});return id;};
+const accepted={ok:true,job_id:'slow_job',status:'queued',credit_cost:0.15,credit_balance:1,est_seconds:150};
+function fetchAfter(ms,body=accepted,status=202){return async(_url,init)=>{calls++;return new Promise((resolve,reject)=>{const id=later(()=>resolve(Response.json(body,{status})),ms);init.signal.addEventListener('abort',()=>{timers.delete(id);reject(new DOMException('Aborted','AbortError'));},{once:true});});};}
+async function run(action){let finished=false,result,error;action.then(v=>{finished=true;result=v;},e=>{finished=true;error=e;});for(let i=0;i<100&&!finished;i++){await new Promise(r=>setImmediate(r));if(finished)break;const entries=[...timers].sort((a,b)=>a[1].at-b[1].at);assert.ok(entries.length,'pending task has a timer');const [id,t]=entries[0];timers.delete(id);now=t.at;t.fn();}assert.ok(finished,'request settled');timers.clear();if(error)throw error;return result;}
+(async()=>{global.setTimeout=later;global.clearTimeout=id=>timers.delete(id);AbortSignal.timeout=ms=>{const controller=new AbortController();later(()=>controller.abort(new DOMException('Timeout','TimeoutError')),ms);return controller.signal;};try{
+ assert.deepEqual(budgets,{providerReadMs:15000,providerSubmitMs:60000,browserSubmitMs:180000});
+ const input={mode:'text',prompt:'Test',orientation:'portrait',resolution:'720'};
+ let start=now;const provider=createNexabotClient({apiKey:'nxb_TEST',fetcher:fetchAfter(20000)});assert.equal((await run(provider.submitVideo(input))).jobId,'slow_job');assert.equal(now-start,20000);assert.equal(calls,1);
+ start=now;await assert.rejects(run(createNexabotClient({apiKey:'nxb_TEST',fetcher:fetchAfter(61000)}).submitVideo(input)),e=>e instanceof NexabotError&&e.code==='TIMEOUT'&&e.outcome==='unknown');assert.equal(now-start,60000);assert.equal(calls,2);
+ start=now;await assert.rejects(run(createNexabotClient({apiKey:'nxb_TEST',fetcher:fetchAfter(20000)}).getCredit()),e=>e.code==='TIMEOUT'&&e.outcome==='read');assert.equal(now-start,15000);
+ start=now;await assert.rejects(run(createNexabotClient({apiKey:'nxb_TEST',fetcher:fetchAfter(20000)}).getJob('job')),e=>e.code==='TIMEOUT'&&e.outcome==='read');assert.equal(now-start,15000);
+ start=now;await assert.rejects(run(createNexabotClient({apiKey:'nxb_TEST',timeoutMs:5,fetcher:fetchAfter(10)}).submitVideo(input)),e=>e.code==='TIMEOUT');assert.equal(now-start,5);
+ global.fetch=fetchAfter(70000,{id:'existing-request',status:'queued'},202);start=now;const before=calls;assert.equal((await run(requestJson('/api/generations',{method:'POST'},budgets.browserSubmitMs))).status,'queued');assert.equal(now-start,70000);assert.equal(calls,before+1);
+ global.fetch=fetchAfter(181000);start=now;const beforeTimeout=calls;await assert.rejects(run(requestJson('/api/generations',{method:'POST'},budgets.browserSubmitMs)),e=>e instanceof RequestError);assert.equal(now-start,180000);assert.equal(calls,beforeTimeout+1);
+ global.fetch=fetchAfter(21000);start=now;await assert.rejects(run(requestJson('/api/generations/id')),e=>e instanceof RequestError);assert.equal(now-start,20000);
+ console.log('PASS submit budgets: accepts provider reply after old 15s limit; aborts at 60s as unknown; reads stay 15s; browser accepts 70s response and aborts at 180s; default reads 20s; overrides and one POST preserved');
+}finally{global.setTimeout=originalSet;global.clearTimeout=originalClear;AbortSignal.timeout=originalTimeout;global.fetch=originalFetch;}})().catch(e=>{console.error(e);process.exitCode=1;});

@@ -1,4 +1,5 @@
 import 'server-only';
+import { GENERATION_TIMEOUTS } from '../generations/timeouts';
 import { validateImageFile, validatePrompt, VIDEO_INPUT, type VideoOrientation, type VideoResolution } from '../video/input';
 
 const BASE = 'https://nexabot.id';
@@ -47,16 +48,17 @@ async function payload(input: VideoRequest) {
 }
 
 // No automatic retry: a lost POST response may still represent a charged job.
-export function createNexabotClient(options: { apiKey?: string; fetcher?: typeof fetch; timeoutMs?: number } = {}) {
+export function createNexabotClient(options: { apiKey?: string; fetcher?: typeof fetch; timeoutMs?: number; submitTimeoutMs?: number } = {}) {
   const key = options.apiKey ?? process.env.NEXABOT_API_KEY;
   if (!key || !/^nxb_[A-Za-z0-9_-]+$/.test(key)) throw new NexabotError('MISSING_OR_INVALID_KEY', 'rejected');
   const fetcher = options.fetcher ?? fetch;
-  const timeoutMs = options.timeoutMs ?? 15_000;
+  const timeoutMs = options.timeoutMs ?? GENERATION_TIMEOUTS.providerReadMs;
+  const submitTimeoutMs = options.submitTimeoutMs ?? options.timeoutMs ?? GENERATION_TIMEOUTS.providerSubmitMs;
   async function request<T>(path: string, method: 'GET' | 'POST', parse: (response: Response) => Promise<T>, body?: unknown): Promise<T> {
     const controller = new AbortController();
     let responseStatus: number | undefined;
     let received = false;
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    const timer = setTimeout(() => controller.abort(), method === 'POST' ? submitTimeoutMs : timeoutMs);
     try {
       let response = await fetcher(BASE + path, { method, cache: 'no-store', redirect: 'manual', signal: controller.signal,
         headers: { 'x-api-key': key!, ...(body ? { 'Content-Type': 'application/json' } : {}) },

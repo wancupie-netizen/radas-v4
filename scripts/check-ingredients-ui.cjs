@@ -19,6 +19,7 @@ function words(tree){if(Array.isArray(tree))return tree.map(words).join('');retu
 const settle=()=>new Promise(resolve=>setImmediate(resolve));
 (async()=>{
  const originalWindow=global.window,create=URL.createObjectURL,revoke=URL.revokeObjectURL,fetch=global.fetch;
+ const originalTimeout=AbortSignal.timeout;const timeouts=[];AbortSignal.timeout=ms=>{timeouts.push(ms);return originalTimeout(ms);};
  let revoked=[],uploads=[],serial=0;
  URL.createObjectURL=()=>`blob:fixture-${++serial}`;URL.revokeObjectURL=url=>revoked.push(url);
  global.window={Image:class{naturalWidth=2;naturalHeight=2;async decode(){}}};
@@ -43,9 +44,9 @@ const settle=()=>new Promise(resolve=>setImmediate(resolve));
  find('textarea',()=>true).props.onChange({target:{value:'Single image prompt'}});
  find('select',n=>n.props.id==='mode').props.onChange({target:{value:'ingredients'}});assert.match(words(panel()),/3 img rujukan/);assert.equal(find('textarea',()=>true).props.value,'');
  find('textarea',()=>true).props.onChange({target:{value:'Gunakan tiga img ini.'}});
- find('form',()=>true).props.onSubmit({preventDefault(){}});await settle();await settle();
- assert.equal(uploads.length,1);assert.equal(uploads[0].getAll('image').length,3);assert.equal(uploads[0].get('mode'),'ingredients');
+ find('form',()=>true).props.onSubmit({preventDefault(){}});find('form',()=>true).props.onSubmit({preventDefault(){}});await settle();await settle();
+ assert.equal(timeouts.at(-1),180_000);assert.equal(uploads.length,1);assert.equal(uploads[0].getAll('image').length,3);assert.equal(uploads[0].get('mode'),'ingredients');
  assert.equal(find('fieldset',n=>n.props.className==='generation-settings').props.disabled,true);
  console.log('PASS actual Ingredients UI handlers: add, remove, max-three guard, previews, multipart upload and locked generation settings');
- }finally{global.window=originalWindow;URL.createObjectURL=create;URL.revokeObjectURL=revoke;global.fetch=fetch;}
+ }finally{AbortSignal.timeout=originalTimeout;global.window=originalWindow;URL.createObjectURL=create;URL.revokeObjectURL=revoke;global.fetch=fetch;}
 })().catch(e=>{console.error(e);process.exitCode=1;});
