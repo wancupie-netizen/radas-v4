@@ -62,7 +62,7 @@ export function createGenerationFlow(rawStore: GenerationStore, provider: Return
       catch { claim = await store.operation('claim', userId, requestId, { claimToken }); }
       if (!claim.claimAllowed) return parseGeneration(claim);
       let accepted;
-      try { accepted = await observeGeneration('provider_submit', requestId, () => provider.submitVideo(input), true); }
+      try { accepted = await observeGeneration('provider_submit', requestId, () => provider.submitVideo(input, transport => generationLog('provider_transport', { requestId, transport })), true); }
       catch (error) {
         const status = error instanceof NexabotError && error.outcome === 'rejected' ? 'rejected' : 'unknown';
         const saved = await save(userId, requestId, { status, claimToken });

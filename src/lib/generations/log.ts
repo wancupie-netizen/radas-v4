@@ -1,10 +1,10 @@
 import 'server-only';
-import { NexabotError } from '../nexabot/client';
+import { NexabotError, type TransportDiagnostic } from '../nexabot/client';
 import { GenerationError } from './input';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const stages = new Set(['request_auth','request_input','request_submit','request_status','database_read','database_reserve','database_claim','database_cancel','database_transition','database_poll','database_reconcile','provider_credit','provider_submit','provider_poll','generation_outcome']);
+const stages = new Set(['request_auth','request_input','request_submit','request_status','database_read','database_reserve','database_claim','database_cancel','database_transition','database_poll','database_reconcile','provider_transport','provider_credit','provider_submit','provider_poll','generation_outcome']);
 const codes = new Set(['unavailable','unauthorized','forbidden','generation_disabled','rate_limited','invalid_input','invalid_image','image_too_large','insufficient_credits','active_generation','request_conflict','not_found','expired','provider_unavailable','TIMEOUT','INVALID_INPUT','MISSING_OR_INVALID_KEY','INVALID_OR_UNAVAILABLE_RESPONSE','UNSAFE_DOWNLOAD_REDIRECT']);
-type Entry = { requestId?: string; error?: unknown; durationMs?: number; providerJobId?: string | null; status?: string; sqlState?: string };
+type Entry = { requestId?: string; error?: unknown; durationMs?: number; providerJobId?: string | null; status?: string; sqlState?: string; transport?: TransportDiagnostic };
 // Deliberate field allowlist: never serialize errors, request bodies, prompts, media, keys or customer identity.
 export function generationLog(stage: string, entry: Entry = {}) {
   try {
@@ -28,6 +28,14 @@ export function generationLog(stage: string, entry: Entry = {}) {
         if (Number.isInteger(error.diagnostic.httpStatus) && error.diagnostic.httpStatus! >= 100 && error.diagnostic.httpStatus! <= 599) record.httpStatus = error.diagnostic.httpStatus!;
       }
     } else if (error) record.code = 'unavailable';
+    const transport = entry.transport ?? (error instanceof NexabotError ? error.diagnostic?.transport : undefined);
+    if (transport) {
+      if (['before_headers','response_body','complete'].includes(transport.phase)) record.phase = transport.phase;
+      for (const key of ['payloadBytes','imageCount','headerMs'] as const) { const value = transport[key]; if (typeof value === 'number' && Number.isFinite(value) && value >= 0) record[key] = Math.round(value); }
+      if (['t2v','sfv','i2v'].includes(String(transport.mode))) record.mode = transport.mode!;
+      if (Number.isInteger(transport.httpStatus) && transport.httpStatus! >= 100 && transport.httpStatus! <= 599) record.httpStatus = transport.httpStatus!;
+      if (Array.isArray(transport.imageBytes) && transport.imageBytes.length <= 3 && transport.imageBytes.every(n=>Number.isSafeInteger(n)&&n>=0)) record.imageBytes = transport.imageBytes.join(',');
+    }
     console.info(JSON.stringify(record));
   } catch { /* Logging must never alter generation/credit behavior. */ }
 }
