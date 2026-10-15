@@ -744,6 +744,21 @@
     @media(prefers-reduced-motion:reduce){
       *{transition:none!important}
     }
+    /* ---------- Isteri Malam Video List ---------- */
+    .isteri-video-list{display:flex;flex-direction:column;gap:12px}
+    .isteri-video-row{border:1px solid var(--line);border-radius:12px;padding:16px;background:var(--surface)}
+    .isteri-video-head{display:flex;justify-content:space-between;align-items:start;gap:14px;flex-wrap:wrap}
+    .isteri-video-main{min-width:0;flex:1 1 220px}
+    .isteri-video-title{font-size:15px;font-weight:700;overflow-wrap:anywhere;margin:7px 0}
+    .isteri-video-url{font-size:12px;color:var(--muted);overflow-wrap:anywhere}
+    .isteri-video-actions{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
+    .isteri-video-actions a{text-decoration:none}
+    .isteri-video-preview{margin-top:16px}
+    .isteri-video-player{display:block;width:100%;max-width:640px;aspect-ratio:16/9;border:0;border-radius:10px;background:#101827;margin:auto}
+    .isteri-video-player.vertical{max-width:320px;aspect-ratio:9/16}
+    .isteri-video-help{font-size:12px;color:var(--muted);margin:10px 0 0}
+    .isteri-video-error{font-size:13px;font-weight:600;color:var(--danger);margin:10px 0}
+    [hidden]{display:none!important}
   </style>
 </head>
 <body>
@@ -772,6 +787,7 @@
           <button type="button" class="dexsato-content-link" id="radasContentLink" onclick="switchRadasView('content')" hidden>Content List</button>
           <button type="button" class="dexsato-content-link" id="dexsatoContentLink" onclick="switchDexsatoView('content')" hidden>Content List</button>
           <button type="button" class="isteri-content-link" id="isteriContentLink" onclick="switchIsteriView('content')" hidden>Content List</button>
+          <button type="button" class="isteri-content-link" id="isteriVideoLink" onclick="switchIsteriView('videos')" hidden>Senarai Video</button>
         </div>
       </div>
       <div class="week">
@@ -886,6 +902,32 @@
         <div id="isteriContentList" class="content-list-grid"></div>
       </div>
     </section>
+
+    <section class="card" id="isteriVideoCard" style="margin-bottom:18px" hidden>
+      <div class="content-list-shell">
+        <div class="note-toolbar">
+          <div><div class="eyebrow">Isteri Malam Video Workspace</div><h2>Senarai Video</h2></div>
+          <button type="button" class="btn btn-primary" id="isteriVideoAdd">+ Tambah Video</button>
+        </div>
+        <p class="isteri-video-help" style="margin:0 0 16px">Simpan link YouTube, Facebook Reel atau video lain. Preview bergantung pada sokongan sumber. Senarai disimpan dalam browser ini sahaja.</p>
+        <p id="isteriVideoMessage" role="status" aria-live="polite"></p>
+        <div id="isteriVideoList" class="isteri-video-list"></div>
+      </div>
+    </section>
+
+    <dialog id="isteriVideoDialog">
+      <form class="modal" id="isteriVideoForm">
+        <div class="section-head"><h2 id="isteriVideoDialogTitle">Tambah Video</h2><button type="button" class="icon-btn" id="isteriVideoClose" aria-label="Tutup borang video">×</button></div>
+        <input type="hidden" id="isteriVideoId" />
+        <label class="field-label" for="isteriVideoUrl">Link video</label>
+        <input type="url" id="isteriVideoUrl" required maxlength="4096" placeholder="https://www.youtube.com/shorts/..." />
+        <label class="field-label" for="isteriVideoTitle" style="margin-top:16px">Tajuk (pilihan)</label>
+        <input type="text" id="isteriVideoTitle" maxlength="160" placeholder="Contoh: Video Gambir 01" />
+        <p class="isteri-video-help">Link HTTPS sahaja. Tajuk boleh dibiarkan kosong.</p>
+        <p id="isteriVideoError" class="isteri-video-error" role="alert"></p>
+        <div class="actions"><button type="submit" class="btn btn-primary">Simpan Video</button><button type="button" class="btn btn-soft" id="isteriVideoCancel">Batal</button></div>
+      </form>
+    </dialog>
 
     <dialog id="radasContentDialog">
       <form class="modal" id="radasContentForm">
@@ -2035,6 +2077,7 @@
         activeProject:"radas",
         radasView:"dashboard",
         radasContentNotes:[],
+        isteriVideos:[],
         isteriView:"dashboard",
         isteriContentNotes:makeDefaultIsteriContentNotes(),
         isteriContentSeedVersion:1,
@@ -2076,7 +2119,8 @@
 
         if(!parsed.radasView) parsed.radasView = "dashboard";
         if(!Array.isArray(parsed.radasContentNotes)) parsed.radasContentNotes = [];
-        if(!parsed.isteriView) parsed.isteriView = "dashboard";
+        if(!["dashboard","content","videos"].includes(parsed.isteriView)) parsed.isteriView = "dashboard";
+        if(!Array.isArray(parsed.isteriVideos)) parsed.isteriVideos = [];
         if(!Array.isArray(parsed.isteriContentNotes)) parsed.isteriContentNotes = [];
         if(Number(parsed.isteriContentSeedVersion || 0) < 1){
           const existingIds = new Set(parsed.isteriContentNotes.map(note=>note.id));
@@ -2652,7 +2696,7 @@
 
     /* ---------- Isteri Malam Content List ---------- */
     function switchIsteriView(view){
-      if(view !== "dashboard" && view !== "content") return;
+      if(view !== "dashboard" && view !== "content" && view !== "videos") return;
       state.isteriView = view;
       saveState();
       renderIsteriContentView();
@@ -2729,16 +2773,190 @@
       const view = state.isteriView || "dashboard";
       const link = document.getElementById("isteriContentLink");
       const card = document.getElementById("isteriContentCard");
+      const videoLink = document.getElementById("isteriVideoLink");
+      const videoCard = document.getElementById("isteriVideoCard");
+      videoLink.hidden = !isIsteri;
+      videoLink.classList.toggle("active", isIsteri && view === "videos");
+      videoCard.hidden = !(isIsteri && view === "videos");
+      closeIsteriVideoPreview();
       link.hidden = !isIsteri;
       link.classList.toggle("active", isIsteri && view === "content");
       card.hidden = !(isIsteri && view === "content");
       if(isIsteri){
         document.querySelectorAll(".dashboard-section").forEach(section=>{
-          section.hidden = view === "content";
+          section.hidden = view !== "dashboard";
         });
       }
       if(isIsteri && view === "content") renderIsteriContentList();
+      if(isIsteri && view === "videos") renderIsteriVideos();
     }
+
+    /* Video URLs are parsed locally. No metadata fetch or uploaded video copies. */
+    function parseIsteriVideoUrl(value){
+      if(typeof value !== "string" || value.length > 4096) throw new Error("Link video tidak sah.");
+      let url;
+      try{ url = new URL(value.trim()); }catch{ throw new Error("Masukkan link video penuh yang sah."); }
+      if(url.protocol !== "https:" || url.username || url.password || url.port){
+        throw new Error("Gunakan link HTTPS tanpa nama pengguna, kata laluan atau port khas.");
+      }
+      const host = url.hostname.toLowerCase();
+      const youtube = ["youtube.com","www.youtube.com","m.youtube.com","youtu.be","www.youtu.be"].includes(host);
+      if(youtube){
+        let id = "", vertical = false;
+        if(host === "youtu.be" || host === "www.youtu.be") id = url.pathname.split("/")[1] || "";
+        else if(url.pathname === "/watch") id = url.searchParams.get("v") || "";
+        else{
+          const match = /^\/(shorts|embed)\/([A-Za-z0-9_-]{11})\/?$/.exec(url.pathname);
+          if(match){ id = match[2]; vertical = match[1] === "shorts"; }
+        }
+        if(!/^[A-Za-z0-9_-]{11}$/.test(id)) throw new Error("Gunakan link video YouTube atau Shorts yang lengkap.");
+        return {url:vertical ? "https://www.youtube.com/shorts/"+id : "https://www.youtube.com/watch?v="+id,
+          key:"youtube:"+id, label:vertical ? "YouTube Shorts" : "YouTube", fallback:(vertical ? "YouTube Shorts" : "YouTube")+" · "+id,
+          embed:"https://www.youtube-nocookie.com/embed/"+id, type:"iframe", vertical};
+      }
+      if(["facebook.com","www.facebook.com","web.facebook.com","m.facebook.com"].includes(host)){
+        const match = /^\/reel\/(\d+)\/?$/.exec(url.pathname);
+        if(match){
+          const canonical = "https://www.facebook.com/reel/"+match[1];
+          return {url:canonical,key:"facebook:"+match[1],label:"Facebook Reel",fallback:"Facebook Reel · "+match[1],
+            embed:"https://www.facebook.com/plugins/video.php?href="+encodeURIComponent(canonical)+"&show_text=false&width=320&height=568",
+            type:"iframe",vertical:true};
+        }
+        return {url:url.href,key:url.href,label:"Facebook",fallback:"Video Facebook",type:"link"};
+      }
+      const direct = /\.(mp4|webm)$/i.test(url.pathname);
+      return {url:url.href,key:url.href,label:direct ? "Fail video" : "Link video",fallback:url.hostname,
+        type:direct ? "video" : "link",vertical:false};
+    }
+
+    const isteriVideoDialog = document.getElementById("isteriVideoDialog");
+    const isteriVideoForm = document.getElementById("isteriVideoForm");
+    let activeIsteriPreview = null;
+
+    function closeIsteriVideoPreview(){
+      if(!activeIsteriPreview) return;
+      const {box,button} = activeIsteriPreview;
+      box.replaceChildren(); box.hidden = true;
+      button.textContent = "Preview"; button.setAttribute("aria-expanded","false");
+      activeIsteriPreview = null;
+    }
+
+    function showIsteriVideoPreview(info,box,button){
+      const wasOpen = activeIsteriPreview && activeIsteriPreview.box === box;
+      closeIsteriVideoPreview();
+      if(wasOpen) return;
+      box.hidden = false; button.textContent = "Tutup Preview"; button.setAttribute("aria-expanded","true");
+      activeIsteriPreview = {box,button};
+      const help = document.createElement("p"); help.className = "isteri-video-help";
+      help.textContent = "Jika preview disekat, tidak tersedia atau memerlukan login, gunakan butang Buka. Preview dimuatkan daripada sumber asal.";
+      if(info.type === "link"){
+        help.textContent = "Preview tidak tersedia untuk format link ini. Gunakan butang Buka.";
+      }else{
+        const player = document.createElement(info.type === "iframe" ? "iframe" : "video");
+        player.className = "isteri-video-player"+(info.vertical ? " vertical" : "");
+        if(info.type === "iframe"){
+          player.src = info.embed; player.title = "Preview "+info.label;
+          player.setAttribute("allow","encrypted-media; picture-in-picture; fullscreen");
+          player.setAttribute("allowfullscreen","");
+          // Override the page's same-origin policy: YouTube requires an identifying referrer.
+          player.setAttribute("referrerpolicy","strict-origin-when-cross-origin");
+        }else{
+          player.src = info.url; player.controls = true; player.preload = "metadata"; player.playsInline = true;
+          player.addEventListener("error",()=>{ help.textContent = "Video tidak dapat dimainkan. Gunakan butang Buka untuk semak link asal."; });
+        }
+        box.append(player);
+      }
+      box.append(help);
+    }
+
+    function persistIsteriVideos(next){
+      const previous = state.isteriVideos;
+      state.isteriVideos = next;
+      try{ saveState(); return true; }
+      catch{
+        state.isteriVideos = previous;
+        return false;
+      }
+    }
+
+    function openIsteriVideoEditor(id){
+      isteriVideoForm.reset();
+      const item = id ? state.isteriVideos.find(video=>video && video.id === id) : null;
+      document.getElementById("isteriVideoId").value = item ? item.id : "";
+      document.getElementById("isteriVideoUrl").value = item ? item.url : "";
+      document.getElementById("isteriVideoTitle").value = item ? item.title || "" : "";
+      document.getElementById("isteriVideoDialogTitle").textContent = item ? "Edit Video" : "Tambah Video";
+      document.getElementById("isteriVideoError").textContent = "";
+      isteriVideoDialog.showModal();
+    }
+
+    function renderIsteriVideos(){
+      closeIsteriVideoPreview();
+      const list = document.getElementById("isteriVideoList"); list.replaceChildren();
+      const videos = state.isteriVideos || [];
+      let valid = 0;
+      videos.forEach(item=>{
+        if(!item || typeof item.id !== "string" || typeof item.title !== "string") return;
+        let info;
+        try{ info = parseIsteriVideoUrl(item.url); }catch{ return; }
+        valid++;
+        const row = document.createElement("article"); row.className = "isteri-video-row";
+        const head = document.createElement("div"); head.className = "isteri-video-head";
+        const main = document.createElement("div"); main.className = "isteri-video-main";
+        const badge = document.createElement("span"); badge.className = "tag"; badge.textContent = info.label;
+        const title = document.createElement("h3"); title.className = "isteri-video-title"; title.textContent = item.title || info.fallback;
+        const url = document.createElement("div"); url.className = "isteri-video-url"; url.textContent = info.url;
+        main.append(badge,title,url);
+        const actions = document.createElement("div"); actions.className = "isteri-video-actions";
+        const preview = document.createElement("button"); preview.type = "button"; preview.className = "icon-btn";
+        preview.textContent = "Preview"; preview.setAttribute("aria-expanded","false");
+        const box = document.createElement("div"); box.className = "isteri-video-preview"; box.hidden = true;
+        preview.addEventListener("click",()=>showIsteriVideoPreview(info,box,preview));
+        const open = document.createElement("a"); open.className = "icon-btn"; open.textContent = "Buka";
+        open.href = info.url; open.target = "_blank"; open.rel = "noopener noreferrer"; open.setAttribute("aria-label","Buka "+(item.title || info.fallback));
+        const edit = document.createElement("button"); edit.type = "button"; edit.className = "icon-btn"; edit.textContent = "Edit";
+        edit.addEventListener("click",()=>openIsteriVideoEditor(item.id));
+        const remove = document.createElement("button"); remove.type = "button"; remove.className = "icon-btn"; remove.textContent = "Padam";
+        remove.addEventListener("click",()=>{
+          if(!window.confirm("Padam link video ini daripada senarai?")) return;
+          if(!persistIsteriVideos(state.isteriVideos.filter(video=>video !== item))){
+            document.getElementById("isteriVideoMessage").textContent = "Perubahan belum disimpan. Simpanan browser mungkin penuh atau tidak tersedia."; return;
+          }
+          document.getElementById("isteriVideoMessage").textContent = "Link video dipadam daripada senarai.";
+          renderIsteriVideos();
+        });
+        actions.append(preview,open,edit,remove); head.append(main,actions); row.append(head,box); list.append(row);
+      });
+      if(!valid){
+        const empty = document.createElement("div"); empty.className = "empty";
+        empty.textContent = "Belum ada video. Klik + Tambah Video dan masukkan link."; list.append(empty);
+      }
+    }
+
+    document.getElementById("isteriVideoAdd").addEventListener("click",()=>openIsteriVideoEditor());
+    document.getElementById("isteriVideoClose").addEventListener("click",()=>isteriVideoDialog.close());
+    document.getElementById("isteriVideoCancel").addEventListener("click",()=>isteriVideoDialog.close());
+    isteriVideoForm.addEventListener("submit",event=>{
+      event.preventDefault();
+      const error = document.getElementById("isteriVideoError"); error.textContent = "";
+      try{
+        const info = parseIsteriVideoUrl(document.getElementById("isteriVideoUrl").value);
+        const id = document.getElementById("isteriVideoId").value;
+        const title = document.getElementById("isteriVideoTitle").value.trim();
+        if(title.length > 160) throw new Error("Tajuk maksimum 160 aksara.");
+        const duplicate = state.isteriVideos.some(item=>{
+          if(!item || item.id === id) return false;
+          try{ return parseIsteriVideoUrl(item.url).key === info.key; }catch{ return false; }
+        });
+        if(duplicate) throw new Error("Video ini sudah ada dalam senarai.");
+        if(id && !state.isteriVideos.some(item=>item && item.id === id)) throw new Error("Rekod video tidak ditemui. Tutup borang dan cuba semula.");
+        const next = id ? state.isteriVideos.map(item=>item && item.id === id ? {...item,title,url:info.url} : item)
+          : [{id:makeId(),title,url:info.url},...state.isteriVideos];
+        if(!persistIsteriVideos(next)) throw new Error("Video belum disimpan. Simpanan browser mungkin penuh atau tidak tersedia.");
+        isteriVideoDialog.close(); renderIsteriVideos();
+        document.getElementById("isteriVideoMessage").textContent = id ? "Link video dikemas kini." : "Link video disimpan.";
+      }catch(problem){ error.textContent = problem.message || "Video belum disimpan."; }
+    });
 
     function renderProducts(){
       const body = document.getElementById("productTableBody");
