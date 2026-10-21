@@ -762,7 +762,15 @@
   </style>
 </head>
 <body>
-  <main class="wrap">
+  <aside style="width:min(1080px,calc(100% - 32px));margin:18px auto 0;padding:14px 18px;background:#fff;border:1px solid #cfd7e3;border-radius:12px">
+    <span id="cloudStatus" role="status" aria-live="polite">Sedang memuatkan data akaun…</span>
+    <div class="actions" style="margin-top:8px">
+      <button type="button" class="btn btn-soft" id="cloudRetry" hidden>Cuba semula</button>
+      <button type="button" class="btn btn-soft" id="cloudBackup">Muat turun backup</button>
+      <button type="button" class="btn btn-soft" id="cloudReload" hidden>Muat semula data akaun</button>
+    </div>
+  </aside>
+  <main class="wrap" id="centerMain" inert>
     <header class="top">
       <div class="eyebrow">Personal Weekly Dashboard</div>
       <h1>Command Center</h1>
@@ -1182,7 +1190,7 @@
       <div id="taskList" class="task-list"></div>
     </section>
 
-    <p class="footer">Data disimpan dalam browser ini menggunakan localStorage.</p>
+    <p class="footer">Data disimpan dalam akaun owner. Tunggu status “Berjaya disimpan” sebelum menutup halaman.</p>
   </main>
 
   <dialog id="weightDialog">
@@ -2092,9 +2100,9 @@
       };
     }
 
-    function loadState(){
+    function loadState(serialized){
       try{
-        const raw = localStorage.getItem(STORAGE_KEY);
+        const raw = serialized === undefined ? localStorage.getItem(STORAGE_KEY) : serialized;
         if(!raw) return createInitialState();
         const parsed = JSON.parse(raw);
 
@@ -2159,8 +2167,136 @@
     let state = loadState();
 
     function saveState(){
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch{ /* Cloud save still works when browser storage is full. */ }
+      queueCloudSave();
     }
+
+    // All writes are serialized, versioned and retryable with the same mutation ID.
+    const CLOUD_CACHE_KEY = STORAGE_KEY + ":cloud";
+    let cloudVersion = 0, cloudReady = false, cloudBusy = false, cloudDirty = false;
+    let cloudConflict = false, cloudPending = null, cloudTimer = null, cloudLoading = false;
+    let browserBackupAvailable = true;
+    const cloudStatus = document.getElementById("cloudStatus");
+    const cloudRetry = document.getElementById("cloudRetry");
+    const cloudReload = document.getElementById("cloudReload");
+
+    function lockCenter(locked){
+      document.getElementById("centerMain").inert = locked;
+      document.querySelectorAll("dialog").forEach(item=>{ item.inert = locked; });
+    }
+
+    function cloudMessage(message,retry=false){
+      cloudStatus.textContent = message + (browserBackupAvailable ? "" : " Backup browser tidak tersedia; muat turun backup jika perlu.");
+      cloudRetry.hidden = !retry;
+      cloudReload.hidden = !cloudConflict;
+    }
+
+    function cacheCloud(){
+      try{
+        localStorage.setItem(CLOUD_CACHE_KEY,JSON.stringify({version:cloudVersion,state,pending:cloudPending,dirty:cloudDirty}));
+      }catch{ browserBackupAvailable = false; }
+    }
+
+    async function cloudRequest(method,body){
+      const response = await fetch("/api/command-center",{
+        method,credentials:"same-origin",cache:"no-store",signal:AbortSignal.timeout(20000),
+        ...(body ? {headers:{"Content-Type":"application/json"},body:JSON.stringify(body)} : {})
+      });
+      if(response.status === 409){ const error = new Error("conflict"); error.conflict = true; throw error; }
+      if(!response.ok) throw new Error("unavailable");
+      return response.json();
+    }
+
+    function queueCloudSave(){
+      if(!cloudReady || cloudConflict) return;
+      cloudDirty = true; cacheCloud();
+      cloudMessage("Belum disimpan — menunggu simpanan…");
+      clearTimeout(cloudTimer);
+      cloudTimer = setTimeout(flushCloud,400);
+    }
+
+    async function flushCloud(){
+      if(!cloudReady || cloudConflict || cloudBusy || (!cloudDirty && !cloudPending)) return;
+      cloudBusy = true;
+      try{
+        while(cloudDirty || cloudPending){
+          if(!cloudPending){
+            cloudPending = {state:JSON.parse(JSON.stringify(state)),version:cloudVersion,mutationId:crypto.randomUUID()};
+            cloudDirty = false; cacheCloud();
+          }
+          cloudMessage("Sedang simpan ke akaun…");
+          const result = await cloudRequest("PUT",cloudPending);
+          if(result.version !== cloudPending.version + 1 || result.mutation_id !== cloudPending.mutationId) throw new Error("invalid_response");
+          cloudVersion = result.version; cloudPending = null; cacheCloud();
+        }
+        cloudMessage("Berjaya disimpan dalam akaun.");
+      }catch(error){
+        if(error.conflict){
+          cloudConflict = true; lockCenter(true);
+          cloudMessage("Data akaun telah berubah di tab atau peranti lain. Muat turun backup perubahan di sini sebelum memuat semula data akaun.");
+        }else{
+          cloudMessage("Belum berjaya disimpan ke akaun. Jangan tutup halaman; cuba semula apabila sambungan pulih.",true);
+        }
+      }finally{ cloudBusy = false; }
+    }
+
+    async function initializeCloud(){
+      if(cloudBusy || cloudLoading) return;
+      cloudLoading = true;
+      lockCenter(true); cloudMessage("Sedang memuatkan data akaun…");
+      try{
+        // Preserve the exact legacy data before any cloud read can replace the view.
+        try{
+          const legacy = localStorage.getItem(STORAGE_KEY);
+          if(legacy && !localStorage.getItem(STORAGE_KEY+":before-cloud")) localStorage.setItem(STORAGE_KEY+":before-cloud",legacy);
+        }catch{ browserBackupAvailable = false; }
+        let cached = null;
+        try{ cached = JSON.parse(localStorage.getItem(CLOUD_CACHE_KEY)); }catch{}
+        const {record} = await cloudRequest("GET");
+        if(record && (!Number.isSafeInteger(record.version) || !record.state?.projects?.radas || !record.state.projects.biscotto || !record.state.projects.dexsato)) throw new Error("invalid_record");
+        cloudVersion = record ? record.version : 0;
+        if(cached && (cached.pending || cached.dirty)){
+          state = loadState(JSON.stringify(cached.state));
+          cloudPending = cached.pending; cloudDirty = !!cached.dirty;
+          // If the last write reached the server before the browser closed, acknowledge it.
+          if(cloudPending && record?.mutation_id === cloudPending.mutationId && record.version === cloudPending.version + 1){
+            cloudPending = null;
+          }else if((cloudPending ? cloudPending.version : cached.version) !== cloudVersion){
+            cloudConflict = true; render(); lockCenter(true);
+            cloudMessage("Ada perubahan browser yang belum disimpan dan data akaun lebih baharu. Muat turun backup dahulu, kemudian muat semula data akaun.");
+            return;
+          }
+        }else if(record){
+          state = loadState(JSON.stringify(record.state));
+        }
+        cloudReady = true; render(); lockCenter(false); cacheCloud();
+        if(!record || cloudPending || cloudDirty){ cloudDirty = cloudDirty || !record; await flushCloud(); }
+        else cloudMessage("Data akaun dimuatkan. Semua perubahan telah disimpan.");
+      }catch{
+        cloudReady = false; lockCenter(true);
+        cloudMessage("Data akaun belum dapat dimuatkan. Data browser dikekalkan. Cuba semula untuk menyambung.",true);
+      }finally{ cloudLoading = false; }
+    }
+
+    document.getElementById("cloudBackup").addEventListener("click",()=>{
+      const blob = new Blob([JSON.stringify({format:"radas-command-center-v1",exportedAt:new Date().toISOString(),state},null,2)],{type:"application/json"});
+      const link = document.createElement("a"); const url = URL.createObjectURL(blob);
+      link.href = url; link.download = "radas-command-center-"+new Date().toISOString().slice(0,10)+".json";
+      link.click(); setTimeout(()=>URL.revokeObjectURL(url),1000);
+    });
+    cloudRetry.addEventListener("click",()=>cloudReady ? flushCloud() : initializeCloud());
+    cloudReload.addEventListener("click",()=>{
+      if(!window.confirm("Sudah muat turun backup? Perubahan yang belum disimpan di sini akan diganti dengan data akaun.")) return;
+      try{
+        localStorage.setItem(STORAGE_KEY+":conflict-backup",JSON.stringify(state));
+        localStorage.removeItem(CLOUD_CACHE_KEY);
+      }catch{ cloudMessage("Backup browser gagal. Muat turun backup sebelum meneruskan."); return; }
+      window.location.reload();
+    });
+    window.addEventListener("online",()=>cloudReady ? flushCloud() : initializeCloud());
+    window.addEventListener("beforeunload",event=>{
+      if(cloudDirty || cloudPending){ event.preventDefault(); event.returnValue = ""; }
+    });
 
     function projectName(key){
       if(key === "isteri") return "Isteri Malam";
@@ -2954,7 +3090,7 @@
           : [{id:makeId(),title,url:info.url},...state.isteriVideos];
         if(!persistIsteriVideos(next)) throw new Error("Video belum disimpan. Simpanan browser mungkin penuh atau tidak tersedia.");
         isteriVideoDialog.close(); renderIsteriVideos();
-        document.getElementById("isteriVideoMessage").textContent = id ? "Link video dikemas kini." : "Link video disimpan.";
+        document.getElementById("isteriVideoMessage").textContent = "Senarai video dikemas kini. Semak status simpanan di atas.";
       }catch(problem){ error.textContent = problem.message || "Video belum disimpan."; }
     });
 
@@ -3300,8 +3436,8 @@
       render();
     });
 
-    saveState();
     render();
+    initializeCloud();
 
     window.switchProject = switchProject;
     window.openRadasContentEditor = openRadasContentEditor;

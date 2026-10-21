@@ -54,7 +54,7 @@ const migration={...structuredClone(old),weekStart:'2026-10-12',isteriContentSee
 const migrationCtx=vm.createContext({URL,Date,JSON,Set,Number,Array,STORAGE_KEY:'radasCommandCenterV2',localStorage:{getItem:()=>JSON.stringify(migration)},
  createInitialState:()=>{throw Error('must not reset valid old data')},DEFAULTS:{radas:{},biscotto:{},dexsato:{},isteri:{}},makeProject:()=>({tasks:[]}),
  DEFAULT_RADAS_NOTE:'default',buildDefaultProducts:()=>[],makeDefaultIsteriContentNotes:()=>[],makeDefaultDexsatoContentNotes:()=>[]});
-vm.runInContext(script.slice(script.indexOf('    function loadState(){'),script.indexOf('    let state = loadState();')),migrationCtx);
+vm.runInContext(script.slice(script.indexOf('    function loadState('),script.indexOf('    let state = loadState();')),migrationCtx);
 const migrated=migrationCtx.loadState();assert.deepEqual(Array.from(migrated.isteriVideos),[]);
 assert.deepEqual(JSON.parse(JSON.stringify(migrated.isteriContentNotes)),old.isteriContentNotes);
 assert.deepEqual(JSON.parse(JSON.stringify(migrated.projects.radas)),old.projects.radas);
