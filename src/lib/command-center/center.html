@@ -695,6 +695,11 @@
     #noteEditor{min-height:60vh;font-family:var(--font);font-size:13.5px;line-height:1.6;white-space:pre-wrap}
 
     /* ---------- RADAS Content List ---------- */
+    .content-done-label{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:700;color:var(--teal);cursor:pointer;white-space:nowrap}
+    .content-done-label input{width:18px;height:18px;margin:0;accent-color:var(--teal);cursor:pointer}
+    .content-note-card.content-complete{border-color:var(--teal);background:#f0fbf8}
+    #radasContentList .content-note-head{flex-wrap:wrap}
+    #radasContentList .content-note-actions{flex-wrap:wrap;align-items:center}
     #radasContentEditor{min-height:260px;font-family:var(--font);font-size:13.5px;line-height:1.6;white-space:pre-wrap}
 
     /* ---------- DexSato Content List ---------- */
@@ -2865,6 +2870,14 @@
       renderRadasContentList();
     });
 
+    function setRadasContentDone(id,done){
+      const note = state.radasContentNotes.find(item=>item.id === id);
+      if(!note) return;
+      note.done = !!done;
+      saveState();
+      renderRadasContentList();
+    }
+
     function renderRadasContentList(){
       const list = document.getElementById("radasContentList");
       if(!list) return;
@@ -2874,15 +2887,16 @@
         return;
       }
       list.innerHTML = notes.map(note=>`
-        <article class="content-note-card">
+        <article class="content-note-card ${note.done ? 'content-complete' : ''}">
           <div class="content-note-head">
             <div class="content-note-title">${escapeHtml(note.title)}</div>
             <div class="content-note-actions">
+              ${note.id === "wan-sufi-plan-v1" ? "" : `<label class="content-done-label"><input type="checkbox" data-content-done="${escapeHtml(note.id)}" ${note.done ? "checked" : ""} aria-label="Siap: ${escapeHtml(note.title)}" /> Siap</label>`}
               <button type="button" class="icon-btn" onclick="openRadasContentEditor('${note.id}')">Edit</button>
               <button type="button" class="icon-btn" onclick="deleteRadasContentNote('${note.id}')">Delete</button>
             </div>
           </div>
-          <div class="content-note-body">${renderSimpleMarkdown(note.content || "")}</div>
+          <div class="content-note-body">${renderSimpleMarkdown(note.done ? (note.content || "").replace(/^\*\*Status:\*\* Idea \/ Draf$/m,"**Status:** Siap") : (note.content || ""))}</div>
         </article>
       `).join("");
     }
@@ -2916,6 +2930,13 @@
       if(isRadas && view === "notes") renderRadasNote();
       if(isRadas && view === "content") renderRadasContentList();
     }
+
+    document.getElementById("radasContentList").addEventListener("change",event=>{
+      const input = event.target;
+      if(input instanceof HTMLInputElement && input.matches("input[data-content-done]")){
+        setRadasContentDone(input.dataset.contentDone,input.checked);
+      }
+    });
 
     /* ---------- DexSato Content List ---------- */
     function switchDexsatoView(view){

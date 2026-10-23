@@ -27,6 +27,8 @@ function browser(initial = fixture(), cached) {
     document:{getElementById:element,querySelectorAll:()=>[],createElement:()=>({click(){}})},
     window:{addEventListener(){},confirm:()=>true,location:{reload(){}}},
     render(){},setTimeout:()=>1,clearTimeout(){},
+    escapeHtml:value=>String(value).replaceAll('&','&amp;').replaceAll('"','&quot;').replaceAll('<','&lt;').replaceAll('>','&gt;'),
+    renderSimpleMarkdown:value=>value,
     fetch:async(path,init)=>{
       assert.equal(path,'/api/command-center');
       if(offline) throw Error('offline');
@@ -40,6 +42,7 @@ function browser(initial = fixture(), cached) {
       return {ok:true,json:async()=>({version:record.version,mutation_id:record.mutation_id})};
     }});
   vm.runInContext(seed,ctx); vm.runInContext(sync,ctx);
+  vm.runInContext(script.slice(script.indexOf('    function setRadasContentDone('),script.indexOf('    function renderRadasProducts(')),ctx);
   return {run:code=>vm.runInContext(code,ctx),storage,element};
 }
 (async()=>{
@@ -67,6 +70,19 @@ function browser(initial = fixture(), cached) {
   const saved=copy(record);const other=browser();await other.run('initializeCloud()');
   assert.deepEqual(record,saved);assert.equal(record.state.radasContentNotes.length,31);
   assert.equal(record.state.radasContentNotes[1].title,'Edited');
+  // Actual checkbox handler saves completion through the existing account sync.
+  other.run('setRadasContentDone("wan-sufi-day-01-v1",true)');
+  await other.run('flushCloud()');
+  assert.equal(record.state.radasContentNotes.find(n=>n.id==='wan-sufi-day-01-v1').done,true);
+  assert.match(other.element('radasContentList').innerHTML,/data-content-done="wan-sufi-day-01-v1" checked/);
+  assert.doesNotMatch(other.element('radasContentList').innerHTML,/data-content-done="wan-sufi-plan-v1"/);
+  const reloaded=browser();await reloaded.run('initializeCloud()');reloaded.run('renderRadasContentList()');
+  assert.match(reloaded.element('radasContentList').innerHTML,/data-content-done="wan-sufi-day-01-v1" checked/);
+  reloaded.run('setRadasContentDone("wan-sufi-day-01-v1",false)');await reloaded.run('flushCloud()');
+  assert.equal(record.state.radasContentNotes.find(n=>n.id==='wan-sufi-day-01-v1').done,false);
+  assert.doesNotMatch(reloaded.element('radasContentList').innerHTML,/data-content-done="wan-sufi-day-01-v1" checked/);
+  assert.equal(record.state.radasContentNotes.find(n=>n.id==='wan-sufi-day-01-v1').title,'Edited');
+  reloaded.run('setRadasContentDone("missing",true)');
   // Partial seed: preserve edits to stable IDs; add only missing items once.
   const partial=fixture();partial.radasContentNotes.push({id:'wan-sufi-day-01-v1',title:'Custom',content:'Keep'});
   const p=browser(partial);p.run('seedWanSufiContent(state)');
