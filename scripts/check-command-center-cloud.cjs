@@ -8,7 +8,7 @@ const { PGlite } = require('@electric-sql/pglite');
 const uid = '33333333-3333-4333-8333-333333333333';
 const confirmed = { id: uid, email: 'wancupie@gmail.com', email_confirmed_at: '2026-10-01' };
 let user = confirmed, authError = null, offline = false, loseResponse = false, putCalls = 0;
-const fixture = { activeProject: 'isteri', isteriView: 'videos', radasView:'dashboard',dexsatoView:'dashboard',radasContentNotes:[],dexsatoContentNotes:[],radasNote:'default',radasProducts:[],isteriVideos: [{id:'v1',title:'Keep video',url:'https://example.com/one.mp4'}],
+const fixture = { activeProject: 'isteri', isteriView: 'videos', radasView:'dashboard',dexsatoView:'dashboard',radasContentNotes:[],radasWanSufiSeedVersion:1,dexsatoContentNotes:[],radasNote:'default',radasProducts:[],isteriVideos: [{id:'v1',title:'Keep video',url:'https://example.com/one.mp4'}],
   isteriContentSeedVersion:1,dexsatoContentSeedVersion:1,weekStart:'2026-10-19',isteriContentNotes:[{id:'note',title:'Keep note'}],
   projects:{radas:{tasks:[{id:'task',title:'Keep task'}]},biscotto:{tasks:[]},dexsato:{tasks:[]},isteri:{tasks:[]}},productStatuses:{7:'done'} };
 const db = new PGlite();
@@ -64,6 +64,7 @@ function browser(initial,cache){
       putCalls++;const res=await mod.exports.PUT(request(JSON.parse(init.body)));
       if(loseResponse){loseResponse=false;throw Error('response lost');}return res;
     }});
+  vm.runInContext(script.slice(script.indexOf('    /* ---------- Wan Sufi:'),script.indexOf('    /* ---------- End Wan Sufi seed ---------- */')),ctx);
   vm.runInContext(script.slice(script.indexOf('    function loadState('),script.indexOf('    let state = loadState();')),ctx);
   vm.runInContext(script.slice(script.indexOf('    function saveState(){'),script.indexOf('    function projectName(')),ctx);
   return{ctx,storage,element,run:code=>vm.runInContext(code,ctx)};
