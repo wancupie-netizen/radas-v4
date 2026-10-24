@@ -218,7 +218,7 @@ export function VideoStudio({ credits, generationEnabled, onCreditsChanged }: { 
           </div>)}</div>
           {images.length === 0 && <p className="upload-instruction">{mode === 'image' ? 'Pilih atau seret 1 img ke sini.' : 'Pilih atau seret 1–3 img ke sini.'}</p>}
           <div className="image-actions"><button type="button" className="secondary" disabled={readingImage || images.length >= imageLimit} onClick={() => fileInput.current?.click()}>{images.length ? 'Tambah img' : 'Pilih img'}</button></div>
-          <p className="input-help">JPG, PNG, WEBP · 10 MB setiap img{mode === 'ingredients' ? ' · Jumlah maksimum 30 MB' : ''}</p>
+          <p className="input-help">JPG, PNG, WEBP · Gunakan gambar yang jelas. Jika generation bermasalah, cuba kecilkan saiz fail.</p>
           {imageError && <p className="input-error" role="alert">{imageError}</p>}
           <span className="sr-only" role="status">{readingImage ? 'Menyemak img…' : `${images.length} img dipilih.`}</span>
         </div>}
