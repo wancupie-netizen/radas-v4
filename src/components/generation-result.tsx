@@ -1,8 +1,9 @@
 'use client';
 import './generation-result.css';
+import { GenerationWait } from './generation-wait';
 import { useEffect, useState } from 'react';
 import { canGenerateAgain, type Generation } from '@/lib/generations/types';
-export function GenerationResult({ generation, onAgain, againLabel = 'Generate Again' }: { generation: Generation; onAgain: () => void; againLabel?: string }) {
+export function GenerationResult({ generation, onAgain, againLabel = 'Generate Again', consecutiveUnknown = 1, usesImages = true }: { generation: Generation; onAgain: () => void; againLabel?: string; consecutiveUnknown?: number; usesImages?: boolean }) {
   const [url, setUrl] = useState(''); const [error, setError] = useState(''); const [attempt, setAttempt] = useState(0); const [expired, setExpired] = useState(false);
   useEffect(() => {
     if (generation.status !== 'done') return;
@@ -31,7 +32,7 @@ export function GenerationResult({ generation, onAgain, againLabel = 'Generate A
     })();
     return () => { mounted = false; clearTimeout(timer); document.removeEventListener('visibilitychange', checkExpiry); controller.abort(); if (objectUrl) URL.revokeObjectURL(objectUrl); };
   }, [generation.id, generation.status, generation.expiresAt, attempt]);
-  const labels = { reserved: 'Preparing…', submitting: 'Preparing…', queued: 'Preparing…', processing: 'Generating…', done: 'Video siap', failed: 'Generation gagal', rejected: 'Request tidak diterima', unknown: 'Status request belum dapat dipastikan' };
+  const labels = { reserved: 'Preparing…', submitting: 'Preparing…', queued: 'Preparing…', processing: 'Generating…', done: 'Video siap', failed: 'Generation gagal', rejected: 'Request tidak diterima', unknown: consecutiveUnknown >= 2 ? 'Permintaan video masih belum dapat disahkan.' : 'Permintaan video belum dapat disahkan.' };
   const working = ['reserved', 'submitting', 'queued', 'processing'].includes(generation.status);
   const final = canGenerateAgain(generation);
   return <div className="generation-result" aria-busy={working}>
@@ -43,14 +44,9 @@ export function GenerationResult({ generation, onAgain, againLabel = 'Generate A
       <a className="primary download-video" href={url} download={`radas-${generation.id}.mp4`}>Download Video</a>
     </> : <p role={error ? 'status' : undefined}>{error || 'Finalizing…'}</p>)}
     {error && !expired ? <button type="button" className="secondary" onClick={() => setAttempt(previous => previous + 1)}>Muatkan video semula</button> : null}
-    {generation.refunded && <p>1 credit telah dipulangkan.</p>}
+    {generation.refunded && generation.status !== 'unknown' && <p>1 credit telah dipulangkan.</p>}
     {['failed', 'rejected'].includes(generation.status) && !generation.refunded && <p>Pemulangan credit belum disahkan. Semak baki atau hubungi sokongan dengan rujukan <code>{generation.id}</code>.</p>}
-    {generation.status === 'unknown' && <>
-      <p>{generation.releasedAt
-        ? 'Permintaan tadi belum dapat disahkan. Anda boleh cuba generation baharu. Setiap generation baharu menggunakan 1 credit.'
-        : 'Permintaan tadi belum dapat disahkan. Tunggu sebentar; sistem sedang menyemak dan akan membuka semula generation secara automatik.'}</p>
-      <p>Rujukan: <code>{generation.id}</code>. Credit request ini belum dipulangkan.</p>
-    </>}
-    {final && <button type="button" className="secondary" onClick={onAgain}>{againLabel}</button>}
+    {generation.status === 'unknown' && <GenerationWait generation={generation} consecutiveUnknown={consecutiveUnknown} usesImages={usesImages} />}
+    {final && <button type="button" className="secondary" onClick={onAgain}>{generation.status === 'unknown' ? (consecutiveUnknown >= 3 ? 'Kembali ke tetapan' : 'Cuba generation baharu') : againLabel}</button>}
   </div>;
 }

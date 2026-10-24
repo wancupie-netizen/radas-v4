@@ -7,3 +7,10 @@
 @keyframes radas-generation-spin { to { transform: rotate(360deg); } }
 @keyframes radas-generation-sweep { from { transform: translateX(-100%); } to { transform: translateX(350%); } }
 @media (prefers-reduced-motion: reduce) { .generation-working-ring::before, .generation-working-track > span { animation: none; } .generation-working-track > span { margin-inline: auto; } }
+
+.generation-wait { display: grid; gap: 14px; max-width: 560px; margin-inline: auto; }
+.generation-wait-time { font-weight: 600; }
+.generation-wait-time [role="timer"] { display: inline-block; min-width: 3.4em; font-variant-numeric: tabular-nums; }
+.generation-wait ol { margin: 0; padding-inline-start: 1.5rem; text-align: left; line-height: 1.6; }
+.generation-wait li + li { margin-top: 0.5rem; }
+.generation-wait code { overflow-wrap: anywhere; }

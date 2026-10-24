@@ -7,6 +7,7 @@ import { requestJson, RequestError, generationIssue } from '@/lib/errors/client'
 import { GenerationResult } from './generation-result';
 import { RecentHistory } from './recent-history';
 import { pruneRecent, rememberRecent, type RecentDetails, type RecentVideo } from '@/lib/history/recent';
+import { emptyAttemptSummary, observeAttempt } from '@/lib/generations/guidance';
 import { recoverGeneration } from '@/lib/generations/recovery';
 import { canGenerateAgain, parseRequestedGeneration, type Generation } from '@/lib/generations/types';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -20,8 +21,10 @@ export function VideoStudio({ credits, generationEnabled, onCreditsChanged }: { 
   const [history, setHistory] = useState<RecentVideo[]>([]);
   const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null);
   const details = useRef<RecentDetails | null>(null);
+  const [attemptSummary, setAttemptSummary] = useState(emptyAttemptSummary);
   const previewPanel = useRef<HTMLElement>(null);
   const rememberCompletion = useCallback((next: Generation) => {
+    setAttemptSummary(previous => observeAttempt(previous, next));
     const snapshot = details.current;
     if (snapshot) setHistory(previous => rememberRecent(previous, next, snapshot, Date.now()));
   }, []);
@@ -99,6 +102,16 @@ export function VideoStudio({ credits, generationEnabled, onCreditsChanged }: { 
     timer = setTimeout(poll, 1000);
     return () => { alive = false; clearTimeout(timer); controller.abort(); };
   }, [generation?.id, generation?.status, generation?.releasedAt, pollAttempt, rememberCompletion]);
+
+  useEffect(() => {
+    if (!generation || canGenerateAgain(generation)) return;
+    const resume = () => {
+      if (document.visibilityState === 'visible') setPollAttempt(previous => previous + 1);
+    };
+    window.addEventListener('online', resume);
+    document.addEventListener('visibilitychange', resume);
+    return () => { window.removeEventListener('online', resume); document.removeEventListener('visibilitychange', resume); };
+  }, [generation?.id, generation?.status, generation?.releasedAt]);
 
   async function generate() {
     if (submittingNow.current || !generationEnabled || (generation && !canGenerateAgain(generation))) return;
@@ -237,7 +250,7 @@ export function VideoStudio({ credits, generationEnabled, onCreditsChanged }: { 
     <section ref={previewPanel} className="preview panel" aria-label="Video preview">
       <div className="panel-heading"><span className="step">02</span><h2>Preview</h2><span className="preview-meta">{ratio} · {previewResolution}p</span></div>
       <div className="preview-stage">
-        {previewGeneration ? <GenerationResult key={previewGeneration.id} generation={previewGeneration} onAgain={selectedHistory ? () => setSelectedHistoryId(null) : again} againLabel={selectedHistory ? 'Tutup preview history' : 'Generate Again'} /> : mode !== 'text' && images.length > 0 ? <>
+        {previewGeneration ? <GenerationResult key={previewGeneration.id} generation={previewGeneration} consecutiveUnknown={attemptSummary.consecutiveUnknown} usesImages={previewDetails?.mode !== 'text'} onAgain={selectedHistory ? () => setSelectedHistoryId(null) : again} againLabel={selectedHistory ? 'Tutup preview history' : 'Generate Again'} /> : mode !== 'text' && images.length > 0 ? <>
           <div className={mode === 'image' ? `source-preview ${orientation}` : 'ingredients-preview'}>{mode === 'image' ? <Image src={images[0].url} alt="Preview img sumber" fill unoptimized sizes="(max-width: 820px) 85vw, 440px" /> : images.map((image, index) => <figure key={image.url}><div className="ingredient-preview-image"><Image src={image.url} alt={`Preview img rujukan ${index + 1}`} fill unoptimized sizes="(max-width: 820px) 28vw, 150px" /></div><figcaption>Img {index + 1}</figcaption></figure>)}</div>
           <h3>{mode === 'image' ? 'Image preview' : 'Ingredients preview'}</h3><p>{images.length} img rujukan untuk video anda.</p>
         </> : <>
