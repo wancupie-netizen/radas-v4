@@ -1,7 +1,7 @@
 'use client';
 import './generation-result.css';
 import { useEffect, useState } from 'react';
-import type { Generation } from '@/lib/generations/types';
+import { canGenerateAgain, type Generation } from '@/lib/generations/types';
 export function GenerationResult({ generation, onAgain, againLabel = 'Generate Again' }: { generation: Generation; onAgain: () => void; againLabel?: string }) {
   const [url, setUrl] = useState(''); const [error, setError] = useState(''); const [attempt, setAttempt] = useState(0); const [expired, setExpired] = useState(false);
   useEffect(() => {
@@ -33,7 +33,7 @@ export function GenerationResult({ generation, onAgain, againLabel = 'Generate A
   }, [generation.id, generation.status, generation.expiresAt, attempt]);
   const labels = { reserved: 'Preparing…', submitting: 'Preparing…', queued: 'Preparing…', processing: 'Generating…', done: 'Video siap', failed: 'Generation gagal', rejected: 'Request tidak diterima', unknown: 'Status request belum dapat dipastikan' };
   const working = ['reserved', 'submitting', 'queued', 'processing'].includes(generation.status);
-  const final = ['done', 'failed', 'rejected'].includes(generation.status);
+  const final = canGenerateAgain(generation);
   return <div className="generation-result" aria-busy={working}>
     {working && <div className="generation-working" aria-hidden="true"><div className="generation-working-ring"><span>▷</span></div></div>}
     <h3 aria-live="polite">{expired ? 'Video telah luput' : labels[generation.status]}</h3>
@@ -45,7 +45,12 @@ export function GenerationResult({ generation, onAgain, againLabel = 'Generate A
     {error && !expired ? <button type="button" className="secondary" onClick={() => setAttempt(previous => previous + 1)}>Muatkan video semula</button> : null}
     {generation.refunded && <p>1 credit telah dipulangkan.</p>}
     {['failed', 'rejected'].includes(generation.status) && !generation.refunded && <p>Pemulangan credit belum disahkan. Semak baki atau hubungi sokongan dengan rujukan <code>{generation.id}</code>.</p>}
-    {generation.status === 'unknown' && <p>Jangan submit semula. Hubungi sokongan dengan rujukan <code>{generation.id}</code> untuk semakan.</p>}
+    {generation.status === 'unknown' && <>
+      <p>{generation.releasedAt
+        ? 'Permintaan tadi belum dapat disahkan. Anda boleh cuba generation baharu. Setiap generation baharu menggunakan 1 credit.'
+        : 'Permintaan tadi belum dapat disahkan. Tunggu sebentar; sistem sedang menyemak dan akan membuka semula generation secara automatik.'}</p>
+      <p>Rujukan: <code>{generation.id}</code>. Credit request ini belum dipulangkan.</p>
+    </>}
     {final && <button type="button" className="secondary" onClick={onAgain}>{againLabel}</button>}
   </div>;
 }

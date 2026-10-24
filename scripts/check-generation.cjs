@@ -58,6 +58,7 @@ function request(f,origin='http://localhost:3000') {return new Request('http://l
   await db.exec(fs.readFileSync('supabase/migrations/'+ingredientsMigration,'utf8'));
   const expiredUnknownMigration=fs.readdirSync('supabase/migrations').find(name=>name.endsWith('_release_expired_unknown.sql'));
   await db.exec(fs.readFileSync('supabase/migrations/'+expiredUnknownMigration,'utf8'));
+  await db.exec(fs.readFileSync('supabase/auto-release-install.sql','utf8'));
   await installStorage(db);
   for(const role of ['anon','authenticated']) {
     await actor(role,uid);await assert.rejects(operation('reserve',uid,randomUUID(),spec),/permission denied/);
@@ -205,8 +206,9 @@ function request(f,origin='http://localhost:3000') {return new Request('http://l
   // The real account blocker: an old unknown with no provider job. Release without deletion/refund.
   await db.exec('reset role');await db.query("update radas_v4.generations set created_at=clock_timestamp()-interval '5 days',expires_at=clock_timestamp()-interval '4 days' where id=$1",[id]);
   const oldUnknown=id;const oldLedger=(await db.query('select * from radas_v4.credit_transactions where reference=$1',[oldUnknown])).rows;
-  await db.exec(fs.readFileSync('supabase/migrations/'+expiredUnknownMigration,'utf8'));await actor('service_role');
-  assert.equal((await POST(request(form(oldUnknown)))).status,410);assert.equal(posts,unknownPosts);
+  await db.exec(fs.readFileSync('supabase/migrations/'+expiredUnknownMigration,'utf8'));
+  await db.exec(fs.readFileSync('supabase/auto-release-install.sql','utf8'));await actor('service_role');
+  assert.equal((await POST(request(form(oldUnknown)))).status,202);assert.equal(posts,unknownPosts);
   submitKind='ok';providerStatus='done';const afterUnknown=randomUUID();response=await POST(request(form(afterUnknown)));assert.equal(response.status,202);assert.equal(posts,unknownPosts+1);await get(afterUnknown);
   await db.exec('reset role');const archived=(await db.query('select status,refunded,provider_job_id,unknown_released_at from radas_v4.generations where id=$1',[oldUnknown])).rows[0];
   assert.equal(archived.status,'unknown');assert.equal(archived.refunded,false);assert.equal(archived.provider_job_id,null);assert.ok(archived.unknown_released_at);
@@ -219,7 +221,82 @@ function request(f,origin='http://localhost:3000') {return new Request('http://l
   await db.exec('reset role');const rowsBefore=await db.query('select id,mode,request_hash,status from radas_v4.generations order by id');
   await db.exec(fs.readFileSync('supabase/migrations/'+ingredientsMigration,'utf8'));
   await db.exec(fs.readFileSync('supabase/migrations/'+expiredUnknownMigration,'utf8'));
+  await db.exec(fs.readFileSync('supabase/auto-release-install.sql','utf8'));
   assert.deepEqual((await db.query('select id,mode,request_hash,status from radas_v4.generations order by id')).rows,rowsBefore.rows);
+  // Unresolved submit releases automatically after two minutes, without changing its ledger.
+  await db.exec('reset role');
+  await db.query("update radas_v4.generations set updated_at=clock_timestamp()-interval '121 seconds' where id=$1",[id]);
+  const unresolved=id;
+  const ledgerBefore=(await db.query('select * from radas_v4.credit_transactions where reference=$1',[id])).rows;
+  await actor('service_role');
+  g=await (await get(id)).json();assert.equal(g.status,'unknown');assert.ok(g.releasedAt);assert.equal(g.releaseAfter,null);assert.equal(g.refunded,false);
+  const postsBeforeRelease=posts;
+  const oldReplay=await POST(request(form(id)));assert.equal(oldReplay.status,202);assert.ok((await oldReplay.json()).releasedAt);assert.equal(posts,postsBeforeRelease);
+  await assert.rejects(operation('claim',uid,id,{claimToken:randomUUID()}),/expired_unknown_read_only/);
+  await assert.rejects(operation('transition',uid,id,{status:'queued',providerJobId:'late-response'}),/expired_unknown_read_only/);
+  await db.exec('reset role');assert.deepEqual((await db.query('select * from radas_v4.credit_transactions where reference=$1',[id])).rows,ledgerBefore);await actor('service_role');
+  // Burst of new IDs still gets just one reservation/debit after release.
+  const burstAfterRelease=await Promise.all(Array.from({length:20},()=>operation('reserve',uid,randomUUID(),spec)));
+  assert.equal(burstAfterRelease.filter(x=>x.created).length,1);
+  assert.equal(burstAfterRelease.filter(x=>x.error==='active_generation').length,19);
+  await operation('cancel',uid,burstAfterRelease.find(x=>x.created).id);
+  // GET-before-retry: existing jobs never POST; missing/late reservations reuse the exact ID.
+  const {recoverGeneration}=load('src/lib/generations/recovery.ts');
+  const RequestError=load('src/lib/errors/client.ts').RequestError;
+  let checks=[];const retainedForm=form(unresolved);
+  const recovered=await recoverGeneration(unresolved,retainedForm,async(url,init)=>{checks.push({url,init});return (await get(unresolved)).json();});
+  assert.ok(recovered.releasedAt);assert.equal(checks.length,1);assert.equal(checks[0].init,undefined);assert.equal(posts,postsBeforeRelease);
+  const absent=randomUUID();const absentForm=form(absent);checks=[];
+  await recoverGeneration(absent,absentForm,async(url,init)=>{
+    checks.push({url,init});
+    if(!init){ // Original request reserves AFTER the missing status response.
+      await operation('reserve',uid,absent,{...spec,hash:(await parser(request(absentForm))).hash});
+      throw new RequestError('not_found',404);
+    }
+    assert.equal(init.body,absentForm);return (await POST(request(init.body))).json();
+  });
+  assert.equal(checks.length,2);assert.equal(posts,postsBeforeRelease+1);providerStatus='done';await get(absent);
+  for(const error of [new RequestError('unavailable',503),new RequestError('unavailable',0),new RequestError('unauthorized',401)]){
+    let calls=0;await assert.rejects(recoverGeneration(absent,absentForm,async()=>{calls++;throw error;}));assert.equal(calls,1);
+  }
+  // Unreleased unknown is locked, then GET unlocks it; server time, never browser time.
+  submitKind='unknown';id=randomUUID();g=await (await POST(request(form(id)))).json();assert.equal(g.status,'unknown');assert.equal(g.releasedAt,null);assert.ok(g.releaseAfter);
+  assert.equal(load('src/lib/generations/types.ts').canGenerateAgain(g),false);
+  assert.equal((await POST(request(form(randomUUID())))).status,409);
+  await db.exec('reset role');await db.query("update radas_v4.generations set updated_at=clock_timestamp()-interval '121 seconds' where id=$1",[id]);await actor('service_role');
+  g=await (await get(id)).json();assert.ok(g.releasedAt);assert.equal(load('src/lib/generations/types.ts').canGenerateAgain(g),true);
+  authUser=other;assert.equal((await get(id)).status,404);authUser=uid;
+  // Accepted queued/processing requests stay locked regardless of age.
+  submitKind='ok';id=randomUUID();await POST(request(form(id)));
+  await db.exec('reset role');await db.query("update radas_v4.generations set updated_at=clock_timestamp()-interval '1 hour' where id=$1",[id]);await actor('service_role');
+  for(const state of ['queued','processing']) {
+    providerStatus=state;const current=await operation('read',uid,id);assert.equal(current.releasedAt,null);
+    assert.equal((await POST(request(form(randomUUID())))).status,409);
+    await db.exec('reset role');await db.query("update radas_v4.generations set last_polled_at=null where id=$1",[id]);await actor('service_role');
+  }
+  providerStatus='done';await get(id);
+  // Existing admin release extension must survive installation/rerun.
+  await db.exec('reset role');await db.exec('alter table radas_v4.generations add column admin_released_at timestamptz');
+  await db.exec(fs.readFileSync('supabase/auto-release-install.sql','utf8'));await actor('service_role');
+  submitKind='unknown';id=randomUUID();await POST(request(form(id)));
+  await db.exec('reset role');await db.query('update radas_v4.generations set admin_released_at=clock_timestamp() where id=$1',[id]);await actor('service_role');
+  g=await (await get(id)).json();assert.ok(g.releasedAt);assert.equal(g.releaseAfter,null);
+  const adminReplayPosts=posts;await POST(request(form(id)));assert.equal(posts,adminReplayPosts);
+  submitKind='ok';id=randomUUID();assert.equal((await POST(request(form(id)))).status,202);providerStatus='done';await get(id);
+  // A crashed submitting process waits two leases, rather than unlocking a live POST.
+  const crashed=randomUUID();await operation('reserve',uid,crashed,spec);await operation('claim',uid,crashed,{claimToken:randomUUID()});
+  await db.exec('reset role');await db.query("update radas_v4.generations set updated_at=clock_timestamp()-interval '121 seconds' where id=$1",[crashed]);await actor('service_role');
+  let crashedState=await operation('read',uid,crashed);assert.equal(crashedState.status,'unknown');assert.equal(crashedState.releasedAt,null);assert.ok(crashedState.releaseAfter);
+  assert.equal((await operation('reserve',uid,randomUUID(),spec)).error,'active_generation');
+  await db.exec('reset role');await db.query("update radas_v4.generations set updated_at=clock_timestamp()-interval '121 seconds' where id=$1",[crashed]);await actor('service_role');
+  crashedState=await operation('read',uid,crashed);assert.ok(crashedState.releasedAt);
+  const {parseGeneration}=load('src/lib/generations/types.ts');
+  assert.throws(()=>parseGeneration({...crashedState,status:'queued'}),/invalid_generation_release/);
+  assert.throws(()=>parseGeneration({...crashedState,releaseAfter:new Date().toISOString()}),/invalid_generation_release/);
+  await db.exec('reset role');
+  const autoChecks=(await db.query(fs.readFileSync('supabase/verify-auto-release.sql','utf8'))).rows;
+  assert.ok(autoChecks.every(row=>row.passed),JSON.stringify(autoChecks));await actor('service_role');
+  console.log('PASS automatic 2-minute unknown release, browser recovery GET-first, missing-record race, same-ID no-repost, one debit, concurrent new IDs, ownership, known-job locks, manual/admin releases and rerunnable installer');
   global.fetch=originalFetch;
   console.log('PASS definitive rejection/failure refund once; ambiguous submit and accepted-but-unsaved job never repost or refund');
   await db.exec('reset role');

@@ -19,6 +19,7 @@ export function createGenerationStore(): GenerationStore {
     const generation = parseGeneration(data);
     if (generation.id.toLowerCase() !== id.toLowerCase()) throw new GenerationError('unavailable');
     if (data.providerJobId !== null && (typeof data.providerJobId !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(data.providerJobId))) throw new GenerationError('unavailable');
+    if ((generation.releasedAt || generation.releaseAfter) && data.providerJobId !== null) throw new GenerationError('unavailable');
     if (typeof data.pollAllowed !== 'boolean' || typeof data.created !== 'boolean' || typeof data.claimAllowed !== 'boolean') throw new GenerationError('unavailable');
     if (data.claimAllowed && (generation.status !== 'submitting' || data.providerJobId !== null || generation.refunded)) throw new GenerationError('unavailable');
     return { ...generation, providerJobId: data.providerJobId, pollAllowed: data.pollAllowed, created: data.created, claimAllowed: data.claimAllowed };

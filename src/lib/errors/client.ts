@@ -19,7 +19,7 @@ export async function requestJson(url: string, init: RequestInit = {}, timeout =
 const generationMessages: Record<string, string> = {
  rate_limited: 'Terlalu banyak request. Tunggu sehingga 60 saat, kemudian semak request yang sama; jangan submit video baharu.',
  insufficient_credits: 'Credit tidak mencukupi. Top up atau semak baki sebelum generate.',
- active_generation: 'Masih ada generation aktif. Tunggu dan semak semula; hubungi sokongan jika berlarutan.',
+ active_generation: 'Generation sebelumnya masih aktif atau sedang disemak. Tunggu sebentar dan semak semula.',
  provider_unavailable: 'Generation belum tersedia. Request ini tidak menggunakan credit. Cuba semula kemudian.',
  invalid_image: 'Img tidak sah atau tidak dapat dibaca. Pilih img lain.',
  invalid_input: 'Semak prompt dan tetapan video.', image_too_large: 'Jumlah upload terlalu besar. Maksimum 3 img, 10 MB setiap img.',

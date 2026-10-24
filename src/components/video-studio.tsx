@@ -7,7 +7,8 @@ import { requestJson, RequestError, generationIssue } from '@/lib/errors/client'
 import { GenerationResult } from './generation-result';
 import { RecentHistory } from './recent-history';
 import { pruneRecent, rememberRecent, type RecentDetails, type RecentVideo } from '@/lib/history/recent';
-import { parseRequestedGeneration, type Generation } from '@/lib/generations/types';
+import { recoverGeneration } from '@/lib/generations/recovery';
+import { canGenerateAgain, parseRequestedGeneration, type Generation } from '@/lib/generations/types';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { PRODUCT } from '@/lib/config';
 import type { CreditSnapshot } from '@/lib/credits/types';
@@ -42,9 +43,9 @@ export function VideoStudio({ credits, generationEnabled, onCreditsChanged }: { 
   const [submitting, setSubmitting] = useState(false);
   const [flowError, setFlowError] = useState('');
   const [pollAttempt, setPollAttempt] = useState(0);
-  const pending = useRef<{ id: string; form: FormData } | null>(null);
+  const pending = useRef<{ id: string; form: FormData; attempted: boolean } | null>(null);
   const submittingNow = useRef(false);
-  const locked = submitting || Boolean(pending.current) || Boolean(generation && !['done', 'failed', 'rejected'].includes(generation.status));
+  const locked = submitting || Boolean(pending.current) || Boolean(generation && !canGenerateAgain(generation));
   const [mode, setMode] = useState<VideoMode>('text');
   const [orientation, setOrientation] = useState<VideoOrientation>('portrait');
   const [resolution, setResolution] = useState<VideoResolution>('720');
@@ -76,7 +77,7 @@ export function VideoStudio({ credits, generationEnabled, onCreditsChanged }: { 
   const refreshCredits = useRef(onCreditsChanged);
   useEffect(() => { refreshCredits.current = onCreditsChanged; }, [onCreditsChanged]);
   useEffect(() => {
-    if (!generation || !['reserved', 'submitting', 'queued', 'processing'].includes(generation.status)) return;
+    if (!generation || canGenerateAgain(generation)) return;
     let alive = true; let timer: ReturnType<typeof setTimeout>; let failures = 0;
     const controller = new AbortController(); const started = Date.now();
     async function poll() {
@@ -88,7 +89,7 @@ export function VideoStudio({ credits, generationEnabled, onCreditsChanged }: { 
         setGeneration(next); rememberCompletion(next);
         if (data.pollUnavailable) throw new Error('provider_poll_failed');
         failures = 0; setFlowError('');
-        if (['done', 'failed', 'rejected', 'unknown'].includes(next.status)) { void refreshCredits.current(); return; }
+        if (canGenerateAgain(next)) { void refreshCredits.current(); return; }
       } catch (error) { if (!alive) return; if (error instanceof RequestError && error.status === 401) { window.location.assign('/login'); return; } failures += 1; }
       if (failures >= 3 || Date.now() - started > 15 * 60 * 1000) {
         setFlowError('Status belum dapat disemak. Cuba semak status semula; jangan submit video baharu.'); return;
@@ -97,10 +98,10 @@ export function VideoStudio({ credits, generationEnabled, onCreditsChanged }: { 
     }
     timer = setTimeout(poll, 1000);
     return () => { alive = false; clearTimeout(timer); controller.abort(); };
-  }, [generation?.id, generation?.status, pollAttempt, rememberCompletion]);
+  }, [generation?.id, generation?.status, generation?.releasedAt, pollAttempt, rememberCompletion]);
 
   async function generate() {
-    if (submittingNow.current || !generationEnabled || (generation && !['done', 'failed', 'rejected'].includes(generation.status))) return;
+    if (submittingNow.current || !generationEnabled || (generation && !canGenerateAgain(generation))) return;
     if (!pending.current) {
       setTouched(previous => ({ ...previous, [mode]: true }));
       if (validatePrompt(prompt) || readingImage || (mode !== 'text' && images.length === 0)) return;
@@ -109,11 +110,15 @@ export function VideoStudio({ credits, generationEnabled, onCreditsChanged }: { 
       form.set('requestId', id); form.set('mode', mode); form.set('prompt', prompt);
       form.set('orientation', orientation); form.set('resolution', resolution);
       if (mode !== 'text') for (const image of images) form.append('image', image.file);
-      pending.current = { id, form };
+      pending.current = { id, form, attempted: false };
     }
     submittingNow.current = true; setSubmitting(true); setFlowError(''); setGeneration(null); setSelectedHistoryId(null);
     try {
-      const data = await requestJson('/api/generations', { method: 'POST', body: pending.current.form }, GENERATION_TIMEOUTS.browserSubmitMs);
+      const current = pending.current;
+      const recovering = current.attempted;
+      current.attempted = true;
+      const data = recovering ? await recoverGeneration(current.id, current.form)
+        : await requestJson('/api/generations', { method: 'POST', body: current.form }, GENERATION_TIMEOUTS.browserSubmitMs);
       const next = parseRequestedGeneration(data, pending.current.id);
       const form = pending.current.form;
       details.current = { id: next.id, prompt: String(form.get('prompt')).trim(), mode: form.get('mode') as VideoMode,
@@ -222,7 +227,7 @@ export function VideoStudio({ credits, generationEnabled, onCreditsChanged }: { 
         <p id="prompt-help" className="input-help">{mode === 'image' ? 'Terangkan gerakan subjek dan kamera.' : mode === 'ingredients' ? 'Nyatakan peranan setiap img, suasana dan gerakan yang anda mahu.' : 'Terangkan subjek, suasana dan gerakan kamera.'}</p>
         {promptError && <p id="prompt-error" className="input-error" role="alert">{promptError}</p>}
         </fieldset>
-        <button className="primary generate" type="submit" disabled={!generationEnabled || submitting || Boolean(generation && !['done', 'failed', 'rejected'].includes(generation.status)) || (!pending.current && (credits.status !== 'ready' || credits.balance < 1 || Boolean(validatePrompt(prompt)) || readingImage || (mode !== 'text' && images.length === 0)))} aria-describedby="generation-note">{submitting ? 'Preparing…' : pending.current ? 'Semak request semula' : 'Generate Video'} <span>· {PRODUCT.creditsPerGeneration} Credit</span></button>
+        <button className="primary generate" type="submit" disabled={!generationEnabled || submitting || Boolean(generation && !canGenerateAgain(generation)) || (!pending.current && (credits.status !== 'ready' || credits.balance < 1 || Boolean(validatePrompt(prompt)) || readingImage || (mode !== 'text' && images.length === 0)))} aria-describedby="generation-note">{submitting ? 'Preparing…' : pending.current ? 'Semak request semula' : 'Generate Video'} <span>· {PRODUCT.creditsPerGeneration} Credit</span></button>
         <p id="generation-note" className="phase-note">{generationEnabled ? '1 credit digunakan untuk setiap generation. Download terus apabila siap.' : 'Generation belum diaktifkan. Tiada credit digunakan.'}</p>
         {flowError && <div className="input-error" role="alert">{flowError}{pending.current && <p>Rujukan request: <code>{pending.current.id}</code></p>}{generation && <button type="button" className="secondary" onClick={() => { setFlowError(''); setPollAttempt(previous => previous + 1); }}>Semak status semula</button>}</div>}
         {credits.status === 'unavailable' ? <p className="phase-note">Baki belum tersedia. Cuba semak semula di Credits.</p> : credits.balance === 0 ? <p className="phase-note">Baki anda 0 credit.</p> : null}

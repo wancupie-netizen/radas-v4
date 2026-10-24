@@ -2,7 +2,7 @@ import 'server-only';
 import { generationLog, observeGeneration } from './log';
 import { randomUUID } from 'node:crypto';
 import { createNexabotClient, NexabotError, type VideoRequest } from '../nexabot/client';
-import { parseGeneration } from './types';
+import { canGenerateAgain, parseGeneration } from './types';
 import { GenerationError } from './input';
 import type { GenerationStore, StoredGeneration } from './store';
 export function createGenerationFlow(rawStore: GenerationStore, provider: ReturnType<typeof createNexabotClient>) {
@@ -39,7 +39,7 @@ export function createGenerationFlow(rawStore: GenerationStore, provider: Return
         if (error instanceof GenerationError && error.code === 'active_generation' && error.activeId) {
           // Reconcile an owned known job after refresh; no history restore or provider POST retry.
           const previous = await status(userId, error.activeId, true);
-          if (!['done', 'failed', 'rejected'].includes(previous.status)) throw error;
+          if (!canGenerateAgain(previous)) throw error;
         }
         generation = await store.operation('reserve', userId, requestId, details);
       }
