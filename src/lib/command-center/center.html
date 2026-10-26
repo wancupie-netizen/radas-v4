@@ -763,6 +763,20 @@
     .isteri-video-player.vertical{max-width:320px;aspect-ratio:9/16}
     .isteri-video-help{font-size:12px;color:var(--muted);margin:10px 0 0}
     .isteri-video-error{font-size:13px;font-weight:600;color:var(--danger);margin:10px 0}
+    .produk-tab-row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin:0 0 18px}
+    .produk-tab-button{border:1px solid var(--line-strong);background:#fff;color:var(--text-2);padding:8px 14px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer}
+    .produk-tab-button.active{background:var(--navy);border-color:var(--navy);color:#fff}
+    body.produk-mode .dashboard-section{display:none!important}
+    body.produk-mode #radasProductsCard,body.produk-mode #radasNoteCard,body.produk-mode #radasContentCard,body.produk-mode #dexsatoContentCard,body.produk-mode #isteriContentCard,body.produk-mode #isteriVideoCard{display:none!important}
+    body.produk-mode .project-strip .week{display:none}
+    .produk-add-form{border:1px solid var(--line-strong);border-radius:12px;padding:16px;margin:0 0 18px;background:var(--surface,#fff)}
+    .produk-add-form[hidden]{display:none!important}
+    .produk-add-form h3{margin:0 0 12px;font-size:16px}
+    .produk-add-form .produk-form-field{display:block;margin:0 0 12px}
+    .produk-add-form .produk-form-field span{display:block;font-size:13px;font-weight:600;margin:0 0 6px;color:var(--text-2)}
+    .produk-add-form input,.produk-add-form textarea{display:block;width:100%;box-sizing:border-box;border:1px solid var(--line-strong);border-radius:8px;padding:10px 12px;font:inherit;color:var(--text);background:#fff}
+    .produk-add-form textarea{min-height:120px;resize:vertical}
+    .produk-add-form .produk-form-actions{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap}
     [hidden]{display:none!important}
   </style>
 </head>
@@ -787,7 +801,7 @@
       <button type="button" class="tab" id="tab-biscotto" onclick="switchProject('biscotto')">Biscotto</button>
       <button type="button" class="tab" id="tab-dexsato" onclick="switchProject('dexsato')">DexSato</button>
       <button type="button" class="tab" id="tab-weight" onclick="switchProject('weight')">Lose Weight</button>
-      <button type="button" class="tab" id="tab-isteri" onclick="switchProject('isteri')">Isteri Malam</button>
+      <button type="button" class="tab" id="tab-produk" onclick="switchProject('produk')">Produk</button>      <button type="button" class="tab" id="tab-isteri" onclick="switchProject('isteri')">Isteri Malam</button>
     </nav>
 
     <section class="project-strip">
@@ -811,6 +825,38 @@
     </section>
 
 
+    <section class="card" id="produkWorkspaceCard" style="margin-bottom:18px" hidden>
+      <div class="content-list-shell">
+        <div class="note-toolbar">
+          <div>
+            <div class="eyebrow">Product Content Workspace</div>
+            <h2 id="produkWorkspaceTitle">Buku Forex</h2>
+            <p style="margin:6px 0 0;color:var(--muted);font-size:13px">Senarai kandungan produk ini sahaja.</p>
+          </div>
+          <div class="note-actions">
+            <button type="button" class="btn btn-soft" onclick="manageProduk()">Urus Produk</button>
+            <button type="button" class="btn btn-primary" onclick="addProdukContent()">+ Tambah Kandungan</button>
+          </div>
+        </div>
+        <div id="produkTabs" class="tabs" style="margin:0 auto 18px;width:100%"></div>
+        <form id="produkAddForm" class="produk-add-form" hidden onsubmit="saveProdukContent(event)">
+          <h3>Tambah Kandungan</h3>
+          <label class="produk-form-field">
+            <span>Tajuk kandungan</span>
+            <input id="produkNewTitle" name="title" type="text" maxlength="180" required placeholder="Masukkan tajuk kandungan" />
+          </label>
+          <label class="produk-form-field">
+            <span>Nota / isi kandungan</span>
+            <textarea id="produkNewContent" name="content" placeholder="Tulis nota atau isi kandungan (pilihan)"></textarea>
+          </label>
+          <div class="produk-form-actions">
+            <button type="button" class="btn btn-soft" onclick="cancelAddProdukContent()">Batal</button>
+            <button type="submit" class="btn btn-primary">Simpan Kandungan</button>
+          </div>
+        </form>
+        <div id="produkContentList" class="content-list-grid"></div>
+      </div>
+    </section>
     <section class="card" id="radasProductsCard" style="margin-bottom:18px" hidden>
       <div class="section-head">
         <div>
@@ -1318,6 +1364,11 @@
         tasks: [
           { title:"Upload video ke TikTok", category:"TikTok", priority:"high", status:"todo", due:"", notes:"", money:true }
         ]
+      },
+      produk: {
+        focus: "Senarai kandungan produk.",
+        target: "Urus senarai kandungan bagi setiap produk.",
+        tasks: []
       },
       isteri: {
         focus: "",
@@ -2261,6 +2312,12 @@
 
       return {
         activeProject:"radas",
+        produkCategories:[
+          {id:"buku-forex",name:"Buku Forex",items:[]},
+          {id:"buku-rezeki",name:"Buku Rezeki",items:[]},
+          {id:"gambir",name:"Gambir",items:[]}
+        ],
+        activeProdukCategory:"buku-forex",
         radasView:"dashboard",
         radasContentNotes:[],
         isteriVideos:[],
@@ -2327,6 +2384,18 @@
           });
           parsed.dexsatoContentSeedVersion = 1;
         }
+        if(!Array.isArray(parsed.produkCategories)) {
+          parsed.produkCategories = [
+            {id:"buku-forex",name:"Buku Forex",items:[]},
+            {id:"buku-rezeki",name:"Buku Rezeki",items:[]},
+            {id:"gambir",name:"Gambir",items:[]}
+          ];
+        }
+        parsed.produkCategories = parsed.produkCategories
+          .filter(item => item && typeof item.id === "string" && typeof item.name === "string")
+          .map(item => ({id:item.id,name:item.name.trim() || "Produk",items:Array.isArray(item.items) ? item.items : []}));
+        if(!parsed.produkCategories.length) parsed.produkCategories = [{id:makeId(),name:"Produk Baru",items:[]}];
+        if(!parsed.activeProdukCategory || !parsed.produkCategories.some(item=>item.id === parsed.activeProdukCategory)) parsed.activeProdukCategory = parsed.produkCategories[0].id;
         if(typeof parsed.radasNote !== "string") parsed.radasNote = DEFAULT_RADAS_NOTE;
         if(!parsed.productStatuses) parsed.productStatuses = {};
         if(!Array.isArray(parsed.radasProducts)) parsed.radasProducts = buildDefaultProducts();
@@ -2480,6 +2549,7 @@
     });
 
     function projectName(key){
+      if(key === "produk") return "Produk";
       if(key === "isteri") return "Isteri Malam";
       if(key === "radas") return "RADAS";
       if(key === "biscotto") return "Biscotto";
@@ -2505,6 +2575,7 @@
 
     function switchProject(project){
       if(!state.projects[project]) return;
+      document.body.classList.toggle("produk-mode", project === "produk");
       state.activeProject = project;
       if(project === "radas") state.radasView = "dashboard";
       if(project === "dexsato") state.dexsatoView = "dashboard";
@@ -2514,7 +2585,7 @@
     }
 
     function renderTabs(){
-      ["radas","biscotto","dexsato","weight","isteri"].forEach(project=>{
+      ["radas","biscotto","dexsato","weight","isteri","produk"].forEach(project=>{
         const button = document.getElementById("tab-" + project);
         button.classList.toggle("active", state.activeProject === project);
       });
@@ -2586,6 +2657,151 @@
       }).join("");
     }
 
+    function activeProdukCategory(){
+      if(!Array.isArray(state.produkCategories)) state.produkCategories = [];
+      let item = state.produkCategories.find(entry=>entry.id === state.activeProdukCategory);
+      if(!item && state.produkCategories.length){ item = state.produkCategories[0]; state.activeProdukCategory = item.id; }
+      return item || null;
+    }
+
+    function switchProdukCategory(id){
+      if(!state.produkCategories.some(item=>item.id === id)) return;
+      state.activeProdukCategory = id;
+      saveState();
+      renderProdukWorkspace();
+    }
+
+    function renderProdukWorkspace(){
+      const panel = document.getElementById("produkWorkspaceCard");
+      if(!panel) return;
+      const active = state.activeProject === "produk";
+      panel.hidden = !active;
+      document.body.classList.toggle("produk-mode", active);
+      if(!active) return;
+
+      const current = activeProdukCategory();
+      document.getElementById("projectTitle").textContent = "Produk";
+      document.getElementById("produkWorkspaceTitle").textContent = current ? current.name : "Produk";
+      const tabs = document.getElementById("produkTabs");
+      tabs.className = "produk-tab-row";
+      tabs.innerHTML = state.produkCategories.map(item=>`
+        <button type="button" class="produk-tab-button ${current && current.id === item.id ? "active" : ""}" onclick="switchProdukCategory('${escapeHtml(item.id)}')">${escapeHtml(item.name)}</button>
+      `).join("") + `<button type="button" class="produk-tab-button" onclick="addProdukCategory()">+ Tambah Produk</button>`;
+
+      const list = document.getElementById("produkContentList");
+      if(!current || !current.items.length){
+        list.innerHTML = '<div class="note-empty"><strong>Belum ada kandungan.</strong><br>Klik <strong>+ Tambah Kandungan</strong> untuk mula.</div>';
+        return;
+      }
+      list.innerHTML = current.items.map(item=>`
+        <article class="content-note-card ${item.done ? "content-complete" : ""}">
+          <div class="content-note-head">
+            <div class="content-note-title">${escapeHtml(item.title)}</div>
+            <div class="content-note-actions">
+              <label class="content-done-label"><input type="checkbox" ${item.done ? "checked" : ""} onchange="toggleProdukContent('${escapeHtml(current.id)}','${escapeHtml(item.id)}',this.checked)" aria-label="Siap: ${escapeHtml(item.title)}" /> Siap</label>
+              <button type="button" class="icon-btn" onclick="editProdukContent('${escapeHtml(current.id)}','${escapeHtml(item.id)}')">Edit</button>
+              <button type="button" class="icon-btn" onclick="deleteProdukContent('${escapeHtml(current.id)}','${escapeHtml(item.id)}')">Delete</button>
+            </div>
+          </div>
+          <div class="content-note-body">${renderSimpleMarkdown(item.content || "")}</div>
+        </article>
+      `).join("");
+    }
+
+    function addProdukCategory(){
+      const name = window.prompt("Nama produk baharu:");
+      if(name === null) return;
+      const clean = name.trim();
+      if(!clean){ window.alert("Nama produk tidak boleh kosong."); return; }
+      if(state.produkCategories.some(item=>item.name.toLowerCase() === clean.toLowerCase())){ window.alert("Nama produk ini sudah wujud."); return; }
+      const item = {id:makeId(),name:clean,items:[]};
+      state.produkCategories.push(item);
+      state.activeProdukCategory = item.id;
+      saveState(); render();
+    }
+
+    function manageProduk(){
+      const current = activeProdukCategory();
+      if(!current) return addProdukCategory();
+      const action = window.prompt("Urus produk: taip E untuk edit nama, P untuk padam produk.", "E");
+      if(action === null) return;
+      if(action.trim().toUpperCase() === "E"){
+        const name = window.prompt("Nama produk:", current.name);
+        if(name === null) return;
+        const clean = name.trim();
+        if(!clean){ window.alert("Nama produk tidak boleh kosong."); return; }
+        if(state.produkCategories.some(item=>item.id !== current.id && item.name.toLowerCase() === clean.toLowerCase())){ window.alert("Nama produk ini sudah digunakan."); return; }
+        current.name = clean; saveState(); renderProdukWorkspace();
+      }else if(action.trim().toUpperCase() === "P"){
+        if(!window.confirm(`Padam produk "${current.name}" bersama semua kandungannya? Tindakan ini tidak boleh dibuat asal.`)) return;
+        state.produkCategories = state.produkCategories.filter(item=>item.id !== current.id);
+        if(!state.produkCategories.length) state.produkCategories.push({id:makeId(),name:"Produk Baharu",items:[]});
+        state.activeProdukCategory = state.produkCategories[0].id;
+        saveState(); render();
+      }else{
+        window.alert("Pilihan tidak dikenali. Taip E atau P.");
+      }
+    }
+
+    function addProdukContent(){
+      if(!activeProdukCategory()) return;
+      const form = document.getElementById("produkAddForm");
+      if(!form) return;
+      form.hidden = false;
+      document.getElementById("produkNewTitle").focus();
+    }
+
+    function cancelAddProdukContent(){
+      const form = document.getElementById("produkAddForm");
+      if(!form) return;
+      form.reset();
+      form.hidden = true;
+    }
+
+    function saveProdukContent(event){
+      event.preventDefault();
+      const current = activeProdukCategory();
+      const titleField = document.getElementById("produkNewTitle");
+      const contentField = document.getElementById("produkNewContent");
+      if(!current || !titleField || !contentField) return;
+      const title = titleField.value.trim();
+      if(!title){
+        titleField.focus();
+        return;
+      }
+      current.items.push({id:makeId(),title,content:contentField.value,done:false});
+      saveState();
+      renderProdukWorkspace();
+      cancelAddProdukContent();
+    }
+
+    function editProdukContent(categoryId,itemId){
+      const category = state.produkCategories.find(item=>item.id === categoryId);
+      const item = category && category.items.find(entry=>entry.id === itemId);
+      if(!item) return;
+      const title = window.prompt("Tajuk kandungan:", item.title);
+      if(title === null) return;
+      if(!title.trim()){ window.alert("Tajuk kandungan diperlukan."); return; }
+      const content = window.prompt("Nota / isi kandungan:", item.content || "");
+      if(content === null) return;
+      item.title = title.trim(); item.content = content;
+      saveState(); renderProdukWorkspace();
+    }
+
+    function deleteProdukContent(categoryId,itemId){
+      const category = state.produkCategories.find(item=>item.id === categoryId);
+      const item = category && category.items.find(entry=>entry.id === itemId);
+      if(!item || !window.confirm(`Padam kandungan "${item.title}"?`)) return;
+      category.items = category.items.filter(entry=>entry.id !== itemId);
+      saveState(); renderProdukWorkspace();
+    }
+
+    function toggleProdukContent(categoryId,itemId,done){
+      const category = state.produkCategories.find(item=>item.id === categoryId);
+      const item = category && category.items.find(entry=>entry.id === itemId);
+      if(!item) return;
+      item.done = !!done; saveState(); renderProdukWorkspace();
+    }
     function render(){
       renderTabs();
       renderHeader();
@@ -2595,6 +2811,7 @@
       renderRadasProducts();
       renderDexsatoContentView();
       renderIsteriContentView();
+      renderProdukWorkspace();
     }
 
 
