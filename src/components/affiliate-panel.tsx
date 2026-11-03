@@ -7,7 +7,7 @@ import { requestJson, RequestError } from '@/lib/errors/client';
 const PAGE_SIZE = 9;
 const money = (sen: number | null) => sen === null ? 'Belum diisi' : `RM${(sen/100).toFixed(2)}`;
 function blank(): Product { return {id:crypto.randomUUID(),name:'',imageUrl:'',category:'',priceSen:null,commissionSen:null,url:'',reviewedOn:'',contentTypes:[],sourceNotes:'',published:false,revision:0}; }
-export function AffiliatePanel({ admin = false, balance, onTopUp, accountName = '' }: { admin?: boolean; accountName?: string; balance?: number; onTopUp?: () => void }) {
+export function AffiliatePanel({ admin = false, accountName = '' }: { admin?: boolean; accountName?: string; }) {
   const [catalog,setCatalog] = useState<Catalog | null>(null), [error,setError] = useState(''), [loading,setLoading] = useState(true);
   const [query,setQuery] = useState(''), [category,setCategory] = useState(''), [draft,setDraft] = useState<Product | null>(null), [busy,setBusy] = useState(false);
   const [page,setPage] = useState(1);
@@ -31,7 +31,7 @@ export function AffiliatePanel({ admin = false, balance, onTopUp, accountName = 
     document.addEventListener('visibilitychange',visibility); window.addEventListener('focus',focus);
     const timer = window.setInterval(()=>{if(document.visibilityState==='visible') void refresh(true);},60000);
     return ()=>{controller.current?.abort();++sequence.current;window.clearInterval(timer);document.removeEventListener('visibilitychange',visibility);window.removeEventListener('focus',focus);};
-  },[admin,balance]); // Recheck access without replacing the visible catalogue during background reads.
+  },[admin]);
   async function mutate(action: 'save' | 'delete', product: Product) {
     if(writing.current) return;
     if(!validProduct(product)){setError('Semak semua medan, pautan HTTPS, komisen dan tarikh.');return;}
@@ -42,7 +42,7 @@ export function AffiliatePanel({ admin = false, balance, onTopUp, accountName = 
     } catch(e) { if(e instanceof RequestError && e.status===401)window.location.assign('/login');setError(e instanceof RequestError && e.status===409?'Produk telah berubah. Semak senarai dan buka semula produk sebelum menyimpan.':'Respons belum dapat dipastikan. Semak senarai dahulu; draf dan ID asal dikekalkan.'); }
     finally { writing.current=false;setBusy(false);setLoading(false); }
   }
-  const accessible = !!catalog && catalog.access==='allowed' && (admin || catalog.admin || balance === undefined || balance>0);
+  const accessible = !!catalog && catalog.access==='allowed';
   const products = accessible ? catalog.products : [];
   const categories=[...new Set(products.map(p=>p.category).filter(Boolean))].sort();
   const filtered=products.filter(p=>(!category || p.category===category) && `${p.name} ${p.category} ${p.contentTypes.join(' ')}`.toLowerCase().includes(query.trim().toLowerCase()));
@@ -72,7 +72,7 @@ export function AffiliatePanel({ admin = false, balance, onTopUp, accountName = 
   return <section className="affiliate-panel" aria-labelledby="affiliate-title">
     <div className="affiliate-heading">{admin?<div><span className="eyebrow">SUMBER CONTENT</span><h1 id="affiliate-title">Urus Produk<span>.</span></h1><p>Pilih produk dan jenis content yang sesuai untuk video anda.</p></div>:<WorkspaceGreeting name={accountName} affiliate id="affiliate-title"/>}<button className="secondary" disabled={busy} onClick={()=>void refresh()}>Semak semula</button></div>
     {error && <p className="notice" role="alert">{error}</p>}
-    {loading ? <p className="notice" role="status">Menyemak akses…</p> : !catalog ? null : !accessible ? <div className="panel affiliate-locked"><h2>Akses Produk Affiliate dikunci</h2><p>Top up bermula RM5 dan tunggu pengesahan admin. Akses tersedia selagi baki kredit masih ada.</p>{onTopUp && <button className="primary" onClick={onTopUp}>Top Up RM5</button>}</div> : <>
+    {loading ? <p className="notice" role="status">Memuatkan senarai produk…</p> : !catalog ? null : !accessible ? <p className="notice">Senarai produk belum dapat dimuatkan. Semak semula.</p> : <>
       {!admin && catalog.admin && <a className="secondary affiliate-admin-link" href="/admin/products">Urus produk sebagai admin</a>}
       {admin && <button className="primary" disabled={busy || editing} onClick={()=>{if(busy || draft)return;setDraft(blank());setError('');}}>Tambah produk</button>}
       <div className="affiliate-filters"><label>Cari produk<input type="search" disabled={busy || editing} value={query} onChange={e=>{setQuery(e.target.value);setPage(1);}} placeholder="Nama, kategori atau jenis content"/></label><label>Kategori<select disabled={busy || editing} value={category} onChange={e=>{setCategory(e.target.value);setPage(1);}}><option value="">Semua kategori</option>{categories.map(c=><option key={c}>{c}</option>)}</select></label></div>

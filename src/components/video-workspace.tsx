@@ -47,7 +47,7 @@ export function VideoWorkspace({ accountEmail, accountName = '', initialCredits,
         <div className="page-heading"><WorkspaceGreeting name={accountName} onFindProducts={()=>setTab('affiliate')}/><span className="duration-badge">Omni Flash 1.1</span></div>
         <VideoStudio credits={credits} generationEnabled={generationEnabled} onCreditsChanged={refreshCredits} />
         </div>
-        {tab==='affiliate' && <AffiliatePanel accountName={accountName} balance={credits.status==='ready'?credits.balance:-1} onTopUp={topUp}/>}
+        {tab==='affiliate' && <AffiliatePanel accountName={accountName}/>}
         {logoutState.error && <p className="notice" role="alert">{logoutState.error}</p>}
         <footer className="workspace-footer"><span>RADAS AI VIDEO</span><span>RM5 / 60 credits · 1 credit / generation</span></footer>
       </div>
