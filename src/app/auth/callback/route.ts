@@ -8,13 +8,13 @@ export async function GET(request: NextRequest) {
       const supabase = await createClient();
       const { error } = await supabase.auth.exchangeCodeForSession(code);
       if (!error) {
-        const response = NextResponse.redirect(new URL('/studio', request.url));
+        const response = new NextResponse(null, { status: 307, headers: { Location: '/studio' } });
         response.headers.set('Cache-Control', 'private, no-store');
         return response;
       }
     } catch { /* Safe generic failure; never expose token or provider details. */ }
   }
-  const response = NextResponse.redirect(new URL('/login?confirmation=failed', request.url));
+  const response = new NextResponse(null, { status: 307, headers: { Location: '/login?confirmation=failed' } });
   response.headers.set('Cache-Control', 'private, no-store');
   return response;
 }
