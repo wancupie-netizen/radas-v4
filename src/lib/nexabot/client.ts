@@ -3,6 +3,7 @@ import { GENERATION_TIMEOUTS } from '../generations/timeouts';
 import { validateImageFile, validatePrompt, VIDEO_INPUT, type VideoOrientation, type VideoResolution } from '../video/input';
 
 const BASE = 'https://nexabot.id';
+const DOWNLOAD_ORIGIN = 'https://hrekuraxzpiqymgcrjyb.supabase.co';
 export type JobStatus = 'queued' | 'processing' | 'done' | 'failed';
 export type VideoRequest = { prompt: string; orientation: VideoOrientation; resolution: VideoResolution } &
   ({ mode: 'text'; imageDataUris?: never } | { mode: 'image' | 'ingredients'; imageDataUris: string[] });
@@ -71,15 +72,21 @@ export function createNexabotClient(options: { apiKey?: string; fetcher?: typeof
         ...(body ? { body: serialized } : {}) });
       received = true; responseStatus = response.status;
       transport.phase = 'response_body'; transport.headerMs = Math.round(performance.now() - started); transport.httpStatus = response.status;
-      // Download redirects may remain on NexaBot; never send the key to another host.
+      // Only NexaBot receives the API key, including on download redirects.
       if (method === 'GET' && path.endsWith('/download')) {
         for (let hop = 0; response.status >= 300 && response.status < 400 && hop < 3; hop++) {
           const location = response.headers.get('location');
           await response.body?.cancel();
           if (!location) throw new NexabotError('UNSAFE_DOWNLOAD_REDIRECT');
           const target = new URL(location, response.url || BASE + path);
-          if (target.origin !== BASE || target.username || target.password) throw new NexabotError('UNSAFE_DOWNLOAD_REDIRECT');
-          response = await fetcher(target.href, { method: 'GET', cache: 'no-store', redirect: 'manual', signal: controller.signal, headers: { 'x-api-key': key! } });
+          const isNexabot = target.origin === BASE;
+          if ((!isNexabot && target.origin !== DOWNLOAD_ORIGIN) || target.username || target.password) {
+            throw new NexabotError('UNSAFE_DOWNLOAD_REDIRECT');
+          }
+          response = await fetcher(target.href, {
+            method: 'GET', cache: 'no-store', redirect: 'manual', signal: controller.signal,
+            headers: isNexabot ? { 'x-api-key': key! } : undefined,
+          });
         }
       }
       if (!response.ok) {
