@@ -45,6 +45,10 @@ export function VideoWorkspace({ accountEmail, accountName = '', initialCredits,
       <div className="workspace">
         <div hidden={tab!=='video'}>
         <div className="page-heading"><WorkspaceGreeting name={accountName} onFindProducts={()=>setTab('affiliate')}/><span className="duration-badge">Omni Flash 1.1</span></div>
+        <aside aria-labelledby="video-maintenance-title" style={{ marginBottom: 20, padding: '14px 16px', border: '1px solid #9a7029', borderRadius: 12, background: '#292113', color: '#ffe2a3' }}>
+          <h2 id="video-maintenance-title" style={{ margin: 0, fontSize: 16 }}>Sila Jangan Jana Video Buat Masa Ini</h2>
+          <p style={{ margin: '6px 0 0' }}>Kami sedang membaiki gangguan pada sistem video RADAS. Sila tunggu makluman kami sebelum menjana video baharu.</p>
+        </aside>
         <VideoStudio credits={credits} generationEnabled={generationEnabled} onCreditsChanged={refreshCredits} />
         </div>
         {tab==='affiliate' && <AffiliatePanel accountName={accountName} balance={credits.status==='ready'?credits.balance:-1} onTopUp={topUp}/>}
