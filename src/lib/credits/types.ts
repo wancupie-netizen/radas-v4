@@ -1,6 +1,6 @@
 export type CreditTransaction = {
   id: string;
-  type: 'topup' | 'debit' | 'refund';
+  type: 'topup' | 'debit' | 'refund' | 'compensation';
   amount: number;
   balanceAfter: number;
   createdAt: string;
@@ -21,7 +21,7 @@ export function parseSnapshot(value: unknown): CreditSnapshot {
     if (!row || typeof row !== 'object') return { status: 'unavailable' };
     const t = row as Record<string, unknown>;
     if (typeof t.id !== 'string' || typeof t.createdAt !== 'string' || !Number.isFinite(Date.parse(t.createdAt)) || !integer(t.balanceAfter) ||
-      !((t.type === 'topup' && typeof t.amount === 'number' && [60, 120, 250, 620].includes(t.amount)) || (t.type === 'debit' && t.amount === -1) || (t.type === 'refund' && integer(t.amount) && t.amount > 0))) return { status: 'unavailable' };
+      !((t.type === 'topup' && typeof t.amount === 'number' && [60, 120, 250, 620].includes(t.amount)) || (t.type === 'debit' && t.amount === -1) || ((t.type === 'refund' || t.type === 'compensation') && integer(t.amount) && t.amount > 0))) return { status: 'unavailable' };
     transactions.push(t as CreditTransaction);
   }
   return { status: 'ready', balance: data.balance, updatedAt: data.updatedAt, transactions };
