@@ -1,7 +1,7 @@
 /* Scoped affiliate card layout; no changes to credit/payment interfaces. */
-.affiliate-panel .affiliate-grid{align-items:start}
-.affiliate-panel .affiliate-card{border-radius:12px;overflow:hidden}
-.affiliate-panel .affiliate-card-body{padding:22px;gap:16px}
+.affiliate-panel .affiliate-grid{align-items:stretch}
+.affiliate-panel .affiliate-card{border-radius:12px;overflow:hidden;display:flex;flex-direction:column}
+.affiliate-panel .affiliate-card-body{padding:20px;gap:12px;flex:1;display:flex;flex-direction:column}
 .affiliate-panel .affiliate-card-heading{display:flex;align-items:flex-start;gap:12px;justify-content:space-between}
 .affiliate-panel .affiliate-card h2{font-size:18px;font-weight:700;line-height:1.45;letter-spacing:0;margin:0}
 .affiliate-panel .affiliate-category{font-size:13px;color:var(--muted);font-weight:600;margin:0}
@@ -44,3 +44,19 @@
   font-size: 14px;
   line-height: 20px;
 }
+
+/* Equal image space keeps the catalogue aligned, even without a photo. */
+.affiliate-panel .affiliate-product-image{width:100%;aspect-ratio:1;flex:none;background:#f5f7f7;border-bottom:1px solid var(--line);overflow:hidden}
+.affiliate-panel .affiliate-product-image img{display:block;width:100%;height:100%;object-fit:contain}
+.affiliate-panel .affiliate-image-placeholder{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:24px;color:#64777b;text-align:center;font-size:13px;line-height:1.5}
+.affiliate-panel .affiliate-card-heading h2{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;min-height:2.9em}
+.affiliate-panel .affiliate-metrics>div{padding:12px;gap:4px}
+.affiliate-panel .affiliate-tags{gap:6px}
+.affiliate-panel .affiliate-tags span{padding:5px 8px;font-size:11px}
+.affiliate-panel .affiliate-reviewed{margin:4px 0 0}
+.affiliate-panel .affiliate-card-body>.affiliate-actions,.affiliate-panel .affiliate-card-body>a.secondary,.affiliate-panel .affiliate-card-body>p:last-child:not(.affiliate-reviewed){margin-top:auto}
+.affiliate-panel .affiliate-card-body>.affiliate-actions{padding-top:4px;gap:14px}
+.affiliate-panel .affiliate-card-body>details{margin:0}
+@media(max-width:600px){.affiliate-panel .affiliate-card-body{padding:18px}.affiliate-panel .affiliate-card h2{font-size:17px}.affiliate-panel .affiliate-metrics dd{font-size:20px}}
+.affiliate-panel .affiliate-toolbar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;margin-bottom:24px}
+.affiliate-panel .affiliate-toolbar .affiliate-actions[aria-label="Status penerbitan produk"]{margin:0}

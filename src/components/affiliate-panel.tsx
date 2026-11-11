@@ -7,6 +7,15 @@ import { requestJson, RequestError } from '@/lib/errors/client';
 const PAGE_SIZE = 9;
 const money = (sen: number | null) => sen === null ? 'Belum diisi' : `RM${(sen/100).toFixed(2)}`;
 function blank(): Product { return {id:crypto.randomUUID(),name:'',imageUrl:'',category:'',priceSen:null,commissionSen:null,url:'',reviewedOn:'',contentTypes:[],sourceNotes:'',published:false,revision:0}; }
+function ProductImage({ product }: { product: Product }) {
+  const [failed,setFailed] = useState(false);
+  return <div className="affiliate-product-image">
+    {product.imageUrl && !failed ? <img src={product.imageUrl} alt={product.name} loading="lazy" referrerPolicy="no-referrer" width="400" height="400" onError={()=>setFailed(true)}/> : <div className="affiliate-image-placeholder">
+      <svg aria-hidden="true" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m3 17 5-5 4 4 4-6 5 7"/></svg>
+      <span>{product.imageUrl ? 'Gambar belum dapat dimuatkan' : 'Gambar belum dimuat naik'}</span>
+    </div>}
+  </div>;
+}
 export function AffiliatePanel({ admin = false, accountName = '' }: { admin?: boolean; accountName?: string; }) {
   const [catalog,setCatalog] = useState<Catalog | null>(null), [error,setError] = useState(''), [loading,setLoading] = useState(true);
   const [query,setQuery] = useState(''), [category,setCategory] = useState(''), [draft,setDraft] = useState<Product | null>(null), [busy,setBusy] = useState(false);
@@ -76,11 +85,11 @@ export function AffiliatePanel({ admin = false, accountName = '' }: { admin?: bo
     {error && <p className="notice" role="alert">{error}</p>}
     {loading ? <p className="notice" role="status">Memuatkan senarai produk…</p> : !catalog ? null : !accessible ? <p className="notice">Senarai produk belum dapat dimuatkan. Semak semula.</p> : <>
       {!admin && catalog.admin && <a className="secondary affiliate-admin-link" href="/admin/products">Urus produk sebagai admin</a>}
-      {admin && <button className="primary" disabled={busy || editing} onClick={()=>{if(busy || draft)return;setDraft(blank());setError('');}}>Tambah produk</button>}
-      {admin && <div className="affiliate-actions" role="group" aria-label="Status penerbitan produk">
+      {admin && <div className="affiliate-toolbar"><button className="primary" disabled={busy || editing} onClick={()=>{if(busy || draft)return;setDraft(blank());setError('');}}>Tambah produk</button>
+      <div className="affiliate-actions" role="group" aria-label="Status penerbitan produk">
         <button type="button" className={onlyDrafts?'secondary':'primary'} aria-pressed={!onlyDrafts} disabled={busy || editing} onClick={()=>{setOnlyDrafts(false);setPage(1);}}>Semua ({products.length})</button>
         <button type="button" className={onlyDrafts?'primary':'secondary'} aria-pressed={onlyDrafts} disabled={busy || editing} onClick={()=>{setOnlyDrafts(true);setPage(1);}}>Belum diterbitkan ({draftCount})</button>
-      </div>}
+      </div></div>}
       <div className="affiliate-filters"><label>Cari produk<input type="search" disabled={busy || editing} value={query} onChange={e=>{setQuery(e.target.value);setPage(1);}} placeholder="Nama, kategori atau jenis content"/></label><label>Kategori<select disabled={busy || editing} value={category} onChange={e=>{setCategory(e.target.value);setPage(1);}}><option value="">Semua kategori</option>{categories.map(c=><option key={c}>{c}</option>)}</select></label></div>
       {admin && draft && !visibleProducts.some(p=>p.id===draft.id) && <article className="panel affiliate-card affiliate-new-card">{editorForm()}</article>}
       {editing && <p className="input-help">Simpan atau batal edit sebelum menukar halaman, carian atau produk.</p>}
@@ -88,8 +97,8 @@ export function AffiliatePanel({ admin = false, accountName = '' }: { admin?: bo
       {products.length===0 ? <p className="notice">Belum ada produk {admin?'dalam katalog':'yang diterbitkan'}.</p> : filtered.length===0 ? <p className="notice">Tiada produk sepadan. Cuba carian atau penapis lain.</p> : <div className="affiliate-grid">{visibleProducts.map(p=><article className={`panel affiliate-card${draft?.id===p.id ? ' affiliate-card-editing' : ''}`} key={p.id}>
         {admin && draft?.id===p.id ? editorForm() : <>
         {/* External images never carry app cookies/referrers. No server fetching of admin URLs. */}
-        {p.imageUrl ? <img src={p.imageUrl} alt={p.name} loading="lazy" referrerPolicy="no-referrer" width="400" height="300"/> : null}
-        <div className="affiliate-card-body"><div className="affiliate-card-heading"><h2>{p.name}</h2>{admin && <span className={`affiliate-status ${p.published?'affiliate-status-live':'affiliate-status-draft'}`}>{p.published?'Diterbitkan':'Draf'}</span>}</div><p className="affiliate-category">{p.category || 'Kategori belum diisi'}</p><dl className="affiliate-metrics"><div><dt>Harga</dt><dd>{money(p.priceSen)}</dd></div><div className="affiliate-commission"><dt>Anggaran komisen</dt><dd>{money(p.commissionSen)}</dd></div></dl>{p.contentTypes.length>0 && <div className="affiliate-tags">{p.contentTypes.map(t=><span key={t}>{t}</span>)}</div>}<p className="input-help">Disemak: {p.reviewedOn ? <time dateTime={p.reviewedOn}>{p.reviewedOn}</time> : 'Belum diisi'}</p>
+        <ProductImage key={p.imageUrl} product={p}/>
+        <div className="affiliate-card-body"><div className="affiliate-card-heading"><h2 title={p.name}>{p.name}</h2>{admin && <span className={`affiliate-status ${p.published?'affiliate-status-live':'affiliate-status-draft'}`}>{p.published?'Diterbitkan':'Draf'}</span>}</div><p className="affiliate-category">{p.category || 'Kategori belum diisi'}</p><dl className="affiliate-metrics"><div><dt>Harga</dt><dd>{money(p.priceSen)}</dd></div><div className="affiliate-commission"><dt>Anggaran komisen</dt><dd>{money(p.commissionSen)}</dd></div></dl>{p.contentTypes.length>0 && <div className="affiliate-tags">{p.contentTypes.map(t=><span key={t}>{t}</span>)}</div>}<p className="input-help affiliate-reviewed">Disemak: {p.reviewedOn ? <time dateTime={p.reviewedOn}>{p.reviewedOn}</time> : 'Belum diisi'}</p>
         {admin ? <>{p.sourceNotes && <details><summary>Catatan sumber</summary><pre className="input-help" style={{whiteSpace:'pre-wrap',overflowWrap:'anywhere'}}>{p.sourceNotes}</pre></details>}<div className="affiliate-actions"><button className="secondary" disabled={busy || editing} onClick={()=>startEdit(p)}>Edit</button><button className="text-button" disabled={busy || editing} onClick={()=>{if(busy || draft)return;if(window.confirm(`Padam ${p.name}?`))void mutate('delete',p);}}>Padam</button></div></> : p.url ? <a className="secondary" href={p.url} target="_blank" rel="noopener noreferrer sponsored">Lihat produk ↗</a> : <p className="input-help">Link produk akan dikemaskini</p>}
         </div></>}</article>)}</div>}
       {filtered.length>0 && <nav className="affiliate-pagination" aria-label="Halaman produk">
