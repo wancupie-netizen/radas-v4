@@ -69,6 +69,37 @@ async function failure(fn, code, outcome) { await assert.rejects(fn, e => e inst
   await failure(() => c.downloadVideo('abc'), 'UNSAFE_DOWNLOAD_REDIRECT');
   let hops = 0; c = client(() => ++hops === 1 ? new Response(null, { status: 302, headers: { location: '/safe.mp4' } }) : new Response('mp4', { headers: { 'content-type': 'video/mp4' } }));
   await (await c.downloadVideo('abc')).body.cancel(); assert.equal(hops, 2);
+  for (const origin of ['https://hrekuraxzpiqymgcrjyb.supabase.co', 'https://iosrygyeustxztewibzq.supabase.co']) {
+    let downloadCalls = 0;
+    c = client((url, init) => {
+      downloadCalls++;
+      if (downloadCalls === 1) {
+        assert.equal(init.headers['x-api-key'], key);
+        return new Response(null, { status: 307, headers: { location: origin + '/signed.mp4?token=fixture' } });
+      }
+      assert.equal(new URL(url).origin, origin);
+      assert.equal(new Headers(init.headers).has('x-api-key'), false);
+      assert.equal(init.redirect, 'manual');
+      return new Response('mp4', { headers: { 'content-type': 'video/mp4' } });
+    });
+    await (await c.downloadVideo('abc')).body.cancel();
+    assert.equal(downloadCalls, 2);
+  }
+  for (const target of [
+    'http://iosrygyeustxztewibzq.supabase.co/file',
+    'https://unapproved.supabase.co/file',
+    'https://iosrygyeustxztewibzq.supabase.co.evil.example/file',
+    'https://user:pass@iosrygyeustxztewibzq.supabase.co/file',
+  ]) {
+    let downloadCalls = 0;
+    c = client(() => {
+      downloadCalls++;
+      return new Response(null, { status: 307, headers: { location: target } });
+    });
+    await failure(() => c.downloadVideo('abc'), 'UNSAFE_DOWNLOAD_REDIRECT');
+    assert.equal(downloadCalls, 1);
+  }
+  console.log('PASS both provider Storage origins; API key withheld on cross-origin download; unsafe origins blocked');
   c = client(() => new Response('not video', { headers: { 'content-type': 'text/html' } }));
   await failure(() => c.downloadVideo('abc'), 'INVALID_OR_UNAVAILABLE_RESPONSE');
   console.log('PASS job states and identity; private provider fields removed; zero credit; MP4 stream; redirects denied');

@@ -3,7 +3,10 @@ import { GENERATION_TIMEOUTS } from '../generations/timeouts';
 import { validateImageFile, validatePrompt, VIDEO_INPUT, type VideoOrientation, type VideoResolution } from '../video/input';
 
 const BASE = 'https://nexabot.id';
-const DOWNLOAD_ORIGIN = 'https://hrekuraxzpiqymgcrjyb.supabase.co';
+const DOWNLOAD_ORIGINS = new Set([
+  'https://hrekuraxzpiqymgcrjyb.supabase.co',
+  'https://iosrygyeustxztewibzq.supabase.co',
+]);
 export type JobStatus = 'queued' | 'processing' | 'done' | 'failed';
 export type VideoRequest = { prompt: string; orientation: VideoOrientation; resolution: VideoResolution } &
   ({ mode: 'text'; imageDataUris?: never } | { mode: 'image' | 'ingredients'; imageDataUris: string[] });
@@ -80,7 +83,7 @@ export function createNexabotClient(options: { apiKey?: string; fetcher?: typeof
           if (!location) throw new NexabotError('UNSAFE_DOWNLOAD_REDIRECT');
           const target = new URL(location, response.url || BASE + path);
           const isNexabot = target.origin === BASE;
-          if ((!isNexabot && target.origin !== DOWNLOAD_ORIGIN) || target.username || target.password) {
+          if ((!isNexabot && !DOWNLOAD_ORIGINS.has(target.origin)) || target.username || target.password) {
             throw new NexabotError('UNSAFE_DOWNLOAD_REDIRECT');
           }
           response = await fetcher(target.href, {
