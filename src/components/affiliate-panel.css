@@ -31,3 +31,16 @@
 .affiliate-panel .affiliate-page-buttons button[aria-current=page]{background:var(--accent);border-color:var(--accent);color:#061b19}
 .affiliate-panel .affiliate-page-buttons button:disabled{cursor:default;opacity:.55}
 @media(max-width:600px){.affiliate-panel .affiliate-card-body,.affiliate-panel .affiliate-editor{padding:20px}.affiliate-panel .affiliate-card h2{font-size:18px}.affiliate-panel .affiliate-metrics dd{font-size:22px}.affiliate-panel .affiliate-pagination{align-items:flex-start;flex-direction:column}}
+
+
+.affiliate-panel .affiliate-actions[aria-label="Status penerbitan produk"] {
+  margin: 18px 0 24px;
+  gap: 12px;
+  align-items: stretch;
+}
+.affiliate-panel .affiliate-actions[aria-label="Status penerbitan produk"] > button {
+  min-height: 44px;
+  padding: 11px 18px;
+  font-size: 14px;
+  line-height: 20px;
+}
