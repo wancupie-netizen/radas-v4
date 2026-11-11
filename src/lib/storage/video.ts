@@ -3,6 +3,7 @@ import { createClient } from '@supabase/supabase-js';
 import { createNexabotClient } from '../nexabot/client';
 import { createGenerationStore } from '../generations/store';
 import { GenerationError } from '../generations/input';
+import { generationLog } from '../generations/log';
 import { UUID } from '../generations/types';
 export const VIDEO_BUCKET = 'radas-v4-videos';
 export const VIDEO_MAX_BYTES = 50 * 1024 * 1024;
@@ -61,38 +62,63 @@ export function createVideoStorage() {
   const bucket = client.storage.from(VIDEO_BUCKET);
   async function info(action: 'read' | 'mark', userId: string, id: string, size?: number): Promise<ObjectInfo> {
     const { data, error } = await client.rpc('radas_v4_video_object_operation', { p_action: action, p_user_id: userId, p_id: id, p_size: size ?? null });
-    if (error) throw new GenerationError('unavailable');
+    if (error) {
+      generationLog(action === 'read' ? 'video_metadata_read' : 'video_metadata_mark', { requestId: id, error, sqlState: error.code });
+      throw new GenerationError('unavailable');
+    }
     if (data?.error) { const status = { not_found: 404, expired: 410, not_ready: 409 }[data.error as string]; throw new GenerationError(status ? data.error : 'unavailable', status ?? 503); }
     if (!data || data.objectPath !== `${userId.toLowerCase()}/${id.toLowerCase()}.mp4` || typeof data.stored !== 'boolean' ||
       typeof data.expiresAt !== 'string' || !Number.isFinite(Date.parse(data.expiresAt)) ||
       (data.stored ? !Number.isSafeInteger(data.sizeBytes) || data.sizeBytes < 12 || data.sizeBytes > VIDEO_MAX_BYTES : data.sizeBytes !== null)) throw new GenerationError('unavailable');
     unexpired(data.expiresAt); return data;
   }
-  async function download(path: string): Promise<Uint8Array | null> {
+  async function download(path: string, id: string): Promise<Uint8Array | null> {
     const { data, error } = await bucket.download(path);
-    if (error) { if (String((error as { statusCode?: string }).statusCode) === '404') return null; throw new GenerationError('video_unavailable'); }
+    if (error) {
+      const diagnostic = error as { status?: number; statusCode?: string };
+      generationLog('video_storage_read', { requestId: id, error, httpStatus: diagnostic.status, storageCode: String(diagnostic.statusCode) });
+      if (String(diagnostic.statusCode) === '404') return null;
+      throw new GenerationError('video_unavailable');
+    }
     if (!data || data.size > VIDEO_MAX_BYTES || data.type.split(';')[0] !== 'video/mp4') throw new GenerationError('video_unavailable');
     const bytes = new Uint8Array(await data.arrayBuffer()); validateMp4(bytes); return bytes;
   }
   return { async ensure(userId: string, id: string, signal: AbortSignal): Promise<Uint8Array> {
     if (!UUID.test(userId) || !UUID.test(id)) throw new GenerationError('not_found', 404);
-    const current = await info('read', userId, id); if (signal.aborted) throw new GenerationError('video_unavailable');
-    let bytes = await download(current.objectPath);
-    if (!bytes && current.stored) throw new GenerationError('video_unavailable'); // Never recreate a marked missing file.
-    if (!bytes) {
-      const job = await createGenerationStore().operation('read', userId, id);
-      if (job.status !== 'done' || !job.providerJobId) throw new GenerationError('not_ready', 409);
-      bytes = await readProviderVideo(await createNexabotClient().downloadVideo(job.providerJobId), signal, current.expiresAt);
-      unexpired(current.expiresAt); if (signal.aborted) throw new GenerationError('video_unavailable');
-      const { error } = await bucket.upload(current.objectPath, bytes, { contentType: 'video/mp4', cacheControl: '0', upsert: false });
-      if (error) {
-        // Another request, or a lost upload response, may have committed this immutable object.
-        bytes = await download(current.objectPath); if (!bytes) throw new GenerationError('video_unavailable');
+    let stage = 'video_metadata_read';
+    const started = performance.now();
+    try {
+      const current = await info('read', userId, id); if (signal.aborted) throw new GenerationError('video_unavailable');
+      stage = 'video_storage_read';
+      let bytes = await download(current.objectPath, id);
+      if (!bytes && current.stored) throw new GenerationError('video_unavailable'); // Never recreate a marked missing file.
+      if (!bytes) {
+        stage = 'video_generation_read';
+        const job = await createGenerationStore().operation('read', userId, id);
+        if (job.status !== 'done' || !job.providerJobId) throw new GenerationError('not_ready', 409);
+        stage = 'video_provider_download';
+        const response = await createNexabotClient().downloadVideo(job.providerJobId);
+        generationLog(stage, { requestId: id, httpStatus: response.status });
+        stage = 'video_provider_body';
+        bytes = await readProviderVideo(response, signal, current.expiresAt);
+        unexpired(current.expiresAt); if (signal.aborted) throw new GenerationError('video_unavailable');
+        stage = 'video_storage_upload';
+        const { error } = await bucket.upload(current.objectPath, bytes, { contentType: 'video/mp4', cacheControl: '0', upsert: false });
+        if (error) {
+          const diagnostic = error as { status?: number; statusCode?: string };
+          generationLog(stage, { requestId: id, error, httpStatus: diagnostic.status, storageCode: String(diagnostic.statusCode) });
+          // Another request, or a lost upload response, may have committed this immutable object.
+          bytes = await download(current.objectPath, id); if (!bytes) throw new GenerationError('video_unavailable');
+        }
       }
+      if (signal.aborted) throw new GenerationError('video_unavailable');
+      stage = current.stored ? 'video_metadata_read' : 'video_metadata_mark';
+      const final = await info(current.stored ? 'read' : 'mark', userId, id, bytes.length);
+      if (!final.stored || final.sizeBytes !== bytes.length) throw new GenerationError('video_unavailable');
+      return bytes;
+    } catch (error) {
+      generationLog(stage, { requestId: id, error, durationMs: performance.now() - started });
+      throw error;
     }
-    if (signal.aborted) throw new GenerationError('video_unavailable');
-    const final = await info(current.stored ? 'read' : 'mark', userId, id, bytes.length);
-    if (!final.stored || final.sizeBytes !== bytes.length) throw new GenerationError('video_unavailable');
-    return bytes;
   } };
 }

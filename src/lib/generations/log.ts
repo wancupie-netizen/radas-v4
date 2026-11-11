@@ -2,9 +2,9 @@ import 'server-only';
 import { NexabotError, type TransportDiagnostic } from '../nexabot/client';
 import { GenerationError } from './input';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const stages = new Set(['request_auth','request_input','request_submit','request_status','database_read','database_reserve','database_claim','database_cancel','database_transition','database_poll','database_reconcile','provider_transport','provider_credit','provider_submit','provider_poll','generation_outcome']);
-const codes = new Set(['unavailable','unauthorized','forbidden','generation_disabled','rate_limited','invalid_input','invalid_image','image_too_large','insufficient_credits','active_generation','request_conflict','not_found','expired','provider_unavailable','TIMEOUT','INVALID_INPUT','MISSING_OR_INVALID_KEY','INVALID_OR_UNAVAILABLE_RESPONSE','UNSAFE_DOWNLOAD_REDIRECT']);
-type Entry = { requestId?: string; error?: unknown; durationMs?: number; providerJobId?: string | null; status?: string; sqlState?: string; transport?: TransportDiagnostic };
+const stages = new Set(['request_auth','request_input','request_submit','request_status','database_read','database_reserve','database_claim','database_cancel','database_transition','database_poll','database_reconcile','provider_transport','provider_credit','provider_submit','provider_poll','generation_outcome','playback_request','video_metadata_read','video_storage_read','video_generation_read','video_provider_download','video_provider_body','video_storage_upload','video_metadata_mark']);
+const codes = new Set(['video_unavailable','not_ready','unavailable','unauthorized','forbidden','generation_disabled','rate_limited','invalid_input','invalid_image','image_too_large','insufficient_credits','active_generation','request_conflict','not_found','expired','provider_unavailable','TIMEOUT','INVALID_INPUT','MISSING_OR_INVALID_KEY','INVALID_OR_UNAVAILABLE_RESPONSE','UNSAFE_DOWNLOAD_REDIRECT']);
+type Entry = { requestId?: string; error?: unknown; durationMs?: number; providerJobId?: string | null; status?: string; sqlState?: string; transport?: TransportDiagnostic; httpStatus?: number; storageCode?: string };
 // Deliberate field allowlist: never serialize errors, request bodies, prompts, media, keys or customer identity.
 export function generationLog(stage: string, entry: Entry = {}) {
   try {
@@ -28,6 +28,14 @@ export function generationLog(stage: string, entry: Entry = {}) {
         if (Number.isInteger(error.diagnostic.httpStatus) && error.diagnostic.httpStatus! >= 100 && error.diagnostic.httpStatus! <= 599) record.httpStatus = error.diagnostic.httpStatus!;
       }
     } else if (error) record.code = 'unavailable';
+    if (Number.isInteger(entry.httpStatus) && entry.httpStatus! >= 100 && entry.httpStatus! <= 599) record.httpStatus = entry.httpStatus!;
+    if (entry.storageCode && ['400','401','403','404','409','413','429','500','502','503','504','NoSuchKey','AccessDenied','InvalidJWT','Duplicate','EntityTooLarge'].includes(entry.storageCode)) record.storageCode = entry.storageCode;
+    if (error instanceof Error) {
+      const cause = error.cause;
+      const transportCode = cause && typeof cause === 'object' && 'code' in cause ? cause.code : undefined;
+      if (typeof transportCode === 'string' && ['UND_ERR_SOCKET','UND_ERR_CONNECT_TIMEOUT','UND_ERR_HEADERS_TIMEOUT','UND_ERR_BODY_TIMEOUT','ECONNRESET','ETIMEDOUT','ENOTFOUND','EAI_AGAIN'].includes(transportCode)) record.transportCode = transportCode;
+      if (['AbortError','TimeoutError'].includes(error.name)) record.transportCode = error.name;
+    }
     const transport = entry.transport ?? (error instanceof NexabotError ? error.diagnostic?.transport : undefined);
     if (transport) {
       if (['before_headers','response_body','complete'].includes(transport.phase)) record.phase = transport.phase;
