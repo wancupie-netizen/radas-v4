@@ -69,7 +69,7 @@ async function failure(fn, code, outcome) { await assert.rejects(fn, e => e inst
   await failure(() => c.downloadVideo('abc'), 'UNSAFE_DOWNLOAD_REDIRECT');
   let hops = 0; c = client(() => ++hops === 1 ? new Response(null, { status: 302, headers: { location: '/safe.mp4' } }) : new Response('mp4', { headers: { 'content-type': 'video/mp4' } }));
   await (await c.downloadVideo('abc')).body.cancel(); assert.equal(hops, 2);
-  for (const origin of ['https://hrekuraxzpiqymgcrjyb.supabase.co', 'https://iosrygyeustxztewibzq.supabase.co']) {
+  for (const origin of ['https://hrekuraxzpiqymgcrjyb.supabase.co', 'https://iosrygyeustxztewibzq.supabase.co', 'https://gvhsnjldhfczmylcagxe.supabase.co']) {
     let downloadCalls = 0;
     c = client((url, init) => {
       downloadCalls++;
@@ -90,6 +90,9 @@ async function failure(fn, code, outcome) { await assert.rejects(fn, e => e inst
     'https://unapproved.supabase.co/file',
     'https://iosrygyeustxztewibzq.supabase.co.evil.example/file',
     'https://user:pass@iosrygyeustxztewibzq.supabase.co/file',
+    'http://gvhsnjldhfczmylcagxe.supabase.co/file',
+    'https://gvhsnjldhfczmylcagxe.supabase.co.evil.example/file',
+    'https://user:pass@gvhsnjldhfczmylcagxe.supabase.co/file',
   ]) {
     let downloadCalls = 0;
     c = client(() => {
@@ -99,7 +102,7 @@ async function failure(fn, code, outcome) { await assert.rejects(fn, e => e inst
     await failure(() => c.downloadVideo('abc'), 'UNSAFE_DOWNLOAD_REDIRECT');
     assert.equal(downloadCalls, 1);
   }
-  console.log('PASS both provider Storage origins; API key withheld on cross-origin download; unsafe origins blocked');
+  console.log('PASS all three provider Storage origins; API key withheld on cross-origin download; unsafe origins blocked');
   c = client(() => new Response('not video', { headers: { 'content-type': 'text/html' } }));
   await failure(() => c.downloadVideo('abc'), 'INVALID_OR_UNAVAILABLE_RESPONSE');
   console.log('PASS job states and identity; private provider fields removed; zero credit; MP4 stream; redirects denied');

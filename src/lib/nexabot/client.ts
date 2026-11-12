@@ -6,6 +6,7 @@ const BASE = 'https://nexabot.id';
 const DOWNLOAD_ORIGINS = new Set([
   'https://hrekuraxzpiqymgcrjyb.supabase.co',
   'https://iosrygyeustxztewibzq.supabase.co',
+  'https://gvhsnjldhfczmylcagxe.supabase.co',
 ]);
 export type JobStatus = 'queued' | 'processing' | 'done' | 'failed';
 export type VideoRequest = { prompt: string; orientation: VideoOrientation; resolution: VideoResolution } &
