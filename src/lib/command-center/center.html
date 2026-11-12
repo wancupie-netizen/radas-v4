@@ -624,6 +624,7 @@
       padding:7px 12px;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;
       box-shadow:var(--shadow-sm);transition:background .15s ease,border-color .15s ease,box-shadow .15s ease;
     }
+    .radas-sheet-link{display:inline-flex;align-items:center;gap:6px;text-decoration:none}
     .radas-products-link:hover{background:#f1f5fa;border-color:#b7c2d3}
     .radas-products-link.active{background:var(--navy);border-color:var(--navy);color:#fff;box-shadow:0 2px 8px rgba(22,58,107,.2)}
     .product-toolbar{display:grid;grid-template-columns:minmax(220px,1.5fr) repeat(4,minmax(140px,.7fr)) auto;gap:10px;margin-bottom:16px;align-items:center}
@@ -812,6 +813,7 @@
           <button type="button" class="radas-products-link" id="radasProductsLink" onclick="switchRadasView('products')" hidden>100 Produk</button>
           <button type="button" class="radas-note-link" id="radasNoteLink" onclick="switchRadasView('notes')" hidden>Nota</button>
           <button type="button" class="dexsato-content-link" id="radasContentLink" onclick="switchRadasView('content')" hidden>Content List</button>
+          <a class="radas-products-link radas-sheet-link" id="radasAffiliateSheetLink" href="https://docs.google.com/spreadsheets/d/1mS8cJur1JlOVFIiB8nfy_pxUHJoPVCflwzZpn02msGw/edit?usp=sharing" target="_blank" rel="noopener noreferrer" title="Buka Google Sheets dalam tab baharu" hidden>Database Produk Affiliate <span aria-hidden="true">↗</span></a>
           <button type="button" class="dexsato-content-link" id="dexsatoContentLink" onclick="switchDexsatoView('content')" hidden>Content List</button>
           <button type="button" class="isteri-content-link" id="isteriContentLink" onclick="switchIsteriView('content')" hidden>Content List</button>
           <button type="button" class="isteri-content-link" id="isteriVideoLink" onclick="switchIsteriView('videos')" hidden>Senarai Video</button>
@@ -3132,6 +3134,7 @@
       productLink.hidden = !isRadas;
       noteLink.hidden = !isRadas;
       contentLink.hidden = !isRadas;
+      document.getElementById("radasAffiliateSheetLink").hidden = !isRadas;
       productLink.classList.toggle("active", isRadas && view === "products");
       noteLink.classList.toggle("active", isRadas && view === "notes");
       contentLink.classList.toggle("active", isRadas && view === "content");
