@@ -20,8 +20,9 @@ export function GenerationResult({ generation, onAgain, againLabel = 'Generate A
     const checkExpiry = () => { if (Date.now() >= Date.parse(generation.expiresAt)) expire(); };
     document.addEventListener('visibilitychange', checkExpiry);
     void (async () => {
+      const downloadTimer = setTimeout(() => controller.abort(), 150_000);
       try {
-        const response = await fetch(`/api/generations/${generation.id}/video`, { cache: 'no-store', signal: AbortSignal.any([controller.signal, AbortSignal.timeout(150_000)]) });
+        const response = await fetch(`/api/generations/${generation.id}/video`, { cache: 'no-store', signal: controller.signal });
         if (response.status === 401) { window.location.assign('/login'); return; }
         if (response.status === 410) { expire(); return; }
         if (!response.ok || response.headers.get('content-type')?.split(';')[0] !== 'video/mp4') throw new Error('video_unavailable');
@@ -29,6 +30,7 @@ export function GenerationResult({ generation, onAgain, againLabel = 'Generate A
         if (Date.now() >= Date.parse(generation.expiresAt)) { expire(); return; }
         objectUrl = URL.createObjectURL(blob); setUrl(objectUrl);
       } catch { if (mounted && !expiredNow) setError('Video belum dapat dimuatkan. Cuba semula.'); }
+      finally { clearTimeout(downloadTimer); }
     })();
     return () => { mounted = false; clearTimeout(timer); document.removeEventListener('visibilitychange', checkExpiry); controller.abort(); if (objectUrl) URL.revokeObjectURL(objectUrl); };
   }, [generation.id, generation.status, generation.expiresAt, attempt]);

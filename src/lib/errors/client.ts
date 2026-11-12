@@ -3,9 +3,16 @@ export class RequestError extends Error {
   constructor(public readonly code = 'unavailable', public readonly status = 0) { super(code); }
 }
 export async function requestJson(url: string, init: RequestInit = {}, timeout = 20_000): Promise<Record<string, unknown>> {
-  const signal = AbortSignal.timeout(timeout);
+  // Older Safari supports AbortController but not AbortSignal.timeout/any.
+  const controller = new AbortController();
+  const callerSignal = init.signal;
+  const abort = () => controller.abort();
+  const timer = setTimeout(abort, timeout);
+  if (callerSignal?.aborted) abort();
+  else callerSignal?.addEventListener('abort', abort, { once: true });
   try {
-    const response = await fetch(url, { ...init, cache: 'no-store', signal: init.signal ? AbortSignal.any([init.signal, signal]) : signal });
+    if (controller.signal.aborted) throw new RequestError();
+    const response = await fetch(url, { ...init, cache: 'no-store', signal: controller.signal });
     if (response.status === 401) throw new RequestError('unauthorized', 401);
     const data: unknown = await response.json();
     if (!response.ok) throw new RequestError(data && typeof data === 'object' && 'error' in data && typeof data.error === 'string' ? data.error : 'unavailable', response.status);
@@ -14,6 +21,9 @@ export async function requestJson(url: string, init: RequestInit = {}, timeout =
   } catch (error) {
     if (error instanceof RequestError) throw error;
     throw new RequestError();
+  } finally {
+    clearTimeout(timer);
+    callerSignal?.removeEventListener('abort', abort);
   }
 }
 const generationMessages: Record<string, string> = {

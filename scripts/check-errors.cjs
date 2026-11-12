@@ -35,8 +35,51 @@ const settle=()=>new Promise(resolve=>setImmediate(resolve));
  for(const data of [null,[],42,'invalid']){global.fetch=async()=>Response.json(data);await assert.rejects(requestJson('/fixture'),e=>e.code==='unavailable');}
  global.fetch=async()=>new Response('not-json',{status:401});await assert.rejects(requestJson('/fixture'),e=>e.status===401);
  let aborts=0;global.fetch=(_url,init)=>new Promise((_resolve,reject)=>init.signal.addEventListener('abort',()=>{aborts++;reject(Error('private transport'));},{once:true}));
- // Keep the process alive while native AbortSignal.timeout's unref timer fires.
- const keepAlive=setInterval(()=>{},50);try{await assert.rejects(requestJson('/fixture',{method:'POST'},15),e=>e.code==='unavailable');}finally{clearInterval(keepAlive);}assert.equal(aborts,1);
+ await assert.rejects(requestJson('/fixture',{method:'POST'},15),e=>e.code==='unavailable');assert.equal(aborts,1);
+ // Simulate Safari without AbortSignal.timeout/any, using the real client helper.
+ const nativeTimeout=AbortSignal.timeout,nativeAny=AbortSignal.any;
+ const nativeSetTimeout=global.setTimeout,nativeClearTimeout=global.clearTimeout;
+ const pendingTimers=new Set();
+ try {
+  AbortSignal.timeout=undefined;AbortSignal.any=undefined;
+  global.setTimeout=(fn,ms,...args)=>{const id=nativeSetTimeout(()=>{pendingTimers.delete(id);fn(...args);},ms);pendingTimers.add(id);return id;};
+  global.clearTimeout=id=>{pendingTimers.delete(id);return nativeClearTimeout(id);};
+  let legacyCalls=0;
+  global.fetch=async()=>{legacyCalls++;return Response.json({admin:true,payments:[],products:[]});};
+  const caller=new AbortController();let listeners=0;
+  const add=caller.signal.addEventListener.bind(caller.signal),remove=caller.signal.removeEventListener.bind(caller.signal);
+  caller.signal.addEventListener=(...args)=>{listeners++;return add(...args);};
+  caller.signal.removeEventListener=(...args)=>{listeners--;return remove(...args);};
+  assert.equal((await requestJson('/api/affiliate',{signal:caller.signal})).admin,true);
+  assert.equal((await requestJson('/api/payments')).admin,true);
+  assert.equal(listeners,0);assert.equal(pendingTimers.size,0);assert.equal(legacyCalls,2);
+  const cancelled=new AbortController();cancelled.abort();
+  await assert.rejects(requestJson('/fixture',{method:'POST',signal:cancelled.signal}),e=>e instanceof RequestError);
+  assert.equal(legacyCalls,2);assert.equal(pendingTimers.size,0);
+  let abortedRequests=0;
+  global.fetch=(_url,init)=>{legacyCalls++;return new Promise((_resolve,reject)=>init.signal.addEventListener('abort',()=>{abortedRequests++;reject(Error('private network'));},{once:true}));};
+  const cancel=new AbortController();const waiting=requestJson('/fixture',{method:'POST',signal:cancel.signal});cancel.abort();
+  await assert.rejects(waiting,e=>e.code==='unavailable');assert.equal(abortedRequests,1);assert.equal(pendingTimers.size,0);
+  await assert.rejects(requestJson('/fixture',{method:'POST'},5),e=>e.code==='unavailable');
+  assert.equal(abortedRequests,2);assert.equal(legacyCalls,4);assert.equal(pendingTimers.size,0);
+  global.fetch=async(_url,init)=>({status:200,ok:true,json:()=>new Promise((_resolve,reject)=>init.signal.addEventListener('abort',()=>reject(Error('body interrupted')),{once:true}))});
+  await assert.rejects(requestJson('/fixture',{},5),e=>e.code==='unavailable');assert.equal(pendingTimers.size,0);
+  const previousDocument=global.document;let videoCalls=0,videoSignal;
+  global.document={addEventListener(){},removeEventListener(){}};
+  try {
+   global.fetch=async(_url,init)=>{videoCalls++;videoSignal=init.signal;return new Response(new Blob(['fixture mp4']),{headers:{'Content-Type':'video/mp4'}});};
+   const preview=effectHarness('src/components/generation-result.tsx','GenerationResult',{generation:{id:randomUUID(),status:'done',expiresAt:new Date(Date.now()+60000).toISOString(),refunded:false},onAgain(){}});
+   preview.render();preview.flush();await settle();await settle();
+   assert.equal(videoCalls,1);assert.ok(nodes(preview.render()).some(n=>n.type==='video'));
+   preview.unmount();assert.equal(videoSignal.aborted,true);assert.equal(pendingTimers.size,0);
+   console.log('PASS older Safari video GET produces preview; unmount cancels and clears timers');
+  } finally {global.document=previousDocument;}
+  console.log('PASS older Safari requests: catalogue/admin reads, caller cancellation, pre-abort, timeout during fetch/body, cleanup and no POST retry');
+ } finally {
+  AbortSignal.timeout=nativeTimeout;AbortSignal.any=nativeAny;
+  for(const id of pendingTimers)nativeClearTimeout(id);
+  global.setTimeout=nativeSetTimeout;global.clearTimeout=nativeClearTimeout;
+ }
  for(const code of ['invalid_input','invalid_image','image_too_large','insufficient_credits','provider_unavailable','active_generation','generation_disabled','forbidden'])assert.equal(generationIssue(new RequestError(code,400)).retainRequest,false);
  assert.equal(generationIssue(new RequestError('rate_limited',429)).retainRequest,true);assert.match(paymentIssue(new RequestError('rate_limited',429),true),/60 saat/);
  for(const status of [403,409,500,503])assert.equal(generationIssue(new RequestError('unknown-proxy-error',status)).retainRequest,true);
