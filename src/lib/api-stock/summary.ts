@@ -1,4 +1,6 @@
+export type CustomerBalance = { id: string; name: string; email: string; balance: number };
 export type WalletTotals = {
+ customerBalances?: CustomerBalance[];
  outstandingCredits: number; fundedAccounts: number; walletCheckedAt: string;
  customerCredits: number; customerAccounts: number; internalCredits: number; internalAccounts: number;
  otherCredits: number; otherAccounts: number;
@@ -38,7 +40,20 @@ export function parseWalletTotals(value: unknown): WalletTotals {
   (customerCredits > 0 && customerAccounts === 0) || (internalCredits > 0 && internalAccounts === 0) ||
   otherAccounts > otherCredits || (otherCredits > 0 && otherAccounts === 0) ||
   fundedAccounts > customerAccounts + internalAccounts + otherAccounts) throw new Error('invalid_stock_snapshot');
- return { outstandingCredits, fundedAccounts, walletCheckedAt: timestamp(data.walletCheckedAt),
+ let customerBalances: CustomerBalance[] | undefined;
+ if (data.customerBalances !== undefined) {
+  if (!Array.isArray(data.customerBalances) || data.customerBalances.length !== customerAccounts) throw new Error('invalid_stock_snapshot');
+  const ids = new Set<string>();
+  customerBalances = data.customerBalances.map(value => {
+   const row = object(value);
+   if (typeof row.id !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(row.id) || ids.has(row.id.toLowerCase()) ||
+    typeof row.name !== 'string' || row.name.length > 120 || typeof row.email !== 'string' || row.email.length > 320) throw new Error('invalid_stock_snapshot');
+   ids.add(row.id.toLowerCase());
+   return { id: row.id, name: row.name, email: row.email, balance: count(row.balance) };
+  });
+  if (customerBalances.reduce((sum, row) => sum + row.balance, 0) !== customerCredits) throw new Error('invalid_stock_snapshot');
+ }
+ return { ...(customerBalances === undefined ? {} : { customerBalances }), outstandingCredits, fundedAccounts, walletCheckedAt: timestamp(data.walletCheckedAt),
   customerCredits, customerAccounts, internalCredits, internalAccounts, otherCredits, otherAccounts };
 }
 export function calculateStock(wallet: WalletTotals, provider: { credit: number; creditCost: number }, checkedAt = new Date().toISOString()): StockSummary {

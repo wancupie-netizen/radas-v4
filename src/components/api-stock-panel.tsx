@@ -44,6 +44,16 @@ export function ApiStockPanel({ revision }: { revision: number }) {
    <div className={styles.internal}><div><span>Akaun sendiri / ujian</span><strong>{number(summary.internalAccounts)} akaun</strong></div><p>Baki <strong>{number(summary.internalCredits)} kredit RADAS</strong> · dipaparkan berasingan daripada pelanggan.</p></div>
    {summary.otherCredits > 0 && <div className={styles.internal}><div><span>Baki lain belum dikelaskan</span><strong>{number(summary.otherAccounts)} akaun</strong></div><p>{number(summary.otherCredits)} kredit RADAS · termasuk dalam jumlah semua akaun di bawah.</p></div>}
    <details className={styles.details}><summary>Keperluan semua akaun</summary><dl><div><dt>Jumlah baki RADAS</dt><dd>{number(summary.outstandingCredits)} kredit</dd></div><div><dt>Keperluan API</dt><dd>{number(summary.totalRequiredCredit)} kredit API</dd></div><div><dt>Sasaran + buffer 20%</dt><dd>{number(summary.totalTargetCredit)} kredit API</dd></div><div><dt>Tambahan untuk semua akaun</dt><dd>{number(summary.totalSuggestedTopUp)} kredit API</dd></div></dl><p>Penggunaan akaun sendiri juga mengurangkan stok API yang sama.</p></details>
+   <section className={styles.customers} aria-labelledby="customer-balances-heading">
+    <h3 id="customer-balances-heading">Senarai Pelanggan Berbayar</h3>
+    <p className={styles.note}>Nama, email dan baki kredit semasa. Termasuk pelanggan dengan baki kosong.</p>
+    {summary.customerBalances === undefined ? <p className={styles.note}>Senarai pelanggan belum dapat dimuatkan. Cuba semak stok API semula.</p> : summary.customerBalances.length === 0 ? <p className={styles.note}>Belum ada pelanggan berbayar.</p> : <table className={styles.customerTable}>
+     <caption className="sr-only">Baki kredit pelanggan berbayar</caption>
+     <thead><tr><th scope="col">Pelanggan</th><th scope="col">Baki kredit</th></tr></thead>
+     <tbody>{summary.customerBalances.map(customer => <tr key={customer.id}><td><strong>{customer.name || 'Nama belum diisi'}</strong><span>{customer.email || 'Email belum diisi'}</span></td><td>{number(customer.balance)}</td></tr>)}</tbody>
+     <tfoot><tr><th scope="row">Jumlah ({number(summary.customerAccounts)} pelanggan)</th><td>{number(summary.customerCredits)}</td></tr></tfoot>
+    </table>}
+   </section>
    <p className={styles.note}>Kos semasa: {number(summary.creditCost)} kredit API/video. Pelanggan ialah akaun dengan bayaran diluluskan, selain akaun sendiri yang ditandakan. Pesanan belum diluluskan tidak menambah baki.</p>
    <p className={styles.timestamp}>Disemak: {new Date(summary.checkedAt).toLocaleString('en-MY', { timeZone: 'Asia/Kuala_Lumpur' })} (MYT). Semak semula selepas top-up atau perubahan kredit.</p>
   </> : null}</div>
