@@ -60,3 +60,11 @@
 @media(max-width:600px){.affiliate-panel .affiliate-card-body{padding:18px}.affiliate-panel .affiliate-card h2{font-size:17px}.affiliate-panel .affiliate-metrics dd{font-size:20px}}
 .affiliate-panel .affiliate-toolbar{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:16px;margin-bottom:24px}
 .affiliate-panel .affiliate-toolbar .affiliate-actions[aria-label="Status penerbitan produk"]{margin:0}
+.affiliate-panel .affiliate-prompts{min-width:0;border:1px solid var(--line);border-radius:8px;padding:12px}
+.affiliate-panel .affiliate-prompts summary{line-height:1.6;overflow-wrap:anywhere}
+.affiliate-panel .affiliate-prompt-item{margin-top:14px;padding-top:12px;border-top:1px solid var(--line);min-width:0}
+.affiliate-panel .affiliate-prompt-item textarea{display:block;box-sizing:border-box;width:100%;min-width:0;max-width:100%;margin:10px 0;min-height:180px;resize:vertical;padding:12px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--text);font:inherit;font-size:14px;font-weight:400;line-height:1.7;white-space:pre-wrap;overflow-wrap:anywhere}
+.affiliate-panel .affiliate-prompt-item button{min-height:44px;white-space:normal}
+.affiliate-panel .affiliate-prompts .input-help{overflow-wrap:anywhere}
+.affiliate-panel .affiliate-prompts summary:focus-visible,.affiliate-panel .affiliate-prompt-item button:focus-visible,.affiliate-panel .affiliate-prompt-item textarea:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+@media(max-width:600px){.affiliate-panel .affiliate-prompt-item button{width:100%}.affiliate-panel .affiliate-prompt-item textarea{font-size:16px}}

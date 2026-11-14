@@ -118,5 +118,20 @@ console.log('PASS draft SQL/HTTP validation, complete publish required, unpublis
 const checks=(await db.query(fs.readFileSync('supabase/verify-affiliate.sql','utf8'))).rows;assert.ok(checks.every(c=>c.passed));
 await assert.rejects(db.exec(fs.readFileSync(migration,'utf8')),/affiliate_already_installed/);await db.exec('rollback');
 console.log('PASS real route auth, admin denial, CSRF, spoofed fields, safe response parsing, no-store headers, SQL verification and migration rerun guard');
+// Current catalogue is available to every confirmed signed-in account, without a paid balance.
+await db.exec(fs.readFileSync('supabase/migrations/20261104000000_open_affiliate_catalog.sql','utf8'));
+const beforeTemplates=await snapshot();
+const templateProduct={...product,id:randomUUID(),name:'Fixture Content Templates',published:true,contentTypes:[...types.CONTENT_TYPES],sourceNotes:'PRIVATE_TEMPLATE_SOURCE'};
+const templateSaved=(await cat(admin,'save',templateProduct)).products.find(p=>p.id===templateProduct.id);
+assert.deepEqual(templateSaved.contentTypes,types.CONTENT_TYPES);
+const publicTemplate=(await cat(other,'list')).products.find(p=>p.id===templateProduct.id);
+assert.equal((await cat(other,'list')).access,'allowed');assert.ok(publicTemplate);assert.equal(publicTemplate.sourceNotes,undefined);
+await assert.rejects(cat(other,'save',templateSaved),/forbidden/);
+const templateChanged={...templateSaved,contentTypes:['UGC','Review','Perbandingan']};
+await cat(admin,'save',templateChanged);await cat(admin,'save',templateChanged);
+const templateRead=(await cat(other,'list')).products.find(p=>p.id===templateProduct.id);
+assert.deepEqual(templateRead.contentTypes,['UGC','Review','Perbandingan']);assert.equal(templateRead.revision,templateSaved.revision+1);
+assert.equal(await snapshot(),beforeTemplates);
+console.log('PASS current free catalogue SQL: seven content types retained, admin save/read/replay, non-admin write denied, source notes private, wallet/payment/ledger unchanged');
 console.log('AFFILIATE_LOCAL=PASS (isolated SQL/TS/HTTP routes; live admin and mobile visual acceptance separate)');
 }finally{await db.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

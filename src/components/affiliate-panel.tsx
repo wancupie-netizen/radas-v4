@@ -1,6 +1,7 @@
 'use client';
 import './affiliate-panel.css';
 import { WorkspaceGreeting } from './workspace-greeting';
+import { ProductPromptTemplates } from './product-prompt-templates';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { CONTENT_TYPES, parseCatalog, validProduct, completeProduct, type Catalog, type Product } from '@/lib/affiliate/types';
 import { requestJson, RequestError } from '@/lib/errors/client';
@@ -76,6 +77,7 @@ export function AffiliatePanel({ admin = false, accountName = '' }: { admin?: bo
       <label>Link produk / affiliate (pilihan)<input type="url" placeholder="Akan dikemaskini" maxLength={2048} value={draft.url} onChange={e=>edit('url',e.target.value)}/></label>
       <label>Tarikh terakhir disemak<input type="date" required={draft.published} max={new Date().toISOString().slice(0,10)} value={draft.reviewedOn} onChange={e=>edit('reviewedOn',e.target.value)}/></label>
       <fieldset><legend>Cadangan jenis content (wajib sekurang-kurangnya satu untuk terbit)</legend><div className="affiliate-checks">{CONTENT_TYPES.map(t=><label key={t}><input type="checkbox" checked={draft.contentTypes.includes(t)} onChange={e=>edit('contentTypes',e.target.checked?[...draft.contentTypes,t]:draft.contentTypes.filter(x=>x!==t))}/>{t}</label>)}</div></fieldset>
+      <ProductPromptTemplates name={draft.name} contentTypes={draft.contentTypes} preview/>
       <label>Catatan sumber (admin sahaja)<textarea maxLength={4000} value={draft.sourceNotes ?? ''} onChange={e=>edit('sourceNotes',e.target.value)}/></label><p className="input-help">Draf boleh disimpan dengan nama sahaja. Lengkapkan medan wajib sebelum terbit. Pautan gambar dan link produk boleh kosong.</p><label className="affiliate-publish"><input type="checkbox" checked={draft.published} disabled={!draft.published && !completeProduct(draft)} onChange={e=>edit('published',e.target.checked)}/>Terbitkan kepada pengguna</label>
       <div className="affiliate-actions"><button className="primary" type="submit">{busy?'Menyimpan…':'Simpan produk'}</button><button type="button" className="secondary" onClick={()=>setDraft(null)}>Batal</button></div>
     </fieldset></form> : null;
@@ -99,6 +101,7 @@ export function AffiliatePanel({ admin = false, accountName = '' }: { admin?: bo
         {/* External images never carry app cookies/referrers. No server fetching of admin URLs. */}
         <ProductImage key={p.imageUrl} product={p}/>
         <div className="affiliate-card-body"><div className="affiliate-card-heading"><h2 title={p.name}>{p.name}</h2>{admin && <span className={`affiliate-status ${p.published?'affiliate-status-live':'affiliate-status-draft'}`}>{p.published?'Diterbitkan':'Draf'}</span>}</div><p className="affiliate-category">{p.category || 'Kategori belum diisi'}</p><dl className="affiliate-metrics"><div><dt>Harga</dt><dd>{money(p.priceSen)}</dd></div><div className="affiliate-commission"><dt>Anggaran komisen</dt><dd>{money(p.commissionSen)}</dd></div></dl>{p.contentTypes.length>0 && <div className="affiliate-tags">{p.contentTypes.map(t=><span key={t}>{t}</span>)}</div>}<p className="input-help affiliate-reviewed">Disemak: {p.reviewedOn ? <time dateTime={p.reviewedOn}>{p.reviewedOn}</time> : 'Belum diisi'}</p>
+        <ProductPromptTemplates name={p.name} contentTypes={p.contentTypes}/>
         {admin ? <>{p.sourceNotes && <details><summary>Catatan sumber</summary><pre className="input-help" style={{whiteSpace:'pre-wrap',overflowWrap:'anywhere'}}>{p.sourceNotes}</pre></details>}<div className="affiliate-actions"><button className="secondary" disabled={busy || editing} onClick={()=>startEdit(p)}>Edit</button><button className="text-button" disabled={busy || editing} onClick={()=>{if(busy || draft)return;if(window.confirm(`Padam ${p.name}?`))void mutate('delete',p);}}>Padam</button></div></> : p.url ? <a className="secondary" href={p.url} target="_blank" rel="noopener noreferrer sponsored">Lihat produk ↗</a> : <p className="input-help">Link produk akan dikemaskini</p>}
         </div></>}</article>)}</div>}
       {filtered.length>0 && <nav className="affiliate-pagination" aria-label="Halaman produk">
