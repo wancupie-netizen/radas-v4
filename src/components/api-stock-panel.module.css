@@ -19,7 +19,7 @@
 .note,.timestamp{font-size:12px;line-height:1.7;color:#9baeb6;margin:10px 0 0}.timestamp{font-size:11px;color:#819aa4}.error{color:#ffb1b9;border:1px solid #79404b;background:#381d23;padding:15px;border-radius:8px;font-size:13px;line-height:1.6}
 @media(max-width:540px){.panel{padding:17px}.header{align-items:flex-start;flex-direction:column;gap:13px}.grid{grid-template-columns:1fr}.card{padding:16px}.card dd{font-size:28px}.internal>div{flex-wrap:wrap}.details dl>div{flex-wrap:wrap}.details dd{text-align:left}}
 
-.customers{border-top:1px solid #2a4149;padding-top:20px;margin-top:20px}
+.customers{min-width:0}
 .customers h3{font-size:17px;line-height:1.5;font-weight:600;margin:0}
 .customerTable{width:100%;table-layout:fixed;border-collapse:collapse;margin-top:14px;font-size:13px}
 .customerTable th,.customerTable td{padding:13px 10px;border-bottom:1px solid #2a4149;text-align:left;vertical-align:top;overflow-wrap:anywhere}

@@ -1,0 +1,31 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const ts = require('typescript');
+const React = require('react');
+const slots = []; let index = 0;
+const hooks = {...React, useState(initial) { const n=index++; if (!(n in slots)) slots[n]=initial; return [slots[n], value=>slots[n]=typeof value==='function'?value(slots[n]):value]; }, useCallback(fn) { index++; return fn; }};
+const ApiStockPanel = ()=>null, PaymentPanel = ()=>null, PaymentHistoryPanel = ()=>null;
+const moduleObject = {exports:{}};
+const code=ts.transpileModule(fs.readFileSync('src/components/admin-payments.tsx','utf8'), {compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,jsx:ts.JsxEmit.ReactJSX}}).outputText;
+new Function('require','module','exports',code)(name=>name==='react'?hooks:name.endsWith('.css')?{}:name==='./api-stock-panel'?{ApiStockPanel}:name==='./payment-panel'?{PaymentPanel}:name==='./payment-history-panel'?{PaymentHistoryPanel}:require(name),moduleObject,moduleObject.exports);
+function nodes(tree,out=[]) { if(Array.isArray(tree))tree.forEach(child=>nodes(child,out));else if(tree?.props){out.push(tree);nodes(tree.props.children,out);}return out; }
+function render(){index=0;return nodes(moduleObject.exports.AdminPayments());}
+const tabs=()=>render().filter(n=>n.props.role==='tab');
+const visible=()=>render().filter(n=>n.props.role==='tabpanel'&&!n.props.hidden);
+const stock=()=>render().find(n=>n.type===ApiStockPanel);
+assert.deepEqual(tabs().map(n=>n.props.children),['Stok API','Senarai Pelanggan Berbayar','Semak Rekod Bayaran']);
+assert.equal(visible().length,1);assert.equal(visible()[0].props.id,'admin-panel-summary');
+tabs()[1].props.onClick();assert.equal(visible().length,1);assert.equal(stock().props.view,'customers');
+tabs()[2].props.onClick();assert.equal(visible()[0].props.id,'admin-panel-payments');
+let payment=render().find(n=>n.type===PaymentPanel);assert.equal(payment.props.admin,true);
+const oldRevision=stock().props.revision;payment.props.onCreditsChanged();assert.equal(stock().props.revision,oldRevision+1);
+payment.props.onReviewed();assert.ok(render().some(n=>n.type===PaymentHistoryPanel));
+tabs()[0].props.onClick();tabs()[2].props.onClick();assert.ok(render().some(n=>n.type===PaymentHistoryPanel),'payment history selection survives main tab navigation');
+render().find(n=>n.type==='button'&&n.props.children==='Perlu Disemak').props.onClick();assert.ok(render().some(n=>n.type===PaymentPanel));
+let focused=-1, prevented=false;
+const key=key=>render().find(n=>n.props.role==='tablist').props.onKeyDown({key,preventDefault(){prevented=true;},currentTarget:{querySelectorAll(){return [0,1,2].map(i=>({focus(){focused=i;}}));}}});
+key('ArrowRight');assert.equal(focused,0);assert.equal(tabs()[0].props['aria-selected'],true);assert.ok(prevented);
+key('End');assert.equal(focused,2);key('Home');assert.equal(focused,0);key('ArrowLeft');assert.equal(focused,2);
+assert.equal(tabs().filter(n=>n.props.tabIndex===0).length,1);
+for(const tab of tabs()) assert.ok(render().some(n=>n.props.id===tab.props['aria-controls']),'each tab controls an existing panel');
+console.log('PASS admin main tabs: single visible panel, keyboard navigation, payment review/history retained, balance refresh after credit changes');

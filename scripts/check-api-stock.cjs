@@ -88,5 +88,6 @@ const checks=(await db.query(fs.readFileSync('supabase/verify-api-stock.sql','ut
 await assert.rejects(db.exec(fs.readFileSync(groupMigration,'utf8')),/stock_groups_already_installed/);await db.exec('rollback');
 await assert.rejects(db.exec(fs.readFileSync(migration,'utf8')),/api_stock_already_installed/);await db.exec('rollback');
 await require('./api-stock-ui-fixture.cjs')();
+require('./check-admin-payment-tabs.cjs');
 console.log('API_STOCK_LOCAL=PASS (isolated SQL, mocked provider GET, actual route and UI handlers; live snapshot separate)');
 }finally{await db.close();}})().catch(e=>{console.error(e);process.exitCode=1;});

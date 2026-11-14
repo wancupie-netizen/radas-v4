@@ -5,7 +5,8 @@ import { parseStockSummary, type StockSummary } from '@/lib/api-stock/summary';
 import styles from './api-stock-panel.module.css';
 const labels = { sufficient: 'Cukup', buffer_low: 'Buffer rendah', insufficient: 'Tidak cukup' };
 const number = (value: number) => value.toLocaleString('en-MY', { maximumFractionDigits: 2 });
-export function ApiStockPanel({ revision }: { revision: number }) {
+export function ApiStockPanel({ revision, view = 'stock' }: { revision: number; view?: 'stock' | 'customers' }) {
+ const customers = view === 'customers';
  const [summary, setSummary] = useState<StockSummary | null>(null);
  const [loading, setLoading] = useState(false), [failed, setFailed] = useState(false);
  const sequence = useRef(0), controller = useRef<AbortController | null>(null);
@@ -30,9 +31,10 @@ export function ApiStockPanel({ revision }: { revision: number }) {
   void load();
   return () => { sequence.current += 1; controller.current?.abort(); };
  }, [load, revision]);
- return <section className={styles.panel} aria-labelledby="api-stock-heading" aria-busy={loading}>
-  <div className={styles.header}><div><p className={styles.eyebrow}>RINGKASAN ADMIN</p><h2 id="api-stock-heading">Stok API</h2></div><button className={styles.refresh} disabled={loading} onClick={() => void load()}>{loading ? 'Menyemak…' : 'Semak stok API'}</button></div>
-  <div aria-live="polite">{loading ? <p className={styles.note}>Menyemak baki NexaBot dan kredit RADAS…</p> : failed ? <p className={styles.error} role="alert">Tidak dapat disemak. Cuba semak stok API semula.</p> : summary ? <>
+ return <section className={styles.panel} aria-labelledby="admin-summary-heading" aria-busy={loading}>
+  <div className={styles.header}><div><p className={styles.eyebrow}>RINGKASAN ADMIN</p><h2 id="admin-summary-heading">{customers ? 'Senarai Pelanggan Berbayar' : 'Stok API'}</h2></div><button className={styles.refresh} disabled={loading} onClick={() => void load()}>{loading ? 'Menyemak…' : customers ? 'Semak baki terkini' : 'Semak stok API'}</button></div>
+  <div aria-live="polite">{loading ? <p className={styles.note}>Menyemak baki NexaBot dan kredit RADAS…</p> : failed ? <p className={styles.error} role="alert">{customers ? 'Senarai pelanggan tidak dapat disemak. Cuba semak baki terkini semula.' : 'Tidak dapat disemak. Cuba semak stok API semula.'}</p> : summary ? <>
+   {!customers && <>
    <div className={styles.statusLine}><span className={`${styles.badge} ${styles[summary.status]}`}>{labels[summary.status]}</span><span>Untuk baki pelanggan berbayar</span></div>
    <dl className={styles.grid}>
     <div className={styles.card}><dt>Baki NexaBot</dt><dd>{number(summary.providerCredit)} <small>kredit API</small></dd><p>Anggaran <strong>{number(summary.availableVideos)} video</strong></p></div>
@@ -44,17 +46,18 @@ export function ApiStockPanel({ revision }: { revision: number }) {
    <div className={styles.internal}><div><span>Akaun sendiri / ujian</span><strong>{number(summary.internalAccounts)} akaun</strong></div><p>Baki <strong>{number(summary.internalCredits)} kredit RADAS</strong> · dipaparkan berasingan daripada pelanggan.</p></div>
    {summary.otherCredits > 0 && <div className={styles.internal}><div><span>Baki lain belum dikelaskan</span><strong>{number(summary.otherAccounts)} akaun</strong></div><p>{number(summary.otherCredits)} kredit RADAS · termasuk dalam jumlah semua akaun di bawah.</p></div>}
    <details className={styles.details}><summary>Keperluan semua akaun</summary><dl><div><dt>Jumlah baki RADAS</dt><dd>{number(summary.outstandingCredits)} kredit</dd></div><div><dt>Keperluan API</dt><dd>{number(summary.totalRequiredCredit)} kredit API</dd></div><div><dt>Sasaran + buffer 20%</dt><dd>{number(summary.totalTargetCredit)} kredit API</dd></div><div><dt>Tambahan untuk semua akaun</dt><dd>{number(summary.totalSuggestedTopUp)} kredit API</dd></div></dl><p>Penggunaan akaun sendiri juga mengurangkan stok API yang sama.</p></details>
-   <section className={styles.customers} aria-labelledby="customer-balances-heading">
-    <h3 id="customer-balances-heading">Senarai Pelanggan Berbayar</h3>
+   </>}
+   {customers && <section className={styles.customers} aria-labelledby="customer-balances-heading">
+    <h3 id="customer-balances-heading">{number(summary.customerAccounts)} pelanggan · {number(summary.customerCredits)} kredit RADAS</h3>
     <p className={styles.note}>Nama, email dan baki kredit semasa. Termasuk pelanggan dengan baki kosong.</p>
-    {summary.customerBalances === undefined ? <p className={styles.note}>Senarai pelanggan belum dapat dimuatkan. Cuba semak stok API semula.</p> : summary.customerBalances.length === 0 ? <p className={styles.note}>Belum ada pelanggan berbayar.</p> : <table className={styles.customerTable}>
+    {summary.customerBalances === undefined ? <p className={styles.note}>Senarai pelanggan belum dapat dimuatkan. Cuba semak baki terkini semula.</p> : summary.customerBalances.length === 0 ? <p className={styles.note}>Belum ada pelanggan berbayar.</p> : <table className={styles.customerTable}>
      <caption className="sr-only">Baki kredit pelanggan berbayar</caption>
      <thead><tr><th scope="col">Pelanggan</th><th scope="col">Baki kredit</th></tr></thead>
      <tbody>{summary.customerBalances.map(customer => <tr key={customer.id}><td><strong>{customer.name || 'Nama belum diisi'}</strong><span>{customer.email || 'Email belum diisi'}</span></td><td>{number(customer.balance)}</td></tr>)}</tbody>
      <tfoot><tr><th scope="row">Jumlah ({number(summary.customerAccounts)} pelanggan)</th><td>{number(summary.customerCredits)}</td></tr></tfoot>
     </table>}
-   </section>
-   <p className={styles.note}>Kos semasa: {number(summary.creditCost)} kredit API/video. Pelanggan ialah akaun dengan bayaran diluluskan, selain akaun sendiri yang ditandakan. Pesanan belum diluluskan tidak menambah baki.</p>
+   </section>}
+   {!customers && <p className={styles.note}>Kos semasa: {number(summary.creditCost)} kredit API/video. Pelanggan ialah akaun dengan bayaran diluluskan, selain akaun sendiri yang ditandakan. Pesanan belum diluluskan tidak menambah baki.</p>}
    <p className={styles.timestamp}>Disemak: {new Date(summary.checkedAt).toLocaleString('en-MY', { timeZone: 'Asia/Kuala_Lumpur' })} (MYT). Semak semula selepas top-up atau perubahan kredit.</p>
   </> : null}</div>
  </section>;
