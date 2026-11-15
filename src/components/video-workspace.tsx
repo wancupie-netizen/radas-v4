@@ -48,7 +48,7 @@ export function VideoWorkspace({ accountEmail, accountName = '', initialCredits,
       <Brand href="/studio"/>
       <div className="nav-group"><span className="eyebrow">WORKSPACE</span><button className={`nav-item ${tab==='video'?'active':''}`} aria-pressed={tab==='video'} onClick={()=>setTab('video')}><span aria-hidden="true">▣</span>Create Video</button><button className={`nav-item ${tab==='affiliate'?'active':''}`} aria-pressed={tab==='affiliate'} onClick={()=>setTab('affiliate')}><span aria-hidden="true">◇</span>Produk Affiliate</button></div>
       <div className="nav-group"><a className="nav-item" href="/updates"><span aria-hidden="true">◉</span>Updates &amp; Support</a></div><div className="nav-group"><span className="eyebrow">ACCOUNT</span><button className="nav-item" onClick={() => creditDialog.current?.showModal()}><span aria-hidden="true">◈</span>Credits</button><button className="nav-item" onClick={topUp}><span aria-hidden="true">＋</span>Top Up</button></div>
-      <div className="sidebar-bottom"><div className="package-card"><span className="eyebrow">MULA DENGAN RM5</span><strong>60 video credits</strong><p>Top up bila perlu.</p><button onClick={topUp}>Top Up Credits</button></div><button className="nav-item" onClick={() => profile.current?.showModal()}>Profile</button><form action={logoutAction}><button className="nav-item" type="submit" disabled={logoutPending}>{logoutPending ? "Logging out…" : "Logout"}</button></form></div>
+      <div className="sidebar-bottom"><div className="package-card"><span className="eyebrow">START WITH RM5</span><strong>60 video credits</strong><p>Top up whenever you need.</p><button onClick={topUp}>Top Up Credits</button></div><button className="nav-item" onClick={() => profile.current?.showModal()}>Profile</button><form action={logoutAction}><button className="nav-item" type="submit" disabled={logoutPending}>{logoutPending ? "Logging out…" : "Logout"}</button></form></div>
     </aside>
     <main>
       <header className="topbar"><span>{tab==='video'?'Create Video':'Produk Affiliate'}</span><div className="header-actions"><span className="balance">Credits: <strong>{credits.status === 'ready' ? credits.balance : '—'}</strong></span><button className="primary small" onClick={topUp}>Top Up</button></div></header>
@@ -56,7 +56,7 @@ export function VideoWorkspace({ accountEmail, accountName = '', initialCredits,
       <div className="mobile-account"><button onClick={() => profile.current?.showModal()}>Profile</button><form action={logoutAction}><button type="submit" disabled={logoutPending}>{logoutPending ? "Logging out…" : "Logout"}</button></form></div>
       <div className="workspace">
         <div hidden={tab!=='video'}>
-        <div className="page-heading"><WorkspaceGreeting name={accountName} onFindProducts={()=>setTab('affiliate')}/><span className="duration-badge">Omni Flash 1.1</span></div>
+        <div className="page-heading"><WorkspaceGreeting email={accountEmail} onFindProducts={()=>setTab('affiliate')}/><span className="duration-badge">Omni Flash 1.2</span></div>
         <VideoStudio credits={credits} generationEnabled={generationEnabled} onCreditsChanged={refreshCredits} />
         </div>
         {tab==='affiliate' && <AffiliatePanel accountName={accountName}/>}

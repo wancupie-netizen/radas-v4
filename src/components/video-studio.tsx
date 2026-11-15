@@ -16,6 +16,7 @@ import type { CreditSnapshot } from '@/lib/credits/types';
 import { VIDEO_INPUT, validateImageFile, validatePrompt, type VideoMode, type VideoOrientation, type VideoResolution } from '@/lib/video/input';
 
 type SourceImage = { file: File; url: string; width: number; height: number };
+const STUDIO_DURATION_SECONDS = 15;
 
 export function VideoStudio({ credits, generationEnabled, onCreditsChanged }: { credits: CreditSnapshot; generationEnabled: boolean; onCreditsChanged: () => Promise<void> }) {
   const [history, setHistory] = useState<RecentVideo[]>([]);
@@ -231,17 +232,17 @@ export function VideoStudio({ credits, generationEnabled, onCreditsChanged }: { 
           <button type="button" aria-pressed={resolution === '720'} className={resolution === '720' ? 'selected' : ''} onClick={() => setResolution('720')}>720p <span className="muted">HD</span></button>
           <button type="button" aria-pressed={resolution === '1080'} className={resolution === '1080' ? 'selected' : ''} onClick={() => setResolution('1080')}>1080p <span className="muted">Full HD</span></button>
         </div></fieldset>
-        <div className="duration-setting"><span>Duration</span><strong>{PRODUCT.durationSeconds} seconds <span className="muted">Fixed</span></strong></div>
+        <div className="duration-setting"><span>Duration</span><strong>{STUDIO_DURATION_SECONDS} seconds <span className="muted">Fixed</span></strong></div>
         <div className="prompt-label"><label htmlFor="prompt">{mode === 'image' ? 'Motion prompt' : mode === 'ingredients' ? 'Describe your ingredients video' : 'Describe your video'}</label><span id="prompt-count" className="muted">{prompt.length}/{VIDEO_INPUT.maxPromptLength}</span></div>
         <textarea id="prompt" maxLength={VIDEO_INPUT.maxPromptLength} value={prompt} aria-invalid={Boolean(promptError)} aria-describedby={`prompt-count prompt-help${promptError ? ' prompt-error' : ''}`}
           onChange={event => setPrompts(previous => ({ ...previous, [mode]: event.target.value }))}
           onBlur={() => setTouched(previous => ({ ...previous, [mode]: true }))}
           placeholder={mode === 'image' ? 'Contoh: Subjek tersenyum sambil kamera bergerak perlahan ke hadapan…' : mode === 'ingredients' ? 'Contoh: Gunakan wanita dalam img 1 untuk memperkenalkan produk dalam img 2…' : 'Contoh: Seorang creator memperkenalkan produk di studio dengan cahaya lembut…'} />
-        <p id="prompt-help" className="input-help">{mode === 'image' ? 'Terangkan gerakan subjek dan kamera.' : mode === 'ingredients' ? 'Nyatakan peranan setiap img, suasana dan gerakan yang anda mahu.' : 'Terangkan subjek, suasana dan gerakan kamera.'}</p>
+        <p id="prompt-help" className="input-help">{mode === 'image' ? 'Terangkan gerakan subjek dan kamera.' : mode === 'ingredients' ? 'Nyatakan peranan setiap img, suasana dan gerakan yang anda mahu.' : 'Describe the subject, setting and camera movement.'}</p>
         {promptError && <p id="prompt-error" className="input-error" role="alert">{promptError}</p>}
         </fieldset>
         <button className="primary generate" type="submit" disabled={!generationEnabled || submitting || Boolean(generation && !canGenerateAgain(generation)) || (!pending.current && (credits.status !== 'ready' || credits.balance < 1 || Boolean(validatePrompt(prompt)) || readingImage || (mode !== 'text' && images.length === 0)))} aria-describedby="generation-note">{submitting ? 'Preparing…' : pending.current ? 'Semak request semula' : 'Generate Video'} <span>· {PRODUCT.creditsPerGeneration} Credit</span></button>
-        <p id="generation-note" className="phase-note">{generationEnabled ? '1 credit digunakan untuk setiap generation. Download terus apabila siap.' : 'Generation belum diaktifkan. Tiada credit digunakan.'}</p>
+        <p id="generation-note" className="phase-note">{generationEnabled ? 'Each generation uses 1 credit. Download your video once it’s ready.' : 'Generation belum diaktifkan. Tiada credit digunakan.'}</p>
         {flowError && <div className="input-error" role="alert">{flowError}{pending.current && <p>Rujukan request: <code>{pending.current.id}</code></p>}{generation && <button type="button" className="secondary" onClick={() => { setFlowError(''); setPollAttempt(previous => previous + 1); }}>Semak status semula</button>}</div>}
         {credits.status === 'unavailable' ? <p className="phase-note">Baki belum tersedia. Cuba semak semula di Credits.</p> : credits.balance === 0 ? <p className="phase-note">Baki anda 0 credit.</p> : null}
       </form>
@@ -256,11 +257,11 @@ export function VideoStudio({ credits, generationEnabled, onCreditsChanged }: { 
         </> : <>
           <div className={`empty-frame ${orientation}`}><span className="play-icon" aria-hidden="true">▷</span></div>
           <h3>{mode !== 'text' ? <>Choose your<br />reference img</> : <>Your generated video<br />will appear here</>}</h3>
-          <p>{mode !== 'text' ? `Pilih ${mode === 'image' ? '1' : '1–3'} img untuk lihat preview di sini.` : 'Preview hasil video sebelum download.'}</p>
+          <p>{mode !== 'text' ? `Pilih ${mode === 'image' ? '1' : '1–3'} img untuk lihat preview di sini.` : 'Preview your video before downloading.'}</p>
         </>}
-        <div className="video-specs" aria-label="Selected video settings"><span>{ratio}</span><span>{previewResolution}p</span><span>{PRODUCT.durationSeconds} saat</span><span>{PRODUCT.creditsPerGeneration} credit</span></div>
+        <div className="video-specs" aria-label="Selected video settings"><span>{ratio}</span><span>{previewResolution}p</span><span>{STUDIO_DURATION_SECONDS} seconds</span><span>{PRODUCT.creditsPerGeneration} credit</span></div>
       </div>
-      <div className="preview-footer"><span aria-hidden="true">↓</span><p>Download terus selepas generate.<br /><span>Video hilang daripada paparan apabila refresh atau logout.</span></p></div>
+      <div className="preview-footer"><span aria-hidden="true">↓</span><p>Download your video once it’s ready.<br /><span>The video will disappear from this view when you refresh or log out.</span></p></div>
     </section>
   </div><RecentHistory items={history} selectedId={selectedHistory?.id ?? null} onSelect={selectHistory} /></>;
 }

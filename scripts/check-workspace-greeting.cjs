@@ -20,9 +20,11 @@ const settle=()=>new Promise(resolve=>setImmediate(resolve));
 const greeting=load('src/components/workspace-greeting.tsx');
 for(const bad of [undefined,null,{},42,' '.repeat(2),'x'.repeat(81)])assert.equal(greeting.accountDisplayName(bad),'');
 assert.equal(greeting.accountDisplayName('  Wan   Sufi  '),'Wan Sufi');
-const html=renderToStaticMarkup(React.createElement(greeting.WorkspaceGreeting,{name:'Wan Sufi'}));assert.match(html,/Hai, Wan Sufi/);assert.match(html,/Hari ini nak cipta video apa/);
-const fallback=renderToStaticMarkup(React.createElement(greeting.WorkspaceGreeting,{}));assert.match(fallback,/Hai/);assert.doesNotMatch(fallback,/undefined|null|Hai,/);
-const safe=renderToStaticMarkup(React.createElement(greeting.WorkspaceGreeting,{name:'<script>alert(1)</script>'}));assert.doesNotMatch(safe,/<script>/);assert.match(safe,/&lt;script&gt;/);
+for(const bad of [undefined,null,42,{},'', 'missing-at','a@@b.com','a b@example.com'])assert.equal(greeting.accountEmailName(bad),'');
+assert.equal(greeting.accountEmailName('azmanm027@gmail.com'),'azmanm027');
+const html=renderToStaticMarkup(React.createElement(greeting.WorkspaceGreeting,{name:'Ignored',email:'hijab3@gmail.com'}));assert.match(html,/Hi hijab3/);assert.doesNotMatch(html,/Ignored|👋/);assert.match(html,/What video would you like to create today/);
+const fallback=renderToStaticMarkup(React.createElement(greeting.WorkspaceGreeting,{}));assert.match(fallback,/>Hi<\/p>/);assert.doesNotMatch(fallback,/undefined|null|👋/);
+const safe=renderToStaticMarkup(React.createElement(greeting.WorkspaceGreeting,{email:'<script>alert(1)</script>@example.com'}));assert.doesNotMatch(safe,/<script>/);assert.match(safe,/&lt;script&gt;/);
 const affiliateHtml=renderToStaticMarkup(React.createElement(greeting.WorkspaceGreeting,{name:'Wan',affiliate:true,id:'affiliate-title'}));assert.match(affiliateHtml,/Nak cari produk untuk content seterusnya/);assert.match(affiliateHtml,/anggaran komisen/);assert.match(affiliateHtml,/id="affiliate-title"/);
 // Real workspace handlers; mock only nested components and the server logout action.
 const originalLoad=load;
@@ -34,7 +36,7 @@ function workspaceHarness(){const slots=[];let index=0;const fakeReact={...React
 }
 const originalWindow=global.window;let workspaceUrl=new URL('https://video.radas.my/studio');
 global.window={location:{get href(){return workspaceUrl.href;},get pathname(){return workspaceUrl.pathname;},get search(){return workspaceUrl.search;},get hash(){return workspaceUrl.hash;}},history:{state:null,pushState(_state,_title,url){workspaceUrl=new URL(url,workspaceUrl);}}};
-const ws=workspaceHarness();let tree=ws.render();const greet=nodes(tree).find(n=>n.type===greeting.WorkspaceGreeting);assert.ok(greet);assert.equal(greet.props.name,'Wan Sufi');assert.equal(words(nodes(tree).find(n=>n.type==='header')), 'Create VideoCredits: 55Top Up');
+const ws=workspaceHarness();let tree=ws.render();const greet=nodes(tree).find(n=>n.type===greeting.WorkspaceGreeting);assert.ok(greet);assert.equal(greet.props.email,'private@example.com');assert.equal(greet.props.name,undefined);assert.equal(words(nodes(tree).find(n=>n.type==='header')), 'Create VideoCredits: 55Top Up');
 greet.props.onFindProducts();tree=ws.render();const panel=nodes(tree).find(n=>n.type===ws.AffiliatePanel);assert.ok(panel);assert.equal(panel.props.accountName,'Wan Sufi');assert.equal(panel.props.balance,undefined);assert.equal(workspaceUrl.searchParams.get('tab'),'affiliate');assert.equal(words(nodes(tree).find(n=>n.type==='header')),'Produk AffiliateCredits: 55Top Up');assert.ok(nodes(tree).some(n=>n.type==='a'&&n.props.href==='/updates'));
 // Profile uses only the server-resolved payment permission, shared with Top Up.
 const paymentNode=nodes(ws.render()).find(n=>n.type?.name==='PaymentPanel');
