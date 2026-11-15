@@ -10,6 +10,7 @@ import { PaymentPanel } from '@/components/payment-panel';
 import { AffiliatePanel } from '@/components/affiliate-panel';
 import { requestJson, RequestError } from '@/lib/errors/client';
 import { readStudioTab, writeStudioTab, type StudioTab } from '@/lib/affiliate/location';
+import './studio-motion.css';
 export function VideoWorkspace({ accountEmail, accountName = '', initialCredits, generationEnabled }: { accountEmail: string; accountName?: string; initialCredits: CreditSnapshot; generationEnabled: boolean }) {
   const [credits, setCredits] = useState(initialCredits);
   const [isPaymentAdmin, setIsPaymentAdmin] = useState(false);
@@ -55,7 +56,7 @@ export function VideoWorkspace({ accountEmail, accountName = '', initialCredits,
       <nav className="mobile-workspace-nav" aria-label="Workspace"><button className="secondary" aria-pressed={tab==='video'} onClick={()=>setTab('video')}>Create Video</button><button className="secondary" aria-pressed={tab==='affiliate'} onClick={()=>setTab('affiliate')}>Affiliate Products</button><a className="secondary" href="/updates">Updates &amp; Support</a></nav>
       <div className="mobile-account"><button onClick={() => profile.current?.showModal()}>Profile</button><form action={logoutAction}><button type="submit" disabled={logoutPending}>{logoutPending ? "Logging out…" : "Logout"}</button></form></div>
       <div className="workspace">
-        <div hidden={tab!=='video'}>
+        <div className="studio-motion" hidden={tab!=='video'}>
         <div className="page-heading"><WorkspaceGreeting email={accountEmail} onFindProducts={()=>setTab('affiliate')}/><span className="duration-badge">Omni Flash 1.2</span></div>
         <VideoStudio credits={credits} generationEnabled={generationEnabled} onCreditsChanged={refreshCredits} />
         </div>
