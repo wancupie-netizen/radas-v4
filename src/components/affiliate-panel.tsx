@@ -5,7 +5,7 @@ import { ProductPromptTemplates } from './product-prompt-templates';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { CONTENT_TYPES, parseCatalog, validProduct, completeProduct, type Catalog, type Product } from '@/lib/affiliate/types';
 import { requestJson, RequestError } from '@/lib/errors/client';
-const PAGE_SIZE = 9;
+import { CATALOG_PAGE_SIZE as PAGE_SIZE, readCatalogLocation, writeCatalogLocation } from '@/lib/affiliate/location';
 const money = (sen: number | null) => sen === null ? 'Belum diisi' : `RM${(sen/100).toFixed(2)}`;
 function blank(): Product { return {id:crypto.randomUUID(),name:'',imageUrl:'',category:'',priceSen:null,commissionSen:null,url:'',reviewedOn:'',contentTypes:[],sourceNotes:'',published:false,revision:0}; }
 function ProductImage({ product }: { product: Product }) {
@@ -22,7 +22,18 @@ export function AffiliatePanel({ admin = false, accountName = '' }: { admin?: bo
   const [query,setQuery] = useState(''), [category,setCategory] = useState(''), [draft,setDraft] = useState<Product | null>(null), [busy,setBusy] = useState(false);
   const [page,setPage] = useState(1);
   const [onlyDrafts,setOnlyDrafts] = useState(false);
+  const [locationReady,setLocationReady] = useState(false), [addedId,setAddedId] = useState('');
   const controller = useRef<AbortController | null>(null), sequence = useRef(0), writing = useRef(false), reading = useRef(false);
+  useEffect(()=>{
+    if(!admin)return;
+    const restore=()=>{
+      const state=readCatalogLocation(new URL(window.location.href));
+      setQuery(state.query);setCategory(state.category);setPage(state.page);setOnlyDrafts(state.onlyDrafts);
+      setLocationReady(true);
+    };
+    restore();window.addEventListener('popstate',restore);
+    return ()=>window.removeEventListener('popstate',restore);
+  },[admin]);
   async function refresh(background = false) {
     if (writing.current || (background && reading.current)) return;
     controller.current?.abort(); const c = new AbortController(); controller.current = c; const n = ++sequence.current;
@@ -49,7 +60,12 @@ export function AffiliatePanel({ admin = false, accountName = '' }: { admin?: bo
     writing.current=true; setBusy(true); setError(''); controller.current?.abort(); const n=++sequence.current;
     try {
       const data=parseCatalog(await requestJson('/api/affiliate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,product})}));
-      if(n===sequence.current){setCatalog(data);setDraft(null);}
+      if(n===sequence.current){
+        setCatalog(data);setDraft(null);
+        if(action==='save' && product.revision===0 && data.products.some(p=>p.id===product.id)) {
+          setQuery('');setCategory('');setOnlyDrafts(false);setPage(1);setAddedId(product.id);
+        }
+      }
     } catch(e) { if(e instanceof RequestError && e.status===401)window.location.assign('/login');setError(e instanceof RequestError && e.status===409?'Produk telah berubah. Semak senarai dan buka semula produk sebelum menyimpan.':'Respons belum dapat dipastikan. Semak senarai dahulu; draf dan ID asal dikekalkan.'); }
     finally { writing.current=false;setBusy(false);setLoading(false); }
   }
@@ -62,6 +78,20 @@ export function AffiliatePanel({ admin = false, accountName = '' }: { admin?: bo
   function edit<K extends keyof Product>(key: K, value: Product[K]){setDraft(p=>p?{...p,[key]:value}:p);}
   const pageCount = Math.max(1,Math.ceil(filtered.length/PAGE_SIZE));
   const currentPage = Math.min(page,pageCount);
+  useEffect(()=>{
+    if(!admin || !locationReady)return;
+    // Do not collapse a restored page while the catalogue is still loading.
+    const nextPage=catalog ? currentPage : page;
+    const next=writeCatalogLocation(new URL(window.location.href),{page:nextPage,query,category,onlyDrafts});
+    if(next!==window.location.pathname+window.location.search+window.location.hash)window.history.replaceState(window.history.state,'',next);
+    if(catalog && page!==currentPage)setPage(currentPage);
+  },[admin,locationReady,catalog,currentPage,page,query,category,onlyDrafts]);
+  useEffect(()=>{
+    if(!addedId)return;
+    document.getElementById(`affiliate-product-${addedId}`)?.focus();
+    const timer=window.setTimeout(()=>setAddedId(''),6000);
+    return ()=>window.clearTimeout(timer);
+  },[addedId]);
   const visibleProducts = filtered.slice((currentPage-1)*PAGE_SIZE,currentPage*PAGE_SIZE);
   const editing = !!draft;
   function startEdit(product: Product) {
@@ -85,6 +115,7 @@ export function AffiliatePanel({ admin = false, accountName = '' }: { admin?: bo
   return <section className="affiliate-panel" aria-labelledby="affiliate-title">
     <div className="affiliate-heading">{admin?<div><span className="eyebrow">SUMBER CONTENT</span><h1 id="affiliate-title">Urus Produk<span>.</span></h1><p>Pilih produk dan jenis content yang sesuai untuk video anda.</p></div>:<WorkspaceGreeting name={accountName} affiliate id="affiliate-title"/>}<button className="secondary" disabled={busy} onClick={()=>void refresh()}>Semak semula</button></div>
     {error && <p className="notice" role="alert">{error}</p>}
+    {addedId && <p className="input-help" role="status">Produk baharu berjaya ditambah. Dipaparkan pada awal senarai.</p>}
     {loading ? <p className="notice" role="status">Memuatkan senarai produk…</p> : !catalog ? null : !accessible ? <p className="notice">Senarai produk belum dapat dimuatkan. Semak semula.</p> : <>
       {!admin && catalog.admin && <a className="secondary affiliate-admin-link" href="/admin/products">Urus produk sebagai admin</a>}
       {admin && <div className="affiliate-toolbar"><button className="primary" disabled={busy || editing} onClick={()=>{if(busy || draft)return;setDraft(blank());setError('');}}>Tambah produk</button>
@@ -92,11 +123,11 @@ export function AffiliatePanel({ admin = false, accountName = '' }: { admin?: bo
         <button type="button" className={onlyDrafts?'secondary':'primary'} aria-pressed={!onlyDrafts} disabled={busy || editing} onClick={()=>{setOnlyDrafts(false);setPage(1);}}>Semua ({products.length})</button>
         <button type="button" className={onlyDrafts?'primary':'secondary'} aria-pressed={onlyDrafts} disabled={busy || editing} onClick={()=>{setOnlyDrafts(true);setPage(1);}}>Belum diterbitkan ({draftCount})</button>
       </div></div>}
-      <div className="affiliate-filters"><label>Cari produk<input type="search" disabled={busy || editing} value={query} onChange={e=>{setQuery(e.target.value);setPage(1);}} placeholder="Nama, kategori atau jenis content"/></label><label>Kategori<select disabled={busy || editing} value={category} onChange={e=>{setCategory(e.target.value);setPage(1);}}><option value="">Semua kategori</option>{categories.map(c=><option key={c}>{c}</option>)}</select></label></div>
+      <div className="affiliate-filters"><label>Cari produk<input type="search" maxLength={254} disabled={busy || editing} value={query} onChange={e=>{setQuery(e.target.value);setPage(1);}} placeholder="Nama, kategori atau jenis content"/></label><label>Kategori<select disabled={busy || editing} value={category} onChange={e=>{setCategory(e.target.value);setPage(1);}}><option value="">Semua kategori</option>{categories.map(c=><option key={c}>{c}</option>)}</select></label></div>
       {admin && draft && !visibleProducts.some(p=>p.id===draft.id) && <article className="panel affiliate-card affiliate-new-card">{editorForm()}</article>}
       {editing && <p className="input-help">Simpan atau batal edit sebelum menukar halaman, carian atau produk.</p>}
       <p className="input-help">{filtered.length} produk · Harga dan komisen ialah anggaran; semak nilai semasa di platform affiliate.</p>
-      {products.length===0 ? <p className="notice">Belum ada produk {admin?'dalam katalog':'yang diterbitkan'}.</p> : filtered.length===0 ? <p className="notice">Tiada produk sepadan. Cuba carian atau penapis lain.</p> : <div className="affiliate-grid">{visibleProducts.map(p=><article className={`panel affiliate-card${draft?.id===p.id ? ' affiliate-card-editing' : ''}`} key={p.id}>
+      {products.length===0 ? <p className="notice">Belum ada produk {admin?'dalam katalog':'yang diterbitkan'}.</p> : filtered.length===0 ? <p className="notice">Tiada produk sepadan. Cuba carian atau penapis lain.</p> : <div className="affiliate-grid">{visibleProducts.map(p=><article id={`affiliate-product-${p.id}`} tabIndex={addedId===p.id?-1:undefined} className={`panel affiliate-card${draft?.id===p.id ? ' affiliate-card-editing' : ''}${addedId===p.id ? ' affiliate-card-added' : ''}`} key={p.id}>
         {admin && draft?.id===p.id ? editorForm() : <>
         {/* External images never carry app cookies/referrers. No server fetching of admin URLs. */}
         <ProductImage key={p.imageUrl} product={p}/>
