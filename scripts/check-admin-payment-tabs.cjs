@@ -13,7 +13,7 @@ function render(){index=0;return nodes(moduleObject.exports.AdminPayments());}
 const tabs=()=>render().filter(n=>n.props.role==='tab');
 const visible=()=>render().filter(n=>n.props.role==='tabpanel'&&!n.props.hidden);
 const stock=()=>render().find(n=>n.type===ApiStockPanel);
-assert.deepEqual(tabs().map(n=>n.props.children),['Stok API','Senarai Pelanggan Berbayar','Semak Rekod Bayaran']);
+assert.deepEqual(tabs().map(n=>n.props.children),["API Credit Stock","Paid Customers","Payment Records"]);
 assert.equal(visible().length,1);assert.equal(visible()[0].props.id,'admin-panel-summary');
 tabs()[1].props.onClick();assert.equal(visible().length,1);assert.equal(stock().props.view,'customers');
 tabs()[2].props.onClick();assert.equal(visible()[0].props.id,'admin-panel-payments');
@@ -21,7 +21,7 @@ let payment=render().find(n=>n.type===PaymentPanel);assert.equal(payment.props.a
 const oldRevision=stock().props.revision;payment.props.onCreditsChanged();assert.equal(stock().props.revision,oldRevision+1);
 payment.props.onReviewed();assert.ok(render().some(n=>n.type===PaymentHistoryPanel));
 tabs()[0].props.onClick();tabs()[2].props.onClick();assert.ok(render().some(n=>n.type===PaymentHistoryPanel),'payment history selection survives main tab navigation');
-render().find(n=>n.type==='button'&&n.props.children==='Perlu Disemak').props.onClick();assert.ok(render().some(n=>n.type===PaymentPanel));
+render().find(n=>n.type==='button'&&n.props.children==="Pending Review").props.onClick();assert.ok(render().some(n=>n.type===PaymentPanel));
 let focused=-1, prevented=false;
 const key=key=>render().find(n=>n.props.role==='tablist').props.onKeyDown({key,preventDefault(){prevented=true;},currentTarget:{querySelectorAll(){return [0,1,2].map(i=>({focus(){focused=i;}}));}}});
 key('ArrowRight');assert.equal(focused,0);assert.equal(tabs()[0].props['aria-selected'],true);assert.ok(prevented);

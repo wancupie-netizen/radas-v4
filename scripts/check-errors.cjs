@@ -81,7 +81,7 @@ const settle=()=>new Promise(resolve=>setImmediate(resolve));
   global.setTimeout=nativeSetTimeout;global.clearTimeout=nativeClearTimeout;
  }
  for(const code of ['invalid_input','invalid_image','image_too_large','insufficient_credits','provider_unavailable','active_generation','generation_disabled','forbidden'])assert.equal(generationIssue(new RequestError(code,400)).retainRequest,false);
- assert.equal(generationIssue(new RequestError('rate_limited',429)).retainRequest,true);assert.match(paymentIssue(new RequestError('rate_limited',429),true),/60 saat/);
+ assert.equal(generationIssue(new RequestError('rate_limited',429)).retainRequest,true);assert.match(paymentIssue(new RequestError('rate_limited',429),true),/60 seconds/);
  for(const status of [403,409,500,503])assert.equal(generationIssue(new RequestError('unknown-proxy-error',status)).retainRequest,true);
  console.log('PASS timeout, malformed/HTML responses and auth handling; one request only; unknown outcomes retained and private text hidden');
  // Actual VideoStudio handlers: timeout, same-ID replay, wrong-ID response, then successful original ID.
@@ -96,9 +96,9 @@ const settle=()=>new Promise(resolve=>setImmediate(resolve));
  const studio=harness('src/components/video-studio.tsx','VideoStudio',{credits:{status:'ready',balance:60,transactions:[]},generationEnabled:true,onCreditsChanged:async()=>{}});
  nodes(studio()).find(n=>n.type==='textarea').props.onChange({target:{value:'A cat running in a field'}});
  async function generate(){nodes(studio()).find(n=>n.type==='form').props.onSubmit({preventDefault(){}});await settle();await settle();}
- await generate();assert.match(words(studio()),/Semak request semula/);const id=bodies[0].get('requestId');assert.match(words(studio()),new RegExp(id));
- stage='wrong';await generate();assert.equal(bodies.length,1);assert.match(words(studio()),/Semak request semula/);
- stage='released';await generate();assert.equal(bodies.length,1);assert.equal(reads.length,2);assert.doesNotMatch(words(studio()),/Respons belum dapat dipastikan/);
+ await generate();assert.match(words(studio()),/Check request again/);const id=bodies[0].get('requestId');assert.match(words(studio()),new RegExp(id));
+ stage='wrong';await generate();assert.equal(bodies.length,1);assert.match(words(studio()),/Check request again/);
+ stage='released';await generate();assert.equal(bodies.length,1);assert.equal(reads.length,2);assert.doesNotMatch(words(studio()),/The response has not yet been confirmed/);
  assert.equal(nodes(studio()).find(n=>n.type==='button'&&words(n).includes('Generate Video')).props.disabled,false);
  assert.equal(nodes(studio()).find(n=>n.type==='fieldset'&&n.props.className==='generation-settings').props.disabled,false);
  // A new intentional generation receives a different ID after server-confirmed release.
@@ -114,17 +114,17 @@ const settle=()=>new Promise(resolve=>setImmediate(resolve));
  console.log('PASS actual generator handlers: lost response -> GET-only same-ID recovery, wrong-ID remains pending, released unknown unlocks form, new generation gets new ID');
  let paymentBodies=[],payStage='lost';global.fetch=async(url,init)=>{if(!init.method)return Response.json({admin:false,payments:[]});paymentBodies.push(JSON.parse(init.body));if(payStage==='lost')throw Error('timeout');return Response.json({status:'fixture'});};
  const panel=harness('src/components/payment-panel.tsx','PaymentPanel',{});
- assert.doesNotMatch(words(panel()),/Tiada pesanan/);
- nodes(panel()).find(n=>n.type==='button'&&words(n).startsWith('Semak status')).props.onClick();await settle();await settle();
- const create=()=>nodes(panel()).find(n=>n.type==='button'&&words(n).includes('Try · RM5')).props.onClick();create();await settle();await settle();assert.match(words(panel()),/jangan bayar semula/);create();await settle();await settle();assert.equal(paymentBodies[0].id,paymentBodies[1].id);assert.equal(paymentBodies.length,2);
+ assert.doesNotMatch(words(panel()),/No orders/);
+ nodes(panel()).find(n=>n.type==='button'&&words(n).startsWith("Check status")).props.onClick();await settle();await settle();
+ const create=()=>nodes(panel()).find(n=>n.type==='button'&&words(n).includes('Try · RM5')).props.onClick();create();await settle();await settle();assert.match(words(panel()),/do not pay again/);create();await settle();await settle();assert.equal(paymentBodies[0].id,paymentBodies[1].id);assert.equal(paymentBodies.length,2);
 
  const order={id:randomUUID(),user_id:randomUUID(),package_id:'try',amount_sen:500,credits:60,status:'pending',customer_reference:null,reason:null,created_at:new Date().toISOString()};let reloadFails=false;
  global.fetch=async(_url,init)=>{if(!init.method){if(reloadFails)throw Error('status outage');return Response.json({admin:false,payments:[order]});}reloadFails=true;return Response.json({payment:{...order,status:'submitted',customer_reference:'ORIGINAL-REF'}});};
  const submission=harness('src/components/payment-panel.tsx','PaymentPanel',{});
- nodes(submission()).find(n=>n.type==='button'&&words(n).startsWith('Semak status')).props.onClick();await settle();await settle();
+ nodes(submission()).find(n=>n.type==='button'&&words(n).startsWith("Check status")).props.onClick();await settle();await settle();
  nodes(submission()).find(n=>n.type==='input').props.onChange({target:{value:'ORIGINAL-REF'}});
  nodes(submission()).find(n=>n.type==='form').props.onSubmit({preventDefault(){}});await settle();await settle();await settle();
- assert.equal(nodes(submission()).find(n=>n.type==='input').props.value,'ORIGINAL-REF');assert.match(words(submission()),/belum dapat dimuatkan/);
+ assert.equal(nodes(submission()).find(n=>n.type==='input').props.value,'ORIGINAL-REF');assert.match(words(submission()),/could not be loaded/);
  console.log('PASS actual payment handlers distinguish unavailable list from empty list, show safe failure and preserve create ID without automatic write retry');
  // Real React static render of failure states and boundaries, without exposing raw error.
  const {GenerationResult}=load('src/components/generation-result.tsx');const base={id:randomUUID(),status:'failed',expiresAt:new Date(Date.now()+1000).toISOString(),refunded:true};
@@ -136,11 +136,11 @@ const settle=()=>new Promise(resolve=>setImmediate(resolve));
  }
  const animationCSS=fs.readFileSync('src/components/generation-result.css','utf8');assert.match(animationCSS,/prefers-reduced-motion: reduce/);assert.match(animationCSS,/animation: none/);
  console.log('PASS preview working animation only for active states, busy accessibility, reduced motion and no fabricated progress');
- const refunded=renderToStaticMarkup(React.createElement(GenerationResult,{generation:base,onAgain(){}}));assert.match(refunded,/1 credit telah dipulangkan/);
- const held=renderToStaticMarkup(React.createElement(GenerationResult,{generation:{...base,refunded:false},onAgain(){}}));assert.doesNotMatch(held,/1 credit telah dipulangkan/);assert.match(held,/belum disahkan/);
- const unknown=renderToStaticMarkup(React.createElement(GenerationResult,{generation:{...base,status:'unknown',refunded:false},onAgain(){}}));assert.match(unknown,/Butang Generate akan dibuka semula secara automatik/);assert.match(unknown,/500 KB atau kurang/);assert.doesNotMatch(unknown,/Cuba generation baharu|credit|dipulangkan/i);
+ const refunded=renderToStaticMarkup(React.createElement(GenerationResult,{generation:base,onAgain(){}}));assert.match(refunded,/1 credit has been refunded/);
+ const held=renderToStaticMarkup(React.createElement(GenerationResult,{generation:{...base,refunded:false},onAgain(){}}));assert.doesNotMatch(held,/1 credit has been refunded/);assert.match(held,/has not been confirmed/);
+ const unknown=renderToStaticMarkup(React.createElement(GenerationResult,{generation:{...base,status:'unknown',refunded:false},onAgain(){}}));assert.match(unknown,/The Generate button will become available automatically/);assert.match(unknown,/500 KB or less/);assert.doesNotMatch(unknown,/Try a new generation|credit|refunded/i);
  const released=renderToStaticMarkup(React.createElement(GenerationResult,{generation:{...base,status:'unknown',refunded:false,releasedAt:new Date().toISOString()},onAgain(){}}));
- assert.match(released,/Cuba generation baharu/);assert.match(released,/Anda boleh cuba generate semula/);assert.doesNotMatch(released,/credit|dipulangkan|Masa menunggu|Sedang menyemak/i);
+ assert.match(released,/Try a new generation/);assert.match(released,/You can try generating a video again/);assert.doesNotMatch(released,/credit|refunded|Time remaining|Checking/i);
  // Server schedule is a display only: 00:00 without release never offers a fresh generation.
  const {waitSeconds,formatWait,emptyAttemptSummary,observeAttempt}=load('src/lib/generations/guidance.ts');
  const now=Date.parse('2026-10-24T12:00:00Z');const deadline=new Date(now+120000).toISOString();
@@ -153,18 +153,18 @@ const settle=()=>new Promise(resolve=>setImmediate(resolve));
  assert.equal(observeAttempt(summary,{...first,releaseAfter:deadline}),summary);
  const second={...first,id:randomUUID()};summary=observeAttempt(summary,second);assert.equal(summary.consecutiveUnknown,2);
  const repeated=renderToStaticMarkup(React.createElement(GenerationResult,{generation:second,consecutiveUnknown:summary.consecutiveUnknown,onAgain(){}}));
- assert.match(repeated,/sambungan internet stabil/);assert.match(repeated,/gunakan gambar lain/);assert.doesNotMatch(repeated,/credit|dipulangkan|Cuba generation baharu/i);
+ assert.match(repeated,/internet connection is stable/);assert.match(repeated,/use another image/);assert.doesNotMatch(repeated,/credit|refunded|Try a new generation/i);
  const textOnly=renderToStaticMarkup(React.createElement(GenerationResult,{generation:second,consecutiveUnknown:2,usesImages:false,onAgain(){}}));
- assert.doesNotMatch(textOnly,/500 KB|gunakan gambar lain/);
+ assert.doesNotMatch(textOnly,/500 KB|use another image/);
  summary=observeAttempt(summary,{...first,id:randomUUID()});assert.equal(summary.consecutiveUnknown,3);
  const stopped=renderToStaticMarkup(React.createElement(GenerationResult,{generation:{...first,releasedAt:deadline},consecutiveUnknown:3,onAgain(){}}));
- assert.match(stopped,/Hentikan percubaan/);assert.match(stopped,new RegExp(first.id));assert.match(stopped,/Kembali ke tetapan/);assert.doesNotMatch(stopped,/Anda boleh cuba generate semula|credit|dipulangkan/i);
+ assert.match(stopped,/Stop trying/i);assert.match(stopped,new RegExp(first.id));assert.match(stopped,/Back to settings/);assert.doesNotMatch(stopped,/You can try generating a video again|credit|refunded/i);
  const success={...base,id:randomUUID(),status:'done',refunded:false};summary=observeAttempt(summary,success);assert.equal(summary.consecutiveUnknown,0);
  assert.equal(observeAttempt(summary,first),summary); // An old uncertain result cannot count again after success.
  summary=observeAttempt(summary,{...first,id:randomUUID()});assert.equal(summary.consecutiveUnknown,1);
  assert.equal(emptyAttemptSummary().consecutiveUnknown,0); // A new page session starts fresh.
  const expiredWait=renderToStaticMarkup(React.createElement(GenerationResult,{generation:{...first,releaseAfter:new Date(now-1).toISOString()},onAgain(){}}));
- assert.match(expiredWait,/Sedang menyemak/);assert.doesNotMatch(expiredWait,/Cuba generation baharu/);
+ assert.match(expiredWait,/Checking/);assert.doesNotMatch(expiredWait,/Try a new generation/);
  // Real countdown effect: ticks, recomputes after backgrounding, and cleans up on release.
  const realNow=Date.now,realInterval=global.setInterval,realClear=global.clearInterval,realDocument=global.document;
  const timers=new Map(),listeners=new Map();let clock=now;let sequence=0;
@@ -177,12 +177,12 @@ const settle=()=>new Promise(resolve=>setImmediate(resolve));
   const timerView=effectHarness('src/components/generation-wait.tsx','GenerationWait',props);
   timerView.render();timerView.flush();assert.match(words(timerView.render()),/02:00/);assert.equal(timers.size,1);
   clock+=1000;[...timers.values()].forEach(fn=>fn());assert.match(words(timerView.render()),/01:59/);
-  clock+=150000;listeners.get('visibilitychange')();assert.match(words(timerView.render()),/Sedang menyemak/);
-  assert.doesNotMatch(words(timerView.render()),/Anda boleh cuba generate semula/);
+  clock+=150000;listeners.get('visibilitychange')();assert.match(words(timerView.render()),/Checking/);
+  assert.doesNotMatch(words(timerView.render()),/You can try generating a video again/);
   timerView.render({...props,generation:{...first,releasedAt:deadline,releaseAfter:null}});timerView.flush();
-  assert.match(words(timerView.render()),/Anda boleh cuba generate semula/);assert.equal(timers.size,0);assert.equal(listeners.size,0);timerView.unmount();
+  assert.match(words(timerView.render()),/You can try generating a video again/);assert.equal(timers.size,0);assert.equal(listeners.size,0);timerView.unmount();
  } finally {Date.now=realNow;global.setInterval=realInterval;global.clearInterval=realClear;if(realDocument)global.document=realDocument;else delete global.document;}
  console.log('PASS server-deadline countdown boundaries, no clock-only unlock, unique unknown IDs, repeated guidance, text-only guidance, third-attempt support reference, success reset and fresh page session');
- for(const file of ['src/app/error.tsx','src/app/global-error.tsx']){const Component=load(file).default;const html=renderToStaticMarkup(React.createElement(Component,{error:Error('nxb_PRIVATE'),retry(){}}));assert.match(html,/Paparan belum tersedia/);assert.doesNotMatch(html,/nxb_PRIVATE/);}
+ for(const file of ['src/app/error.tsx','src/app/global-error.tsx']){const Component=load(file).default;const html=renderToStaticMarkup(React.createElement(Component,{error:Error('nxb_PRIVATE'),retry(){}}));assert.match(html,/This page is currently unavailable/);assert.doesNotMatch(html,/nxb_PRIVATE/);}
  console.log('PASS React failure/refund/unknown states and Next boundaries; refund shown only when confirmed; ERRORS_LOCAL=PASS');
  }finally{global.fetch=original;delete global.window;}})().catch(e=>{console.error(e);process.exitCode=1;});

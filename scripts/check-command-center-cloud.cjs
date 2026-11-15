@@ -8,7 +8,7 @@ const { PGlite } = require('@electric-sql/pglite');
 const uid = '33333333-3333-4333-8333-333333333333';
 const confirmed = { id: uid, email: 'wancupie@gmail.com', email_confirmed_at: '2026-10-01' };
 let user = confirmed, authError = null, offline = false, loseResponse = false, putCalls = 0;
-const fixture = { activeProject: 'isteri', isteriView: 'videos', radasView:'dashboard',dexsatoView:'dashboard',radasContentNotes:[],radasWanSufiSeedVersion:1,dexsatoContentNotes:[],radasNote:'default',radasProducts:[],isteriVideos: [{id:'v1',title:'Keep video',url:'https://example.com/one.mp4'}],
+const fixture = { produkCategories:[{id:'buku-forex',name:'Buku Forex',items:[]},{id:'buku-rezeki',name:'Buku Rezeki',items:[]},{id:'gambir',name:'Gambir',items:[]}],activeProdukCategory:'buku-forex',activeProject: 'isteri', isteriView: 'videos', radasView:'dashboard',dexsatoView:'dashboard',radasContentNotes:[],radasWanSufiSeedVersion:1,dexsatoContentNotes:[],radasNote:'default',radasProducts:[],isteriVideos: [{id:'v1',title:'Keep video',url:'https://example.com/one.mp4'}],
   isteriContentSeedVersion:1,dexsatoContentSeedVersion:1,weekStart:'2026-10-19',isteriContentNotes:[{id:'note',title:'Keep note'}],
   projects:{radas:{tasks:[{id:'task',title:'Keep task'}]},biscotto:{tasks:[]},dexsato:{tasks:[]},isteri:{tasks:[]}},productStatuses:{7:'done'} };
 const db = new PGlite();
@@ -93,18 +93,18 @@ function browser(initial,cache){
   process.env.NEXT_PUBLIC_SUPABASE_URL='https://wrong.supabase.co';assert.equal((await mod.exports.GET()).status,503);process.env.NEXT_PUBLIC_SUPABASE_URL='https://fyqvvkpzcwrmyozxlqkw.supabase.co';
   const a=browser(fixture);await a.run('initializeCloud()');
   let record=(await (await mod.exports.GET()).json()).record;
-  assert.deepEqual(record.state,fixture);assert.equal(record.version,1);assert.match(a.element('cloudStatus').textContent,/Berjaya disimpan/);
+  assert.deepEqual(record.state,fixture);assert.equal(record.version,1);assert.match(a.element('cloudStatus').textContent,/Saved successfully/);
   assert.equal(a.storage.get('radasCommandCenterV2:before-cloud'),JSON.stringify(fixture));
   // A second, empty browser loads cloud state and cannot reset the saved data.
   const b=browser(null);await b.run('initializeCloud()');assert.deepEqual(JSON.parse(b.run('JSON.stringify(state)')),fixture);
   a.run('state.isteriVideos.push({id:"v2",url:"https://example.com/two.mp4"});saveState()');
-  offline=true;await a.run('flushCloud()');assert.match(a.element('cloudStatus').textContent,/Belum berjaya/);
+  offline=true;await a.run('flushCloud()');assert.match(a.element('cloudStatus').textContent,/have not been saved/);
   assert.equal((await (await mod.exports.GET()).json()).record.version,1);
-  offline=false;loseResponse=true;await a.run('flushCloud()');assert.match(a.element('cloudStatus').textContent,/Belum berjaya/);
+  offline=false;loseResponse=true;await a.run('flushCloud()');assert.match(a.element('cloudStatus').textContent,/have not been saved/);
   const attempts=putCalls;await a.run('flushCloud()');assert.equal(putCalls,attempts+1);
   record=(await (await mod.exports.GET()).json()).record;assert.equal(record.version,2);assert.equal(record.state.isteriVideos.length,2);
   b.run('state.isteriVideos=[];saveState()');await b.run('flushCloud()');
-  assert.equal(b.element('centerMain').inert,true);assert.match(b.element('cloudStatus').textContent,/peranti lain/);
+  assert.equal(b.element('centerMain').inert,true);assert.match(b.element('cloudStatus').textContent,/another tab or device/);
   assert.equal((await (await mod.exports.GET()).json()).record.state.isteriVideos.length,2);
   // Pending browser changes survive reload and resume against the same cloud version.
   a.run('state.isteriContentNotes.push({id:"new",title:"Unsynced"});saveState()');

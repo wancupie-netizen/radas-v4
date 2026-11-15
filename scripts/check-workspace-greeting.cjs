@@ -25,7 +25,7 @@ assert.equal(greeting.accountEmailName('azmanm027@gmail.com'),'azmanm027');
 const html=renderToStaticMarkup(React.createElement(greeting.WorkspaceGreeting,{name:'Ignored',email:'hijab3@gmail.com'}));assert.match(html,/Hi hijab3/);assert.doesNotMatch(html,/Ignored|👋/);assert.match(html,/What video would you like to create today/);
 const fallback=renderToStaticMarkup(React.createElement(greeting.WorkspaceGreeting,{}));assert.match(fallback,/>Hi<\/p>/);assert.doesNotMatch(fallback,/undefined|null|👋/);
 const safe=renderToStaticMarkup(React.createElement(greeting.WorkspaceGreeting,{email:'<script>alert(1)</script>@example.com'}));assert.doesNotMatch(safe,/<script>/);assert.match(safe,/&lt;script&gt;/);
-const affiliateHtml=renderToStaticMarkup(React.createElement(greeting.WorkspaceGreeting,{name:'Wan',affiliate:true,id:'affiliate-title'}));assert.match(affiliateHtml,/Nak cari produk untuk content seterusnya/);assert.match(affiliateHtml,/anggaran komisen/);assert.match(affiliateHtml,/id="affiliate-title"/);
+const affiliateHtml=renderToStaticMarkup(React.createElement(greeting.WorkspaceGreeting,{name:'Wan',affiliate:true,id:'affiliate-title'}));assert.match(affiliateHtml,/Looking for a product for your next video/);assert.match(affiliateHtml,/estimated commissions/);assert.match(affiliateHtml,/id="affiliate-title"/);
 // Real workspace handlers; mock only nested components and the server logout action.
 const originalLoad=load;
 function workspaceHarness(){const slots=[];let index=0;const fakeReact={...React,useEffect(){},useActionState:(_a,v)=>[v,()=>{},false],useState(initial){const n=index++;if(!(n in slots))slots[n]=initial;return[slots[n],v=>slots[n]=typeof v==='function'?v(slots[n]):v];},useRef(initial){const n=index++;return slots[n]||(slots[n]={current:initial});}};
@@ -37,12 +37,12 @@ function workspaceHarness(){const slots=[];let index=0;const fakeReact={...React
 const originalWindow=global.window;let workspaceUrl=new URL('https://video.radas.my/studio');
 global.window={location:{get href(){return workspaceUrl.href;},get pathname(){return workspaceUrl.pathname;},get search(){return workspaceUrl.search;},get hash(){return workspaceUrl.hash;}},history:{state:null,pushState(_state,_title,url){workspaceUrl=new URL(url,workspaceUrl);}}};
 const ws=workspaceHarness();let tree=ws.render();const greet=nodes(tree).find(n=>n.type===greeting.WorkspaceGreeting);assert.ok(greet);assert.equal(greet.props.email,'private@example.com');assert.equal(greet.props.name,undefined);assert.equal(words(nodes(tree).find(n=>n.type==='header')), 'Create VideoCredits: 55Top Up');
-greet.props.onFindProducts();tree=ws.render();const panel=nodes(tree).find(n=>n.type===ws.AffiliatePanel);assert.ok(panel);assert.equal(panel.props.accountName,'Wan Sufi');assert.equal(panel.props.balance,undefined);assert.equal(workspaceUrl.searchParams.get('tab'),'affiliate');assert.equal(words(nodes(tree).find(n=>n.type==='header')),'Produk AffiliateCredits: 55Top Up');assert.ok(nodes(tree).some(n=>n.type==='a'&&n.props.href==='/updates'));
+greet.props.onFindProducts();tree=ws.render();const panel=nodes(tree).find(n=>n.type===ws.AffiliatePanel);assert.ok(panel);assert.equal(panel.props.accountName,'Wan Sufi');assert.equal(panel.props.balance,undefined);assert.equal(workspaceUrl.searchParams.get('tab'),'affiliate');assert.equal(words(nodes(tree).find(n=>n.type==='header')),'Affiliate ProductsCredits: 55Top Up');assert.ok(nodes(tree).some(n=>n.type==='a'&&n.props.href==='/updates'));
 // Profile uses only the server-resolved payment permission, shared with Top Up.
 const paymentNode=nodes(ws.render()).find(n=>n.type?.name==='PaymentPanel');
 const profileLinks=()=>nodes(nodes(ws.render()).find(n=>n.type==='dialog'&&n.props['aria-labelledby']==='profile-title')).filter(n=>n.type==='a'&&n.props.href==='/admin/payments');
 assert.equal(profileLinks().length,0);
-paymentNode.props.onAdminResolved(true);assert.equal(profileLinks().length,1);assert.equal(words(profileLinks()[0]),'Semak Bayaran↗');
+paymentNode.props.onAdminResolved(true);assert.equal(profileLinks().length,1);assert.equal(words(profileLinks()[0]),'Review Payments↗');
 paymentNode.props.onAdminResolved(false);assert.equal(profileLinks().length,0);
 assert.equal(nodes(ws.render()).filter(n=>n.type==='button'&&words(n)==='Profile').length,2);
 console.log('PASS admin Profile shortcut, default/user hidden, revoked permission hidden, shared desktop/mobile Profile');

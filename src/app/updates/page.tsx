@@ -7,5 +7,5 @@ export const metadata: Metadata = { title: 'RADAS — Updates & Support' };
 export const dynamic = 'force-dynamic';
 export default async function Page() {
  let actor: string; try { actor = await verifiedUser(); } catch { redirect('/login'); }
- return <main className="workspace"><nav className="affiliate-actions"><Brand href="/studio"/><a href="/studio">← Studio</a></nav><UpdatesPanel/></main>;
+ return <main lang="en" className="workspace"><nav className="affiliate-actions"><Brand href="/studio" english/><a href="/studio">← Studio</a></nav><UpdatesPanel/></main>;
 }

@@ -43,6 +43,11 @@ const settle=()=>new Promise(resolve=>setImmediate(resolve));
   const html=renderToStaticMarkup(React.createElement(components.ProductPromptTemplates,{name:'</textarea><script>alert(1)</script>',contentTypes:['UGC','Review','Perbandingan']}));
   assert.equal((html.match(/<textarea/g)||[]).length,2);assert.ok(!html.includes('<script>'));assert.ok(html.includes('&lt;script&gt;'));
   assert.ok(!/<details[^>]*\sopen/.test(html));assert.ok(html.includes('readOnly'));
+  const demonstrationHtml=renderToStaticMarkup(React.createElement(components.ProductPromptTemplates,{name:'Produk kekal',contentTypes:['Demonstrasi']}));
+  assert.match(demonstrationHtml,/Example video: Demonstration/);assert.match(demonstrationHtml,/Copy template Demonstration/);
+  assert.ok(demonstrationHtml.includes('Produk kekal'));assert.ok(demonstrationHtml.includes('Bahasa Melayu'));
+  assert.equal(load('src/lib/affiliate/labels.ts').contentTypeLabel('Perbandingan'),'Comparison');
+  assert.equal(load('src/lib/affiliate/labels.ts').contentTypeLabel('Custom content'),'Custom content');
   console.log('PASS all 128 content combinations: six shared templates, Perbandingan retained without template, product names escaped, sections collapsed');
 
   let reads=0,posts=[];
@@ -57,11 +62,11 @@ const settle=()=>new Promise(resolve=>setImmediate(resolve));
    return Response.json({admin,access:'allowed',products:admin||visible.published?[visible]:[]});
   };
   const admin=harness('src/components/affiliate-panel.tsx','AffiliatePanel',{admin:true});
-  const refresh=async panel=>{nodes(panel()).find(n=>n.type==='button'&&words(n)==='Semak semula').props.onClick();await settle();await settle();};
+  const refresh=async panel=>{nodes(panel()).find(n=>n.type==='button'&&words(n)==="Refresh").props.onClick();await settle();await settle();};
   const promptProps=panel=>nodes(panel()).filter(n=>n.type.name==='ProductPromptTemplates').map(n=>n.props);
   await refresh(admin);assert.equal(promptProps(admin).length,1);assert.ok(!promptProps(admin)[0].preview);
   nodes(admin()).find(n=>n.type==='button'&&words(n)==='Edit').props.onClick();
-  const checkbox=label=>nodes(admin()).find(n=>n.type==='label'&&words(n)===label).props.children[0];
+  const checkbox=label=>nodes(admin()).find(n=>n.type==='label'&&words(n)===load('src/lib/affiliate/labels.ts').contentTypeLabel(label)).props.children[0];
   assert.equal(checkbox('Perbandingan').props.checked,true);
   assert.equal(promptProps(admin)[0].preview,true);
   checkbox('UGC').props.onChange({target:{checked:false}});checkbox('Review').props.onChange({target:{checked:false}});
@@ -79,25 +84,31 @@ const settle=()=>new Promise(resolve=>setImmediate(resolve));
   assert.ok(!nodes(user()).some(n=>n.type==='button'&&words(n)==='Edit'));
   saved={...saved,contentTypes:['Perbandingan']};assert.equal(parseCatalog({admin:false,access:'allowed',products:[saved]}).products.length,1);
   await refresh(user);assert.equal(productTemplates(promptProps(user)[0].name,promptProps(user)[0].contentTypes).length,0);
+  saved={...saved,contentTypes:['Demonstrasi']};await refresh(user);
+  const search=()=>nodes(user()).find(n=>n.type==='input'&&n.props.type==='search');
+  search().props.onChange({target:{value:'Demonstration'}});assert.equal(nodes(user()).filter(n=>n.type==='article').length,1);
+  search().props.onChange({target:{value:'Demonstrasi'}});assert.equal(nodes(user()).filter(n=>n.type==='article').length,1);
+  search().props.onChange({target:{value:''}});assert.deepEqual(promptProps(user)[0].contentTypes,['Demonstrasi']);
   saved={...saved,published:false};await refresh(user);assert.equal(promptProps(user).length,0);
   console.log('PASS actual admin tick/untick, preview before save, unchanged save payload/revision/private notes, refreshed customer catalogue and draft exclusion');
 
   // Clipboard tests execute the actual button handler, including older browsers without the API.
+  const readsBeforeCopy=reads,postsBeforeCopy=posts.length;
   let copied=[],selected=0,focused=0;
   const copyPanel=()=>harness('src/components/product-prompt-templates.tsx','ProductPromptTemplates',{name:'AL FALAH',contentTypes:['Review']},'PromptTemplate');
   Object.defineProperty(global,'navigator',{configurable:true,value:{clipboard:{writeText:async text=>copied.push(text)}}});
   const copy=copyPanel();nodes(copy()).find(n=>n.type==='button').props.onClick();await settle();
-  assert.deepEqual(copied,[productTemplates('AL FALAH',['Review'])[0].text]);assert.match(words(copy()),/Disalin/);
+  assert.deepEqual(copied,[productTemplates('AL FALAH',['Review'])[0].text]);assert.match(words(copy()),/Copied/);
   let attempts=0;
   for(const navigatorValue of [{},{clipboard:{writeText:async()=>{attempts++;throw Error('PRIVATE_CLIPBOARD_ERROR');}}}]) {
    Object.defineProperty(global,'navigator',{configurable:true,value:navigatorValue});const fallback=copyPanel();
    nodes(fallback()).find(n=>n.type==='textarea').props.ref.current={focus(){focused++;},select(){selected++;}};
    nodes(fallback()).find(n=>n.type==='button').props.onClick();await settle();
-   assert.match(words(fallback()),/salin secara manual/);assert.doesNotMatch(words(fallback()),/Disalin|PRIVATE_CLIPBOARD_ERROR/);
+   assert.match(words(fallback()),/copy it manually/);assert.doesNotMatch(words(fallback()),/Copied|PRIVATE_CLIPBOARD_ERROR/);
    assert.equal(nodes(fallback()).find(n=>n.type==='textarea').props.value,productTemplates('AL FALAH',['Review'])[0].text);
   }
   assert.equal(attempts,1);assert.equal(selected,2);assert.equal(focused,2);
-  assert.equal(posts.length,1);assert.equal(reads,5,'copy actions must not issue network requests');
+  assert.equal(posts.length,postsBeforeCopy);assert.equal(reads,readsBeforeCopy,'copy actions must not issue network requests');
   console.log('PASS exact clipboard text, success only after copy, unavailable/rejected API selects readable manual fallback, no network or automatic retries');
  } finally {
   global.fetch=originalFetch;if(originalNavigator)Object.defineProperty(global,'navigator',originalNavigator);else delete global.navigator;

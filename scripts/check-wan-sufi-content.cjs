@@ -103,7 +103,7 @@ function browser(initial = fixture(), cached) {
   // Lost response on seeded write is retried with the same mutation ID.
   record={state:fixture(),version:30,mutation_id:randomUUID()};loseResponse=true;
   const lost=browser();await lost.run('initializeCloud()');
-  const firstAttempt=requests.at(-1);assert.match(lost.element('cloudStatus').textContent,/Belum berjaya/);
+  const firstAttempt=requests.at(-1);assert.match(lost.element('cloudStatus').textContent,/have not been saved/);
   await lost.run('flushCloud()');assert.deepEqual(requests.at(-1),firstAttempt);
   assert.equal(record.version,31);assert.equal(record.state.radasContentNotes.length,32);
   // A stale pending cache locks editing and never overwrites newer cloud content.

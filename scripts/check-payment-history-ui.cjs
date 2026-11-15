@@ -24,19 +24,19 @@ const settle=()=>new Promise(resolve=>setImmediate(resolve));
  try{
  const panel=harness('src/components/payment-history-panel.tsx','PaymentHistoryPanel',{});
  const find=(type,pred)=>nodes(panel()).find(n=>n.type===type&&pred(n));
- find('button',n=>words(n)==='Semak status rekod').props.onClick();await settle();await settle();
+ find('button',n=>words(n)==="Refresh records").props.onClick();await settle();await settle();
  assert.equal(nodes(panel()).filter(n=>n.type==='article').length,9);assert.match(words(panel()),/customer@example.com/);const wa=find('a',n=>n.props.href==='https://wa.me/60123456789');assert.equal(wa.props.target,'_blank');assert.equal(wa.props.rel,'noopener noreferrer');assert.equal(nodes(panel()).some(n=>n.type==='button'&&words(n).includes('Sahkan wang')),false);
- find('button',n=>words(n)==='Seterusnya').props.onClick();await settle();await settle();assert.equal(nodes(panel()).filter(n=>n.type==='article').length,1);assert.equal(new URL(urls.at(-1),'http://localhost:3000').searchParams.get('page'),'2');
- find('input',()=>true).props.onChange({target:{value:'missing'}});find('form',()=>true).props.onSubmit({preventDefault(){}});await settle();await settle();assert.match(words(panel()),/Tiada rekod bayaran ditemui/);assert.equal(new URL(urls.at(-1),'http://localhost:3000').searchParams.get('page'),'1');
- global.fetch=async()=>new Response('unavailable',{status:503});find('button',n=>words(n)==='Semak status rekod').props.onClick();await settle();await settle();assert.ok(find('p',n=>n.props.role==='alert'));renderToStaticMarkup(panel());
+ find('button',n=>words(n)==="Next").props.onClick();await settle();await settle();assert.equal(nodes(panel()).filter(n=>n.type==='article').length,1);assert.equal(new URL(urls.at(-1),'http://localhost:3000').searchParams.get('page'),'2');
+ find('input',()=>true).props.onChange({target:{value:'missing'}});find('form',()=>true).props.onSubmit({preventDefault(){}});await settle();await settle();assert.match(words(panel()),/No payment records found/);assert.equal(new URL(urls.at(-1),'http://localhost:3000').searchParams.get('page'),'1');
+ global.fetch=async()=>new Response('unavailable',{status:503});find('button',n=>words(n)==="Refresh records").props.onClick();await settle();await settle();assert.ok(find('p',n=>n.props.role==='alert'));renderToStaticMarkup(panel());
  // Invoke the actual review success handler: completion opens history automatically.
  let completed=0;let payment={...p,status:'submitted',reviewed_at:null};global.fetch=async(_url,init={})=>{if(init.method)payment={...p};return Response.json(init.method?{payment}:{payments:payment.status==='submitted'?[payment]:[]});};
  const review=harness('src/components/payment-panel.tsx','PaymentPanel',{admin:true,onReviewed:()=>completed++});
- const n=()=>nodes(review());n().find(x=>x.type==='button'&&words(x).startsWith('Semak status')).props.onClick();await settle();await settle();
- n().find(x=>x.type==='button'&&words(x)==='Semak pesanan ini').props.onClick();const inputs=n().filter(x=>x.type==='input');inputs[0].props.onChange({target:{value:'BANK-REAL'}});inputs[1].props.onChange({target:{value:'5'}});n().find(x=>x.type==='button'&&words(x)==='Sahkan wang diterima').props.onClick();await settle();await settle();assert.equal(completed,1);
+ const n=()=>nodes(review());n().find(x=>x.type==='button'&&words(x).startsWith("Check status")).props.onClick();await settle();await settle();
+ n().find(x=>x.type==='button'&&words(x)==="Review this order").props.onClick();const inputs=n().filter(x=>x.type==='input');inputs[0].props.onChange({target:{value:'BANK-REAL'}});inputs[1].props.onChange({target:{value:'5'}});n().find(x=>x.type==='button'&&words(x)==="Confirm payment received").props.onClick();await settle();await settle();assert.equal(completed,1);
  const wrapper=harness('src/components/admin-payments.tsx','AdminPayments',{});
  const reviewNode=nodes(wrapper()).find(x=>typeof x.type==='function'&&x.type.name==='PaymentPanel');assert.ok(reviewNode);reviewNode.props.onReviewed();assert.ok(nodes(wrapper()).find(x=>typeof x.type==='function'&&x.type.name==='PaymentHistoryPanel'));
- nodes(wrapper()).find(x=>x.type==='button'&&words(x)==='Perlu Disemak').props.onClick();assert.ok(nodes(wrapper()).find(x=>typeof x.type==='function'&&x.type.name==='PaymentPanel'));
+ nodes(wrapper()).find(x=>x.type==='button'&&words(x)==="Pending Review").props.onClick();assert.ok(nodes(wrapper()).find(x=>typeof x.type==='function'&&x.type.name==='PaymentPanel'));
  console.log('PASS real history UI handlers: nine cards, pagination/search reset, WhatsApp link, safe load errors, read-only history and approval completion callback');
  }finally{global.fetch=original;}
 })().catch(e=>{console.error(e);process.exitCode=1;});

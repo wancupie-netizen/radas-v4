@@ -2,18 +2,19 @@
 import './affiliate-panel.css';
 import { WorkspaceGreeting } from './workspace-greeting';
 import { ProductPromptTemplates } from './product-prompt-templates';
+import { contentTypeLabel } from '@/lib/affiliate/labels';
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { CONTENT_TYPES, parseCatalog, validProduct, completeProduct, type Catalog, type Product } from '@/lib/affiliate/types';
 import { requestJson, RequestError } from '@/lib/errors/client';
 import { CATALOG_PAGE_SIZE as PAGE_SIZE, readCatalogLocation, writeCatalogLocation } from '@/lib/affiliate/location';
-const money = (sen: number | null) => sen === null ? 'Belum diisi' : `RM${(sen/100).toFixed(2)}`;
+const money = (sen: number | null) => sen === null ? "Not provided" : `RM${(sen/100).toFixed(2)}`;
 function blank(): Product { return {id:crypto.randomUUID(),name:'',imageUrl:'',category:'',priceSen:null,commissionSen:null,url:'',reviewedOn:'',contentTypes:[],sourceNotes:'',published:false,revision:0}; }
 function ProductImage({ product }: { product: Product }) {
   const [failed,setFailed] = useState(false);
   return <div className="affiliate-product-image">
     {product.imageUrl && !failed ? <img src={product.imageUrl} alt={product.name} loading="lazy" referrerPolicy="no-referrer" width="400" height="400" onError={()=>setFailed(true)}/> : <div className="affiliate-image-placeholder">
       <svg aria-hidden="true" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.4"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m3 17 5-5 4 4 4-6 5 7"/></svg>
-      <span>{product.imageUrl ? 'Gambar belum dapat dimuatkan' : 'Gambar belum dimuat naik'}</span>
+      <span>{product.imageUrl ? "The image could not be loaded" : "No image uploaded yet"}</span>
     </div>}
   </div>;
 }
@@ -39,7 +40,7 @@ export function AffiliatePanel({ admin = false, accountName = '' }: { admin?: bo
     reading.current = true;
     if(!background){setCatalog(null);setLoading(true);} setError('');
     try { const data = parseCatalog(await requestJson(`/api/affiliate${admin?'?admin=1':''}`,{signal:c.signal})); if(n===sequence.current) setCatalog(data); }
-    catch(e) { if(n!==sequence.current || c.signal.aborted) return; setCatalog(null); if(e instanceof RequestError && e.status===401) window.location.assign('/login'); setError(e instanceof RequestError && e.status===403?'Akses admin tidak dibenarkan.':'Senarai produk belum dapat dimuatkan. Semak semula.'); }
+    catch(e) { if(n!==sequence.current || c.signal.aborted) return; setCatalog(null); if(e instanceof RequestError && e.status===401) window.location.assign('/login'); setError(e instanceof RequestError && e.status===403?"Admin access denied.":"The product list could not be loaded. Please refresh."); }
     finally { if(n===sequence.current){reading.current=false;setLoading(false);} }
   }
   useEffect(()=>{
@@ -55,7 +56,7 @@ export function AffiliatePanel({ admin = false, accountName = '' }: { admin?: bo
   },[admin]);
   async function mutate(action: 'save' | 'delete', product: Product) {
     if(writing.current) return;
-    if(!validProduct(product)){setError('Semak semua medan, pautan HTTPS, komisen dan tarikh.');return;}
+    if(!validProduct(product)){setError("Check all fields, HTTPS links, commission and dates.");return;}
     writing.current=true; setBusy(true); setError(''); controller.current?.abort(); const n=++sequence.current;
     try {
       const data=parseCatalog(await requestJson('/api/affiliate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action,product})}));
@@ -65,14 +66,14 @@ export function AffiliatePanel({ admin = false, accountName = '' }: { admin?: bo
           setQuery('');setCategory('');setOnlyDrafts(false);setPage(1);setAddedId(product.id);
         }
       }
-    } catch(e) { if(e instanceof RequestError && e.status===401)window.location.assign('/login');setError(e instanceof RequestError && e.status===409?'Produk telah berubah. Semak senarai dan buka semula produk sebelum menyimpan.':'Respons belum dapat dipastikan. Semak senarai dahulu; draf dan ID asal dikekalkan.'); }
+    } catch(e) { if(e instanceof RequestError && e.status===401)window.location.assign('/login');setError(e instanceof RequestError && e.status===409?"This product has changed. Refresh the list and reopen the product before saving.":"The response has not yet been confirmed. Check the list first; your draft and original ID have been retained."); }
     finally { writing.current=false;setBusy(false);setLoading(false); }
   }
   const accessible = !!catalog && catalog.access==='allowed';
   const products = accessible ? catalog.products : [];
   const categories=[...new Set(products.map(p=>p.category).filter(Boolean))].sort();
   const draftCount = products.filter(p=>!p.published).length;
-  const filtered=products.filter(p=>(!admin || !onlyDrafts || !p.published) && (!category || p.category===category) && `${p.name} ${p.category} ${p.contentTypes.join(' ')}`.toLowerCase().includes(query.trim().toLowerCase()));
+  const filtered=products.filter(p=>(!admin || !onlyDrafts || !p.published) && (!category || p.category===category) && `${p.name} ${p.category} ${p.contentTypes.join(' ')} ${p.contentTypes.map(contentTypeLabel).join(' ')}`.toLowerCase().includes(query.trim().toLowerCase()));
   function submit(e: FormEvent<HTMLFormElement>){e.preventDefault();if(draft)void mutate('save',draft);}
   function edit<K extends keyof Product>(key: K, value: Product[K]){setDraft(p=>p?{...p,[key]:value}:p);}
   const pageCount = Math.max(1,Math.ceil(filtered.length/PAGE_SIZE));
@@ -107,45 +108,45 @@ export function AffiliatePanel({ admin = false, accountName = '' }: { admin?: bo
     setDraft({...product,contentTypes:[...product.contentTypes]});setError('');
   }
   function editorForm() {
-    return draft ? <form className="affiliate-editor" onSubmit={submit}><h2>{draft.revision===0?'Tambah':'Edit'} produk</h2><p className="input-help">ID: {draft.id}</p><fieldset disabled={busy}>
-      <label>Nama produk<input required maxLength={120} value={draft.name} onChange={e=>edit('name',e.target.value)}/></label>
-      <label>Pautan gambar HTTPS (pilihan)<input type="url" placeholder="Akan dikemaskini" maxLength={2048} value={draft.imageUrl} onChange={e=>edit('imageUrl',e.target.value)}/></label>
-      <label>Kategori<input required={draft.published} maxLength={60} value={draft.category} onChange={e=>edit('category',e.target.value)}/></label>
-      <div className="affiliate-filters"><label>Harga (RM)<input type="number" min="0" max="1000000" step="0.01" required={draft.published} value={draft.priceSen === null ? '' : draft.priceSen/100} onChange={e=>edit('priceSen',e.target.value === '' ? null : Math.round(Number(e.target.value)*100))}/></label><label>Anggaran komisen (RM)<input type="number" min="0" max={draft.priceSen === null ? 1000000 : draft.priceSen/100} step="0.01" required={draft.published} value={draft.commissionSen === null ? '' : draft.commissionSen/100} onChange={e=>edit('commissionSen',e.target.value === '' ? null : Math.round(Number(e.target.value)*100))}/></label></div>
-      <label>Link produk / affiliate (pilihan)<input type="url" placeholder="Akan dikemaskini" maxLength={2048} value={draft.url} onChange={e=>edit('url',e.target.value)}/></label>
-      <label>Tarikh terakhir disemak<input type="date" required={draft.published} max={new Date().toISOString().slice(0,10)} value={draft.reviewedOn} onChange={e=>edit('reviewedOn',e.target.value)}/></label>
-      <fieldset><legend>Cadangan jenis content (wajib sekurang-kurangnya satu untuk terbit)</legend><div className="affiliate-checks">{CONTENT_TYPES.map(t=><label key={t}><input type="checkbox" checked={draft.contentTypes.includes(t)} onChange={e=>edit('contentTypes',e.target.checked?[...draft.contentTypes,t]:draft.contentTypes.filter(x=>x!==t))}/>{t}</label>)}</div></fieldset>
+    return draft ? <form className="affiliate-editor" onSubmit={submit}><h2>{draft.revision===0?"Add":'Edit'} product</h2><p className="input-help">ID: {draft.id}</p><fieldset disabled={busy}>
+      <label>Product name<input required maxLength={120} value={draft.name} onChange={e=>edit('name',e.target.value)}/></label>
+      <label>HTTPS image URL (optional)<input type="url" placeholder="To be updated" maxLength={2048} value={draft.imageUrl} onChange={e=>edit('imageUrl',e.target.value)}/></label>
+      <label>Category<input required={draft.published} maxLength={60} value={draft.category} onChange={e=>edit('category',e.target.value)}/></label>
+      <div className="affiliate-filters"><label>Price (RM)<input type="number" min="0" max="1000000" step="0.01" required={draft.published} value={draft.priceSen === null ? '' : draft.priceSen/100} onChange={e=>edit('priceSen',e.target.value === '' ? null : Math.round(Number(e.target.value)*100))}/></label><label>Estimated commission (RM)<input type="number" min="0" max={draft.priceSen === null ? 1000000 : draft.priceSen/100} step="0.01" required={draft.published} value={draft.commissionSen === null ? '' : draft.commissionSen/100} onChange={e=>edit('commissionSen',e.target.value === '' ? null : Math.round(Number(e.target.value)*100))}/></label></div>
+      <label>Product / affiliate link (optional)<input type="url" placeholder="To be updated" maxLength={2048} value={draft.url} onChange={e=>edit('url',e.target.value)}/></label>
+      <label>Last checked date<input type="date" required={draft.published} max={new Date().toISOString().slice(0,10)} value={draft.reviewedOn} onChange={e=>edit('reviewedOn',e.target.value)}/></label>
+      <fieldset><legend>Suggested content types (at least one required to publish)</legend><div className="affiliate-checks">{CONTENT_TYPES.map(t=><label key={t}><input type="checkbox" checked={draft.contentTypes.includes(t)} onChange={e=>edit('contentTypes',e.target.checked?[...draft.contentTypes,t]:draft.contentTypes.filter(x=>x!==t))}/>{contentTypeLabel(t)}</label>)}</div></fieldset>
       <ProductPromptTemplates name={draft.name} contentTypes={draft.contentTypes} preview/>
-      <label>Catatan sumber (admin sahaja)<textarea maxLength={4000} value={draft.sourceNotes ?? ''} onChange={e=>edit('sourceNotes',e.target.value)}/></label><p className="input-help">Draf boleh disimpan dengan nama sahaja. Lengkapkan medan wajib sebelum terbit. Pautan gambar dan link produk boleh kosong.</p><label className="affiliate-publish"><input type="checkbox" checked={draft.published} disabled={!draft.published && !completeProduct(draft)} onChange={e=>edit('published',e.target.checked)}/>Terbitkan kepada pengguna</label>
-      <div className="affiliate-actions"><button className="primary" type="submit">{busy?'Menyimpan…':'Simpan produk'}</button><button type="button" className="secondary" onClick={()=>setDraft(null)}>Batal</button></div>
+      <label>Source notes (admin only)<textarea maxLength={4000} value={draft.sourceNotes ?? ''} onChange={e=>edit('sourceNotes',e.target.value)}/></label><p className="input-help">Drafts can be saved with a name only. Complete the required fields before publishing. Image and product links are optional.</p><label className="affiliate-publish"><input type="checkbox" checked={draft.published} disabled={!draft.published && !completeProduct(draft)} onChange={e=>edit('published',e.target.checked)}/>Publish to users</label>
+      <div className="affiliate-actions"><button className="primary" type="submit">{busy?"Saving…":"Save product"}</button><button type="button" className="secondary" onClick={()=>setDraft(null)}>Cancel</button></div>
     </fieldset></form> : null;
   }
   return <section className="affiliate-panel" aria-labelledby="affiliate-title">
-    <div className="affiliate-heading">{admin?<div><span className="eyebrow">SUMBER CONTENT</span><h1 id="affiliate-title">Urus Produk<span>.</span></h1><p>Pilih produk dan jenis content yang sesuai untuk video anda.</p></div>:<WorkspaceGreeting name={accountName} affiliate id="affiliate-title"/>}<button className="secondary" disabled={busy} onClick={()=>void refresh()}>Semak semula</button></div>
+    <div className="affiliate-heading">{admin?<div><span className="eyebrow">CONTENT RESOURCES</span><h1 id="affiliate-title">Manage Products<span>.</span></h1><p>Choose a product and content type for your video.</p></div>:<WorkspaceGreeting name={accountName} affiliate id="affiliate-title"/>}<button className="secondary" disabled={busy} onClick={()=>void refresh()}>Refresh</button></div>
     {error && <p className="notice" role="alert">{error}</p>}
-    {addedId && <p className="input-help" role="status">Produk baharu berjaya ditambah. Dipaparkan pada awal senarai.</p>}
-    {loading ? <p className="notice" role="status">Memuatkan senarai produk…</p> : !catalog ? null : !accessible ? <p className="notice">Senarai produk belum dapat dimuatkan. Semak semula.</p> : <>
-      {!admin && catalog.admin && <a className="secondary affiliate-admin-link" href="/admin/products">Urus produk sebagai admin</a>}
-      {admin && <div className="affiliate-toolbar"><button className="primary" disabled={busy || editing} onClick={()=>{if(busy || draft)return;setDraft(blank());setError('');}}>Tambah produk</button>
-      <div className="affiliate-actions" role="group" aria-label="Status penerbitan produk">
-        <button type="button" className={onlyDrafts?'secondary':'primary'} aria-pressed={!onlyDrafts} disabled={busy || editing} onClick={()=>{setOnlyDrafts(false);setPage(1);}}>Semua ({products.length})</button>
-        <button type="button" className={onlyDrafts?'primary':'secondary'} aria-pressed={onlyDrafts} disabled={busy || editing} onClick={()=>{setOnlyDrafts(true);setPage(1);}}>Belum diterbitkan ({draftCount})</button>
+    {addedId && <p className="input-help" role="status">New product added successfully. It is shown at the top of the list.</p>}
+    {loading ? <p className="notice" role="status">Loading products…</p> : !catalog ? null : !accessible ? <p className="notice">The product list could not be loaded. Please refresh.</p> : <>
+      {!admin && catalog.admin && <a className="secondary affiliate-admin-link" href="/admin/products">Manage products as admin</a>}
+      {admin && <div className="affiliate-toolbar"><button className="primary" disabled={busy || editing} onClick={()=>{if(busy || draft)return;setDraft(blank());setError('');}}>Add product</button>
+      <div className="affiliate-actions" role="group" aria-label="Product publishing status">
+        <button type="button" className={onlyDrafts?'secondary':'primary'} aria-pressed={!onlyDrafts} disabled={busy || editing} onClick={()=>{setOnlyDrafts(false);setPage(1);}}>All ({products.length})</button>
+        <button type="button" className={onlyDrafts?'primary':'secondary'} aria-pressed={onlyDrafts} disabled={busy || editing} onClick={()=>{setOnlyDrafts(true);setPage(1);}}>Unpublished ({draftCount})</button>
       </div></div>}
-      <div className="affiliate-filters"><label>Cari produk<input type="search" maxLength={254} disabled={busy || editing} value={query} onChange={e=>{setQuery(e.target.value);setPage(1);}} placeholder="Nama, kategori atau jenis content"/></label><label>Kategori<select disabled={busy || editing} value={category} onChange={e=>{setCategory(e.target.value);setPage(1);}}><option value="">Semua kategori</option>{categories.map(c=><option key={c}>{c}</option>)}</select></label></div>
+      <div className="affiliate-filters"><label>Search products<input type="search" maxLength={254} disabled={busy || editing} value={query} onChange={e=>{setQuery(e.target.value);setPage(1);}} placeholder="Name, category or content type"/></label><label>Category<select disabled={busy || editing} value={category} onChange={e=>{setCategory(e.target.value);setPage(1);}}><option value="">All categories</option>{categories.map(c=><option key={c}>{c}</option>)}</select></label></div>
       {admin && draft && !visibleProducts.some(p=>p.id===draft.id) && <article className="panel affiliate-card affiliate-new-card">{editorForm()}</article>}
-      {editing && <p className="input-help">Simpan atau batal edit sebelum menukar halaman, carian atau produk.</p>}
-      <p className="input-help">{filtered.length} produk · Harga dan komisen ialah anggaran; semak nilai semasa di platform affiliate.</p>
-      {products.length===0 ? <p className="notice">Belum ada produk {admin?'dalam katalog':'yang diterbitkan'}.</p> : filtered.length===0 ? <p className="notice">Tiada produk sepadan. Cuba carian atau penapis lain.</p> : <div className="affiliate-grid">{visibleProducts.map(p=><article id={`affiliate-product-${p.id}`} tabIndex={addedId===p.id?-1:undefined} className={`panel affiliate-card${draft?.id===p.id ? ' affiliate-card-editing' : ''}${addedId===p.id ? ' affiliate-card-added' : ''}`} key={p.id}>
+      {editing && <p className="input-help">Save or cancel your edits before changing the page, search or product.</p>}
+      <p className="input-help">{filtered.length} products · Prices and commissions are estimates; check current figures on the affiliate platform.</p>
+      {products.length===0 ? <p className="notice">{admin?"No products in the catalogue yet.":"No published products yet."}</p> : filtered.length===0 ? <p className="notice">No matching products. Try a different search or filter.</p> : <div className="affiliate-grid">{visibleProducts.map(p=><article id={`affiliate-product-${p.id}`} tabIndex={addedId===p.id?-1:undefined} className={`panel affiliate-card${draft?.id===p.id ? ' affiliate-card-editing' : ''}${addedId===p.id ? ' affiliate-card-added' : ''}`} key={p.id}>
         {admin && draft?.id===p.id ? editorForm() : <>
         {/* External images never carry app cookies/referrers. No server fetching of admin URLs. */}
         <ProductImage key={p.imageUrl} product={p}/>
-        <div className="affiliate-card-body"><div className="affiliate-card-heading"><h2 title={p.name}>{p.name}</h2>{admin && <span className={`affiliate-status ${p.published?'affiliate-status-live':'affiliate-status-draft'}`}>{p.published?'Diterbitkan':'Draf'}</span>}</div><p className="affiliate-category">{p.category || 'Kategori belum diisi'}</p><dl className="affiliate-metrics"><div><dt>Harga</dt><dd>{money(p.priceSen)}</dd></div><div className="affiliate-commission"><dt>Anggaran komisen</dt><dd>{money(p.commissionSen)}</dd></div></dl>{p.contentTypes.length>0 && <div className="affiliate-tags">{p.contentTypes.map(t=><span key={t}>{t}</span>)}</div>}<p className="input-help affiliate-reviewed">Disemak: {p.reviewedOn ? <time dateTime={p.reviewedOn}>{p.reviewedOn}</time> : 'Belum diisi'}</p>
+        <div className="affiliate-card-body"><div className="affiliate-card-heading"><h2 title={p.name}>{p.name}</h2>{admin && <span className={`affiliate-status ${p.published?'affiliate-status-live':'affiliate-status-draft'}`}>{p.published?"Published":"Draft"}</span>}</div><p className="affiliate-category">{p.category || "Category not provided"}</p><dl className="affiliate-metrics"><div><dt>Price</dt><dd>{money(p.priceSen)}</dd></div><div className="affiliate-commission"><dt>Estimated commission</dt><dd>{money(p.commissionSen)}</dd></div></dl>{p.contentTypes.length>0 && <div className="affiliate-tags">{p.contentTypes.map(t=><span key={t}>{contentTypeLabel(t)}</span>)}</div>}<p className="input-help affiliate-reviewed">Checked: {p.reviewedOn ? <time dateTime={p.reviewedOn}>{p.reviewedOn}</time> : "Not provided"}</p>
         <ProductPromptTemplates name={p.name} contentTypes={p.contentTypes}/>
-        {admin ? <>{p.sourceNotes && <details><summary>Catatan sumber</summary><pre className="input-help" style={{whiteSpace:'pre-wrap',overflowWrap:'anywhere'}}>{p.sourceNotes}</pre></details>}<div className="affiliate-actions"><button className="secondary" disabled={busy || editing} onClick={()=>startEdit(p)}>Edit</button><button className="text-button" disabled={busy || editing} onClick={()=>{if(busy || draft)return;if(window.confirm(`Padam ${p.name}?`))void mutate('delete',p);}}>Padam</button></div></> : p.url ? <a className="secondary" href={p.url} target="_blank" rel="noopener noreferrer sponsored">Lihat produk ↗</a> : <p className="input-help">Link produk akan dikemaskini</p>}
+        {admin ? <>{p.sourceNotes && <details><summary>Source notes</summary><pre className="input-help" style={{whiteSpace:'pre-wrap',overflowWrap:'anywhere'}}>{p.sourceNotes}</pre></details>}<div className="affiliate-actions"><button className="secondary" disabled={busy || editing} onClick={()=>startEdit(p)}>Edit</button><button className="text-button" disabled={busy || editing} onClick={()=>{if(busy || draft)return;if(window.confirm(`Delete ${p.name}?`))void mutate('delete',p);}}>Delete</button></div></> : p.url ? <a className="secondary" href={p.url} target="_blank" rel="noopener noreferrer sponsored">View product ↗</a> : <p className="input-help">Product link to be updated</p>}
         </div></>}</article>)}</div>}
-      {filtered.length>0 && <nav className="affiliate-pagination" aria-label="Halaman produk">
-        <span className="input-help">{(currentPage-1)*PAGE_SIZE+1}–{Math.min(currentPage*PAGE_SIZE,filtered.length)} daripada {filtered.length} produk</span>
-        <div className="affiliate-page-buttons">{Array.from({length:pageCount},(_,i)=>i+1).map(n=><button key={n} type="button" aria-label={`Halaman ${n}`} aria-current={n===currentPage?'page':undefined} disabled={busy || editing} onClick={()=>changePage(n)}>{n}</button>)}</div>
+      {filtered.length>0 && <nav className="affiliate-pagination" aria-label="Product pages">
+        <span className="input-help">{(currentPage-1)*PAGE_SIZE+1}–{Math.min(currentPage*PAGE_SIZE,filtered.length)} of {filtered.length} products</span>
+        <div className="affiliate-page-buttons">{Array.from({length:pageCount},(_,i)=>i+1).map(n=><button key={n} type="button" aria-label={`Page ${n}`} aria-current={n===currentPage?'page':undefined} disabled={busy || editing} onClick={()=>changePage(n)}>{n}</button>)}</div>
       </nav>}
     </>}
   </section>;

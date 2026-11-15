@@ -34,7 +34,7 @@ assert.equal(parse('https://example.com/page').type,'link');
 console.log('PASS video URLs: real Shorts/Reel examples, canonical IDs, allowlisted embeds, direct MP4, unsupported fallback and unsafe URL rejection');
 const submit=(url,title='',id='')=>{ids.isteriVideoUrl.value=url;ids.isteriVideoTitle.value=title;ids.isteriVideoId.value=id;ids.isteriVideoForm.events.submit({preventDefault(){}});};
 submit(short.url);assert.equal(state.isteriVideos.length,1);assert.equal(state.isteriVideos[0].title,'');assert.equal(stored.isteriVideos.length,1);
-submit('https://youtu.be/K6E5Q8fVCp4');assert.equal(state.isteriVideos.length,1);assert.match(ids.isteriVideoError.textContent,/sudah ada/);
+submit('https://youtu.be/K6E5Q8fVCp4');assert.equal(state.isteriVideos.length,1);assert.match(ids.isteriVideoError.textContent,/already in the list/);
 submit(fb.url,'<img src=x onerror=alert(1)>');assert.equal(state.isteriVideos.length,2);
 const row=ids.isteriVideoList.children[0],head=row.children[0],main=head.children[0],actions=head.children[1];
 assert.equal(main.children[1].textContent,'<img src=x onerror=alert(1)>');assert.equal(main.children[1].children.length,0);
@@ -45,7 +45,7 @@ const second=ids.isteriVideoList.children[1];second.children[0].children[1].chil
 ctx.closeIsteriVideoPreview();assert.equal(second.children[1].children.length,0);
 actions.children[2].click();assert.equal(ids.isteriVideoDialog.open,true);assert.equal(ids.isteriVideoId.value,state.isteriVideos[0].id);
 submit(fb.url,'Updated',state.isteriVideos[0].id);assert.equal(state.isteriVideos[0].title,'Updated');assert.equal(state.isteriVideos.length,2);
-quota=true;submit('https://example.com/another.mp4','Not saved');assert.equal(state.isteriVideos.length,2);assert.match(ids.isteriVideoError.textContent,/belum disimpan/);quota=false;
+quota=true;submit('https://example.com/another.mp4','Not saved');assert.equal(state.isteriVideos.length,2);assert.match(ids.isteriVideoError.textContent,/has not been saved/);quota=false;
 ids.isteriVideoList.children[0].children[0].children[1].children[3].click();assert.equal(state.isteriVideos.length,1);assert.equal(stored.isteriVideos.length,1);
 for(const key of Object.keys(old))assert.deepEqual(state[key],old[key]);
 console.log('PASS actual video handlers: link-only add, duplicate guard, safe title rendering, lazy one-at-a-time preview, edit/delete, storage rollback and unrelated data preserved');

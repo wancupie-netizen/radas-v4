@@ -8,7 +8,7 @@ const mods=new Map();function load(file){file=path.resolve(file);if(mods.has(fil
  if(name==='@supabase/supabase-js')return{createClient:()=>({rpc:async(name,p)=>{rpcCalls++;try{
   if(name==='radas_v4_request_limit'){if(outage)return{data:null,error:{message:'private_server_secret'}};if(badResponse)return{data:badResponse,error:null};return{data:await rate(p.p_user_id,p.p_scope),error:null};}
   if(name==='radas_v4_generation_operation')return{data:(await as('service_role',p.p_user_id,'select public.radas_v4_generation_operation($1,$2,$3,$4) result',[p.p_action,p.p_user_id,p.p_id,p.p_data])).rows[0].result,error:null};
-  assert.equal(name,'radas_v4_payment_operation');return{data:(await payment(p.p_actor,p.p_action,{id:p.p_id,packageId:p.p_package,reference:p.p_reference,amountSen:p.p_amount,reason:p.p_reason})),error:null};
+  assert.equal(name,'radas_v4_payment_contact_operation');return{data:(await as('service_role',p.p_actor,'select public.radas_v4_payment_contact_operation($1,$2,$3,$4,$5,$6,$7,$8) result',[p.p_actor,p.p_action,p.p_id,p.p_package,p.p_reference,p.p_amount,p.p_reason,p.p_whatsapp])).rows[0].result,error:null};
  }catch(error){return{data:null,error};}}})};
  let target=name.startsWith('@/')?path.resolve('src',name.slice(2)+'.ts'):name.startsWith('.')?path.resolve(path.dirname(file),name+'.ts'):null;
  if(target?.split(path.sep).join('/').endsWith('/supabase/server.ts'))return{createClient:async()=>({auth:{getUser:async()=>({data:{user:actor?{id:actor}:null},error:null})}})};
@@ -23,7 +23,7 @@ function paymentRequest(body){return new Request('http://localhost:3000/api/paym
  const migration=suffix=>fs.readFileSync('supabase/migrations/'+fs.readdirSync('supabase/migrations').find(n=>n.endsWith(suffix)),'utf8');
  for(const suffix of ['_credit_engine.sql','_generation_flow.sql','_credit_safety.sql'])await db.exec(migration(suffix));
  await require('./storage-fixture.cjs').installStorage(db);await db.exec('alter table storage.objects add column created_at timestamptz default now();');
- for(const suffix of ['_auto_cleanup.sql','_manual_payments.sql','_payment_safety.sql','_basic_protection.sql'])await db.exec(migration(suffix));
+ for(const suffix of ['_auto_cleanup.sql','_manual_payments.sql','_payment_safety.sql','_payment_contacts.sql','_basic_protection.sql'])await db.exec(migration(suffix));
  for(const role of ['anon','authenticated'])await assert.rejects(rate(uid,'generation',role),/permission denied/);
  await assert.rejects(rate(uid,'generation','service_role','authenticated'),/server_only/);
  await assert.rejects(rate(unverified,'generation'),/unauthorized/);await assert.rejects(rate(null,'generation'),/unauthorized/);await assert.rejects(rate(uid,'custom-scope'),/invalid_scope/);
@@ -52,7 +52,7 @@ function paymentRequest(body){return new Request('http://localhost:3000/api/paym
  assert.equal(paidPosts,1);assert.equal((await db.query('select balance from radas_v4.credit_wallets where user_id=$1',[uid])).rows[0].balance,59);assert.equal((await db.query("select count(*)::int n from radas_v4.credit_transactions where type='debit' and user_id=$1",[uid])).rows[0].n,1);
  const rows=(await db.query("select user_id from radas_v4.request_limits where scope='generation'")).rows;assert.equal(rows.length,1);assert.equal(rows[0].user_id,uid);
  await db.query("update radas_v4.request_limits set window_start=clock_timestamp()-interval '1 minute' where user_id=$1 and scope='generation'",[uid]);assert.equal((await POST(generationRequest(id))).status,202);assert.equal(paidPosts,1);
- const order=randomUUID();for(let i=0;i<21;i++){response=await PAY(paymentRequest({action:'create',id:order,packageId:'try'}));assert.equal(response.status,i<20?200:429);}assert.equal((await db.query('select balance from radas_v4.credit_wallets where user_id=$1',[uid])).rows[0].balance,59);
+ const order=randomUUID();for(let i=0;i<21;i++){response=await PAY(paymentRequest({action:'create',id:order,packageId:'try',whatsapp:'60123456789'}));assert.equal(response.status,i<20?200:429);}assert.equal((await db.query('select balance from radas_v4.credit_wallets where user_id=$1',[uid])).rows[0].balance,59);
  console.log('PASS integrated SQL+routes: 20 generation replays yield one paid fixture POST/debit, later same-ID replay safe; payment cap grants no credit; spoofed headers ignored');
  const checks=await db.query(fs.readFileSync('supabase/verify-basic-protection.sql','utf8'));assert.equal(checks.rows.length,12);assert.ok(checks.rows.every(r=>r.passed),JSON.stringify(checks.rows));const before=(await db.query('select * from radas_v4.request_limits order by user_id,scope')).rows;
  await assert.rejects(db.exec(migration('_basic_protection.sql')),/basic_protection_already_installed/);await db.exec('rollback');assert.deepEqual((await db.query('select * from radas_v4.request_limits order by user_id,scope')).rows,before);

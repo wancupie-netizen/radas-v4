@@ -22,11 +22,11 @@ export async function GET() {
       return new Response(null, { status: 303, headers: { ...headers, Location: '/login' } });
     }
     if (data.user.email?.toLowerCase() !== 'wancupie@gmail.com' || !data.user.email_confirmed_at) {
-      return new Response('Akses tidak dibenarkan.', { status: 403, headers });
+      return new Response("Access denied.", { status: 403, headers });
     }
     const html = await readFile(join(process.cwd(), 'src/lib/command-center/center.html'), 'utf8');
     return new Response(html, { headers: { ...headers, 'Content-Type': 'text/html; charset=utf-8' } });
   } catch {
-    return new Response('Command Center belum tersedia. Sila cuba semula.', { status: 503, headers });
+    return new Response("Command Center is currently unavailable. Please try again.", { status: 503, headers });
   }
 }

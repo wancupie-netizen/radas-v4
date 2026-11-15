@@ -20,25 +20,25 @@ export function GenerationWait({ generation, consecutiveUnknown, usesImages }: {
   const repeated = consecutiveUnknown >= 2;
   const stop = consecutiveUnknown >= 3;
   return <div className="generation-wait">
-    {stop ? <p>Masalah masih berulang. Hentikan percubaan dan hubungi sokongan dengan rujukan <code>{generation.id}</code> untuk semakan lanjut.</p>
+    {stop ? <p>The problem is recurring. Stop trying and contact support with reference <code>{generation.id}</code> for further review.</p>
       : repeated ? <>
-        <p>Sila cuba langkah berikut sebelum mencuba lagi:</p>
+        <p>Please follow these steps before trying again:</p>
         <ol>
-          <li>Pastikan sambungan internet stabil.</li>
-          {usesImages && <li>Kecilkan gambar kepada sekitar <strong>500 KB atau kurang</strong>, atau gunakan gambar lain.</li>}
-          <li>{generation.releasedAt ? 'Semak prompt dan tetapan, kemudian tekan Generate Video sekali sahaja.' : 'Tunggu sehingga butang Generate dibuka semula, kemudian cuba sekali lagi.'}</li>
+          <li>Make sure your internet connection is stable.</li>
+          {usesImages && <li>Reduce the image size to around <strong>500 KB or less</strong>, or use another image.</li>}
+          <li>{generation.releasedAt ? "Check your prompt and settings, then press Generate Video only once." : "Wait until the Generate button becomes available, then try again."}</li>
         </ol>
       </> : null}
     <p role="status">{generation.releasedAt
-      ? (stop ? 'Semakan selesai. Sila hubungi sokongan sebelum mencuba lagi.' : 'Anda boleh cuba generate semula.')
-      : 'Tunggu kira-kira 2 minit. Butang Generate akan dibuka semula secara automatik selepas semakan sistem.'}</p>
+      ? (stop ? "The check is complete. Please contact support before trying again." : "You can try generating a video again.")
+      : "Wait about 2 minutes. The Generate button will become available automatically after the system check."}</p>
     {!generation.releasedAt && <>
       <p className="generation-wait-time">{seconds !== null && seconds > 0
-        ? <>Masa menunggu: <span role="timer" aria-live="off">{formatWait(seconds)}</span></>
-        : <span>Sedang menyemak…</span>}</p>
-      <p>Pastikan internet stabil dan biarkan halaman ini terbuka. Tidak perlu refresh atau tekan Generate berulang kali.</p>
+        ? <>Time remaining: <span role="timer" aria-live="off">{formatWait(seconds)}</span></>
+        : <span>Checking…</span>}</p>
+      <p>Keep your internet connection stable and leave this page open. You do not need to refresh or press Generate repeatedly.</p>
     </>}
-    {!repeated && usesImages && <p>Jika masalah berulang, cuba kecilkan gambar kepada sekitar <strong>500 KB atau kurang</strong>, kemudian cuba lagi.</p>}
-    {repeated && !stop && <p>Jika masih gagal selepas langkah ini, hentikan percubaan dan hubungi sokongan dengan rujukan request.</p>}
+    {!repeated && usesImages && <p>If the problem recurs, try reducing the image size to around <strong>500 KB or less</strong>, then try again.</p>}
+    {repeated && !stop && <p>If it still fails after these steps, stop trying and contact support with the request reference.</p>}
   </div>;
 }

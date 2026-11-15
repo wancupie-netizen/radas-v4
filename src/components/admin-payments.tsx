@@ -9,8 +9,8 @@ export function AdminPayments() {
  const [tab,setTab]=useState<'review'|'history'>('review');
  const [revision, setRevision] = useState(0);
  const refreshStock = useCallback(() => setRevision(value => value + 1), []);
- const tabs = [{id:'stock',label:'Stok API'},{id:'customers',label:'Senarai Pelanggan Berbayar'},{id:'payments',label:'Semak Rekod Bayaran'}] as const;
- return <><div className="payment-admin-tabs payment-main-tabs" role="tablist" aria-label="Pengurusan bayaran" onKeyDown={event=>{
+ const tabs = [{id:'stock',label:"API Credit Stock"},{id:'customers',label:"Paid Customers"},{id:'payments',label:"Payment Records"}] as const;
+ return <><div className="payment-admin-tabs payment-main-tabs" role="tablist" aria-label="Payment management" onKeyDown={event=>{
   const index=tabs.findIndex(item=>item.id===mainTab);
   const next=event.key==='ArrowRight'?(index+1)%tabs.length:event.key==='ArrowLeft'?(index+tabs.length-1)%tabs.length:event.key==='Home'?0:event.key==='End'?tabs.length-1:null;
   if(next===null)return;
@@ -21,8 +21,8 @@ export function AdminPayments() {
  </div><div role="tabpanel" id="admin-panel-summary" aria-labelledby={mainTab==='customers'?'admin-tab-customers':'admin-tab-stock'} hidden={mainTab==='payments'}>
   <ApiStockPanel revision={revision} view={mainTab==='customers'?'customers':'stock'}/>
  </div><div role="tabpanel" id="admin-panel-payments" aria-labelledby="admin-tab-payments" hidden={mainTab!=='payments'}>
- <div className="payment-admin-tabs" role="group" aria-label="Senarai bayaran">
-  <button type="button" className={tab==='review'?'selected':''} aria-pressed={tab==='review'} onClick={()=>setTab('review')}>Perlu Disemak</button>
-  <button type="button" className={tab==='history'?'selected':''} aria-pressed={tab==='history'} onClick={()=>setTab('history')}>Rekod Bayaran</button>
+ <div className="payment-admin-tabs" role="group" aria-label="Payment list">
+  <button type="button" className={tab==='review'?'selected':''} aria-pressed={tab==='review'} onClick={()=>setTab('review')}>Pending Review</button>
+  <button type="button" className={tab==='history'?'selected':''} aria-pressed={tab==='history'} onClick={()=>setTab('history')}>Payment Records</button>
  </div>{tab==='review'?<PaymentPanel admin onCreditsChanged={refreshStock} onReviewed={()=>setTab('history')}/>:<PaymentHistoryPanel/>}</div></>;
 }

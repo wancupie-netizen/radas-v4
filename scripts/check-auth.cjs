@@ -83,9 +83,9 @@ async function runAuthTests(testRoot) {
       assert.equal(anonymous.status,401); assert.match(anonymous.headers.get('cache-control'),/no-store/);
     }
     console.log('PASS anonymous workspace denial, safe callback failure and credit API mutation denial');
-    r=await submit('/login',{email:'test@example.com',password:'wrongpass'});assert.equal(r.status,200);assert.match(await r.text(),/Login gagal/);
+    r=await submit('/login',{email:'test@example.com',password:'wrongpass'});assert.equal(r.status,200);assert.match(await r.text(),/Login failed/);
     assert.equal((await request('/studio')).status,307);
-    r=await submit('/register',{name:'Test',email:'new@example.com',password:'abcdefgh'});assert.equal(r.status,200);assert.match(await r.text(),/Semak inbox/);
+    r=await submit('/register',{name:'Test',email:'new@example.com',password:'abcdefgh'});assert.equal(r.status,200);assert.match(await r.text(),/Check your inbox/);
     assert.equal((await request('/studio')).status,307);
     console.log('PASS failed login and confirmation-required signup grant no access');
     r=await request('/auth/callback?code=test-confirmation-code&next=https://example.com');assert.equal(r.status,307);assert.ok(r.headers.get('location').endsWith('/studio'));assert.equal((await request('/studio')).status,200);
@@ -93,11 +93,11 @@ async function runAuthTests(testRoot) {
     console.log('PASS confirmation callback establishes cookies and ignores external redirects');
     r=await submit('/login',{email:'test@example.com',password:'abcdefgh'});assert.equal(r.status,303);assert.ok(r.headers.get('location').endsWith('/studio'));assert.ok(jar.size>0);
     r=await request('/studio');assert.equal(r.status,200);assert.match(await r.text(),/test@example.com/);assert.match(r.headers.get('cache-control'),/no-store/);
-    const publicPage=await request('/');const publicHtml=await publicPage.text();assert.equal(publicPage.status,200);assert.doesNotMatch(publicHtml,/test@example.com|Baki belum tersedia|credit-ledger/);
+    const publicPage=await request('/');const publicHtml=await publicPage.text();assert.equal(publicPage.status,200);assert.doesNotMatch(publicHtml,/test@example.com|Balance unavailable|credit-ledger/);
     console.log('PASS successful login sets cookies, verified user sees workspace, response not cached');
     r=await request('/api/credits?user_id=someone-else');assert.equal(r.status,200);assert.equal((await r.json()).balance,59);assert.match(r.headers.get('cache-control'),/no-store/);
     creditFailure=true;r=await request('/api/credits');assert.equal(r.status,503);assert.equal((await r.json()).status,'unavailable');
-    r=await request('/studio');assert.equal(r.status,200);assert.match(await r.text(),/Baki belum tersedia/);creditFailure=false;
+    r=await request('/studio');assert.equal(r.status,200);assert.match(await r.text(),/Balance unavailable/);creditFailure=false;
     console.log('PASS wallet API ignores spoofed user ID, never caches and fails closed on database outage');
     // Expire the session in the test cookie to exercise refresh and cookie propagation.
     for(const [key,value] of jar) { if(value.startsWith('base64-')) { const stored=JSON.parse(Buffer.from(value.slice(7),'base64url').toString());stored.expires_at=1;jar.set(key,'base64-'+Buffer.from(JSON.stringify(stored)).toString('base64url')); } }
@@ -105,7 +105,7 @@ async function runAuthTests(testRoot) {
     console.log('PASS expired session refresh updates response cookies');
     revoked=true;r=await request('/studio');assert.equal(r.status,307);assert.equal((await request('/api/credits')).status,401);revoked=false;
     console.log('PASS revoked user cannot access workspace despite existing cookies');
-    failLogout=true;r=await submit('/studio',{},true);assert.equal(r.status,200);assert.match(await r.text(),/Logout belum berjaya/);failLogout=false;
+    failLogout=true;r=await submit('/studio',{},true);assert.equal(r.status,200);assert.match(await r.text(),/Logout was unsuccessful/);failLogout=false;
     r=await submit('/studio',{},true);assert.equal(r.status,303);assert.ok(r.headers.get('location').endsWith('/login'));
     assert.equal((await request('/studio')).status,307);
     console.log('PASS logout failure is reported; successful logout removes workspace access');
@@ -116,7 +116,7 @@ async function runAuthTests(testRoot) {
     let response;
     for(let i=0;i<80;i++){try{response=await fetch('http://127.0.0.1:3095/login');if(response.ok)break;}catch{}await new Promise(r=>setTimeout(r,100));}
     assert.equal(response?.status,200);
-    const html=await response.text();assert.match(html,/Sambungan akaun belum tersedia/);assert.match(html,/<button[^>]*disabled/);
+    const html=await response.text();assert.match(html,/Account access is unavailable/);assert.match(html,/<button[^>]*disabled/);
     const denied=await fetch('http://127.0.0.1:3095/studio',{redirect:'manual'});assert.equal(denied.status,307);
     const publicMissingConfig=await fetch('http://127.0.0.1:3095/');assert.equal(publicMissingConfig.status,200);assert.match(await publicMissingConfig.text(),/Generate AI Video/);
     console.log('PASS missing configuration leaves landing public, disables auth forms and denies studio');

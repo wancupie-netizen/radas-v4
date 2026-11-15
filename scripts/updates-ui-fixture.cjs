@@ -11,13 +11,13 @@ const original=global.fetch,oldWindow=global.window;global.window={location:{ass
 try{
 let calls=[];global.fetch=async(url,init)=>{calls.push({url,init});return Response.json({admin:true,updates:[]});};
 const panel=harness(),button=text=>nodes(panel()).find(x=>x.type==='button'&&words(x).includes(text));
-await nodes(panel()).find(x=>x.type==='button').props.onClick();await settle();button('Tambah update').props.onClick();
+await nodes(panel()).find(x=>x.type==='button').props.onClick();await settle();button('Add update').props.onClick();
 const change=(id,value)=>nodes(panel()).find(x=>x.props.id===id).props.onChange({target:{value}});change('update-title','Fixture title');change('update-body','Fixture body');
 global.fetch=async(url,init)=>{calls.push({url,init});throw Error('PRIVATE_PROVIDER_TEXT');};
-const form=()=>nodes(panel()).find(x=>x.type==='form');form().props.onSubmit({preventDefault(){}});await settle();assert.match(words(panel()),/rujukan asal dikekalkan/);assert.doesNotMatch(words(panel()),/PRIVATE_PROVIDER_TEXT/);assert.equal(calls.filter(x=>x.init.method==='POST').length,1);
+const form=()=>nodes(panel()).find(x=>x.type==='form');form().props.onSubmit({preventDefault(){}});await settle();assert.match(words(panel()),/original reference has been retained/);assert.doesNotMatch(words(panel()),/PRIVATE_PROVIDER_TEXT/);assert.equal(calls.filter(x=>x.init.method==='POST').length,1);
 const command=JSON.parse(calls.at(-1).init.body);const entry={...command.update,revision:1,publishedAt:null,updatedAt:new Date().toISOString()};
 global.fetch=async(url,init)=>{calls.push({url,init});assert.deepEqual(JSON.parse(init.body),command);return Response.json({admin:true,updates:[entry]});};
-await button('Ulang request yang sama').props.onClick();await settle();assert.match(words(panel()),/Update disimpan/);assert.match(words(panel()),/Fixture title/);assert.equal(calls.filter(x=>x.init.method==='POST').length,2);
+await button("Retry the same request").props.onClick();await settle();assert.match(words(panel()),/Update saved/);assert.match(words(panel()),/Fixture title/);assert.equal(calls.filter(x=>x.init.method==='POST').length,2);
 // Old refresh must not overwrite a newer successful read.
 let resolveOld;global.fetch=()=>new Promise(r=>resolveOld=r);nodes(panel()).find(x=>x.type==='button').props.onClick();global.fetch=async()=>Response.json({admin:true,updates:[]});nodes(panel()).find(x=>x.type==='button').props.onClick();await settle();resolveOld(Response.json({admin:true,updates:[entry]}));await settle();assert.doesNotMatch(words(panel()),/Fixture title/);
 console.log('PASS actual admin handlers preserve UUID/body on lost response, explicit exact retry, no automatic write retry, sanitized failure and stale read protection');

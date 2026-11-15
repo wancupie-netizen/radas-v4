@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ms">
+<html lang="en">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -783,18 +783,18 @@
 </head>
 <body>
   <aside style="width:min(1080px,calc(100% - 32px));margin:18px auto 0;padding:14px 18px;background:#fff;border:1px solid #cfd7e3;border-radius:12px">
-    <span id="cloudStatus" role="status" aria-live="polite">Sedang memuatkan data akaun…</span>
+    <span id="cloudStatus" role="status" aria-live="polite">Loading account data…</span>
     <div class="actions" style="margin-top:8px">
-      <button type="button" class="btn btn-soft" id="cloudRetry" hidden>Cuba semula</button>
-      <button type="button" class="btn btn-soft" id="cloudBackup">Muat turun backup</button>
-      <button type="button" class="btn btn-soft" id="cloudReload" hidden>Muat semula data akaun</button>
+      <button type="button" class="btn btn-soft" id="cloudRetry" hidden>Try again</button>
+      <button type="button" class="btn btn-soft" id="cloudBackup">Download backup</button>
+      <button type="button" class="btn btn-soft" id="cloudReload" hidden>Reload account data</button>
     </div>
   </aside>
   <main class="wrap" id="centerMain" inert>
     <header class="top">
       <div class="eyebrow">Personal Weekly Dashboard</div>
       <h1>Command Center</h1>
-      <p class="sub">Satu fokus setiap masa.</p>
+      <p class="sub">One focus at a time.</p>
     </header>
 
     <nav class="tabs" aria-label="Project tabs">
@@ -802,7 +802,7 @@
       <button type="button" class="tab" id="tab-biscotto" onclick="switchProject('biscotto')">Biscotto</button>
       <button type="button" class="tab" id="tab-dexsato" onclick="switchProject('dexsato')">DexSato</button>
       <button type="button" class="tab" id="tab-weight" onclick="switchProject('weight')">Lose Weight</button>
-      <button type="button" class="tab" id="tab-produk" onclick="switchProject('produk')">Produk</button>      <button type="button" class="tab" id="tab-isteri" onclick="switchProject('isteri')">Isteri Malam</button>
+      <button type="button" class="tab" id="tab-produk" onclick="switchProject('produk')">Products</button>      <button type="button" class="tab" id="tab-isteri" onclick="switchProject('isteri')">Isteri Malam</button>
     </nav>
 
     <section class="project-strip">
@@ -810,19 +810,19 @@
         <div class="eyebrow">Current Project</div>
         <div class="project-title-row">
           <h2 id="projectTitle">RADAS</h2>
-          <button type="button" class="radas-products-link" id="radasProductsLink" onclick="switchRadasView('products')" hidden>100 Produk</button>
-          <button type="button" class="radas-note-link" id="radasNoteLink" onclick="switchRadasView('notes')" hidden>Nota</button>
+          <button type="button" class="radas-products-link" id="radasProductsLink" onclick="switchRadasView('products')" hidden>100 Products</button>
+          <button type="button" class="radas-note-link" id="radasNoteLink" onclick="switchRadasView('notes')" hidden>Notes</button>
           <button type="button" class="dexsato-content-link" id="radasContentLink" onclick="switchRadasView('content')" hidden>Content List</button>
-          <a class="radas-products-link radas-sheet-link" id="radasAffiliateSheetLink" href="https://docs.google.com/spreadsheets/d/1mS8cJur1JlOVFIiB8nfy_pxUHJoPVCflwzZpn02msGw/edit?usp=sharing" target="_blank" rel="noopener noreferrer" title="Buka Google Sheets dalam tab baharu" hidden>Database Produk Affiliate <span aria-hidden="true">↗</span></a>
+          <a class="radas-products-link radas-sheet-link" id="radasAffiliateSheetLink" href="https://docs.google.com/spreadsheets/d/1mS8cJur1JlOVFIiB8nfy_pxUHJoPVCflwzZpn02msGw/edit?usp=sharing" target="_blank" rel="noopener noreferrer" title="Open Google Sheets in a new tab" hidden>Affiliate Product Database <span aria-hidden="true">↗</span></a>
           <button type="button" class="dexsato-content-link" id="dexsatoContentLink" onclick="switchDexsatoView('content')" hidden>Content List</button>
           <button type="button" class="isteri-content-link" id="isteriContentLink" onclick="switchIsteriView('content')" hidden>Content List</button>
-          <button type="button" class="isteri-content-link" id="isteriVideoLink" onclick="switchIsteriView('videos')" hidden>Senarai Video</button>
+          <button type="button" class="isteri-content-link" id="isteriVideoLink" onclick="switchIsteriView('videos')" hidden>Video List</button>
         </div>
       </div>
       <div class="week">
-        <button type="button" class="week-btn" onclick="shiftWeek(-1)" aria-label="Minggu sebelum">‹</button>
+        <button type="button" class="week-btn" onclick="shiftWeek(-1)" aria-label="Previous week">‹</button>
         <span class="week-text" id="weekLabel" aria-live="polite"></span>
-        <button type="button" class="week-btn" onclick="shiftWeek(1)" aria-label="Minggu seterusnya">›</button>
+        <button type="button" class="week-btn" onclick="shiftWeek(1)" aria-label="Next week">›</button>
       </div>
     </section>
 
@@ -833,27 +833,27 @@
           <div>
             <div class="eyebrow">Product Content Workspace</div>
             <h2 id="produkWorkspaceTitle">Buku Forex</h2>
-            <p style="margin:6px 0 0;color:var(--muted);font-size:13px">Senarai kandungan produk ini sahaja.</p>
+            <p style="margin:6px 0 0;color:var(--muted);font-size:13px">Content for this product only.</p>
           </div>
           <div class="note-actions">
-            <button type="button" class="btn btn-soft" onclick="manageProduk()">Urus Produk</button>
-            <button type="button" class="btn btn-primary" onclick="addProdukContent()">+ Tambah Kandungan</button>
+            <button type="button" class="btn btn-soft" onclick="manageProduk()">Manage Products</button>
+            <button type="button" class="btn btn-primary" onclick="addProdukContent()">+ Add Content</button>
           </div>
         </div>
         <div id="produkTabs" class="tabs" style="margin:0 auto 18px;width:100%"></div>
         <form id="produkAddForm" class="produk-add-form" hidden onsubmit="saveProdukContent(event)">
-          <h3>Tambah Kandungan</h3>
+          <h3>Add Content</h3>
           <label class="produk-form-field">
-            <span>Tajuk kandungan</span>
-            <input id="produkNewTitle" name="title" type="text" maxlength="180" required placeholder="Masukkan tajuk kandungan" />
+            <span>Content title</span>
+            <input id="produkNewTitle" name="title" type="text" maxlength="180" required placeholder="Enter a content title" />
           </label>
           <label class="produk-form-field">
-            <span>Nota / isi kandungan</span>
-            <textarea id="produkNewContent" name="content" placeholder="Tulis nota atau isi kandungan (pilihan)"></textarea>
+            <span>Notes / content</span>
+            <textarea id="produkNewContent" name="content" placeholder="Write notes or content (optional)"></textarea>
           </label>
           <div class="produk-form-actions">
-            <button type="button" class="btn btn-soft" onclick="cancelAddProdukContent()">Batal</button>
-            <button type="submit" class="btn btn-primary">Simpan Kandungan</button>
+            <button type="button" class="btn btn-soft" onclick="cancelAddProdukContent()">Cancel</button>
+            <button type="submit" class="btn btn-primary">Save Content</button>
           </div>
         </form>
         <div id="produkContentList" class="content-list-grid"></div>
@@ -863,41 +863,41 @@
       <div class="section-head">
         <div>
           <div class="eyebrow">Product Database</div>
-          <h2>100 Produk Tinggi Komisen</h2>
+          <h2>100 High-Commission Products</h2>
         </div>
-        <div class="product-meta"><span id="productCountLabel">100 produk</span><span>•</span><span>Data asal RADAS Product Database V1</span></div>
+        <div class="product-meta"><span id="productCountLabel">100 products</span><span>•</span><span>Original data from RADAS Product Database V1</span></div>
       </div>
 
       <div class="product-toolbar">
-        <input id="productSearch" type="search" placeholder="Cari nama / kategori..." oninput="renderProducts()" />
+        <input id="productSearch" type="search" placeholder="Search name / category..." oninput="renderProducts()" />
         <select id="productCategoryFilter" onchange="renderProducts()">
-          <option value="all">Semua Kategori</option>
+          <option value="all">All Categories</option>
         </select>
         <select id="productStatusFilter" onchange="renderProducts()">
-          <option value="all">Semua Status</option>
-          <option value="untested">Belum Uji</option>
-          <option value="want">Nak Uji</option>
-          <option value="promoting">Sedang Promote</option>
+          <option value="all">All Statuses</option>
+          <option value="untested">Not Tested</option>
+          <option value="want">To Test</option>
+          <option value="promoting">Promoting</option>
           <option value="done">Done</option>
         </select>
         <select id="productWatchFilter" onchange="renderProducts()">
-          <option value="all">Semua Produk</option>
-          <option value="watchlist">Watchlist Sahaja</option>
-          <option value="missing">Data Nama Tak Lengkap</option>
+          <option value="all">All Products</option>
+          <option value="watchlist">Watchlist Only</option>
+          <option value="missing">Incomplete Name Data</option>
         </select>
         <select id="productSort" onchange="renderProducts()">
-          <option value="id">Susun: ID</option>
-          <option value="commission">Komisen RM Tertinggi</option>
-          <option value="score">Radar Score Tertinggi</option>
-          <option value="creator">Creator Tertinggi</option>
-          <option value="sold">Sold/Orders Tertinggi</option>
+          <option value="id">Sort: ID</option>
+          <option value="commission">Highest Commission (RM)</option>
+          <option value="score">Highest Radar Score</option>
+          <option value="creator">Most Creators</option>
+          <option value="sold">Most Sales / Orders</option>
         </select>
-        <button type="button" class="btn btn-primary" onclick="openProductDialog()">+ Tambah Produk</button>
+        <button type="button" class="btn btn-primary" onclick="openProductDialog()">+ Add Product</button>
       </div>
 
       <div class="product-table-wrap">
         <table class="product-table">
-          <thead><tr><th>Produk</th><th>Harga / Komisen</th><th>Creator</th><th>Sold</th><th>Radar</th><th>Status</th><th>Action</th></tr></thead>
+          <thead><tr><th>Products</th><th>Price / Commission</th><th>Creator</th><th>Sold</th><th>Radar</th><th>Status</th><th>Action</th></tr></thead>
           <tbody id="productTableBody"></tbody>
         </table>
       </div>
@@ -908,10 +908,10 @@
         <div class="note-toolbar">
           <div>
             <div class="eyebrow">RADAS Reference Note</div>
-            <h2>TikTok Affiliate — Kategori Produk</h2>
+            <h2>TikTok Affiliate — Product Categories</h2>
           </div>
           <div class="note-actions">
-            <button type="button" class="btn btn-soft" onclick="openNoteEditor()">Edit Nota</button>
+            <button type="button" class="btn btn-soft" onclick="openNoteEditor()">Edit Note</button>
             <button type="button" class="btn btn-soft" onclick="deleteRadasNote()">Delete</button>
           </div>
         </div>
@@ -927,7 +927,7 @@
             <h2>Content List</h2>
           </div>
           <div class="note-actions">
-            <button type="button" class="btn btn-primary" onclick="openRadasContentEditor()">+ Tambah Nota</button>
+            <button type="button" class="btn btn-primary" onclick="openRadasContentEditor()">+ Add Note</button>
           </div>
         </div>
         <div id="radasContentList" class="content-list-grid"></div>
@@ -942,7 +942,7 @@
             <h2>Content List</h2>
           </div>
           <div class="note-actions">
-            <button type="button" class="btn btn-primary" onclick="openDexsatoNoteEditor()">+ Tambah Nota</button>
+            <button type="button" class="btn btn-primary" onclick="openDexsatoNoteEditor()">+ Add Note</button>
           </div>
         </div>
         <div id="dexsatoContentList" class="content-list-grid"></div>
@@ -957,7 +957,7 @@
             <h2>Content List</h2>
           </div>
           <div class="note-actions">
-            <button type="button" class="btn btn-primary" onclick="openIsteriNoteEditor()">+ Tambah Nota</button>
+            <button type="button" class="btn btn-primary" onclick="openIsteriNoteEditor()">+ Add Note</button>
           </div>
         </div>
         <div id="isteriContentList" class="content-list-grid"></div>
@@ -967,10 +967,10 @@
     <section class="card" id="isteriVideoCard" style="margin-bottom:18px" hidden>
       <div class="content-list-shell">
         <div class="note-toolbar">
-          <div><div class="eyebrow">Isteri Malam Video Workspace</div><h2>Senarai Video</h2></div>
-          <button type="button" class="btn btn-primary" id="isteriVideoAdd">+ Tambah Video</button>
+          <div><div class="eyebrow">Isteri Malam Video Workspace</div><h2>Video List</h2></div>
+          <button type="button" class="btn btn-primary" id="isteriVideoAdd">+ Add Video</button>
         </div>
-        <p class="isteri-video-help" style="margin:0 0 16px">Simpan link YouTube, Facebook Reel atau video lain. Preview bergantung pada sokongan sumber. Senarai disimpan dalam browser ini sahaja.</p>
+        <p class="isteri-video-help" style="margin:0 0 16px">Save YouTube, Facebook Reel or other video links. Preview availability depends on the source. The list is stored in this browser only.</p>
         <p id="isteriVideoMessage" role="status" aria-live="polite"></p>
         <div id="isteriVideoList" class="isteri-video-list"></div>
       </div>
@@ -978,15 +978,15 @@
 
     <dialog id="isteriVideoDialog">
       <form class="modal" id="isteriVideoForm">
-        <div class="section-head"><h2 id="isteriVideoDialogTitle">Tambah Video</h2><button type="button" class="icon-btn" id="isteriVideoClose" aria-label="Tutup borang video">×</button></div>
+        <div class="section-head"><h2 id="isteriVideoDialogTitle">Add Video</h2><button type="button" class="icon-btn" id="isteriVideoClose" aria-label="Close video form">×</button></div>
         <input type="hidden" id="isteriVideoId" />
-        <label class="field-label" for="isteriVideoUrl">Link video</label>
+        <label class="field-label" for="isteriVideoUrl">Video link</label>
         <input type="url" id="isteriVideoUrl" required maxlength="4096" placeholder="https://www.youtube.com/shorts/..." />
-        <label class="field-label" for="isteriVideoTitle" style="margin-top:16px">Tajuk (pilihan)</label>
-        <input type="text" id="isteriVideoTitle" maxlength="160" placeholder="Contoh: Video Gambir 01" />
-        <p class="isteri-video-help">Link HTTPS sahaja. Tajuk boleh dibiarkan kosong.</p>
+        <label class="field-label" for="isteriVideoTitle" style="margin-top:16px">Title (optional)</label>
+        <input type="text" id="isteriVideoTitle" maxlength="160" placeholder="Example: Gambir Video 01" />
+        <p class="isteri-video-help">HTTPS links only. The title can be left blank.</p>
         <p id="isteriVideoError" class="isteri-video-error" role="alert"></p>
-        <div class="actions"><button type="submit" class="btn btn-primary">Simpan Video</button><button type="button" class="btn btn-soft" id="isteriVideoCancel">Batal</button></div>
+        <div class="actions"><button type="submit" class="btn btn-primary">Save Video</button><button type="button" class="btn btn-soft" id="isteriVideoCancel">Cancel</button></div>
       </form>
     </dialog>
 
@@ -995,25 +995,25 @@
         <div class="section-head">
           <div>
             <div class="eyebrow">RADAS Content List</div>
-            <h2 id="radasContentDialogTitle">Tambah Nota</h2>
+            <h2 id="radasContentDialogTitle">Add Note</h2>
           </div>
           <button type="button" class="icon-btn" onclick="closeRadasContentEditor()">✕</button>
         </div>
         <input type="hidden" id="radasContentId" />
         <div class="form-grid">
           <div class="full">
-            <label class="field-label" for="radasContentTitle">Tajuk</label>
-            <input id="radasContentTitle" required placeholder="Contoh: Bedah Produk — Produk A" />
+            <label class="field-label" for="radasContentTitle">Title</label>
+            <input id="radasContentTitle" required placeholder="Example: Product Breakdown — Product A" />
           </div>
           <div class="full">
-            <label class="field-label" for="radasContentEditor">Nota</label>
-            <textarea id="radasContentEditor" placeholder="Tulis idea, draft, hook, angle atau content plan..."></textarea>
+            <label class="field-label" for="radasContentEditor">Notes</label>
+            <textarea id="radasContentEditor" placeholder="Write ideas, drafts, hooks, angles or a content plan..."></textarea>
             <div style="margin-top:7px;color:var(--muted);font-size:12px">Format ringkas Markdown disokong: # tajuk, ## sub-tajuk, - bullet, &gt; quote, **bold**.</div>
           </div>
         </div>
         <div class="actions" style="justify-content:flex-end;margin-top:18px">
-          <button type="button" class="btn btn-soft" onclick="closeRadasContentEditor()">Batal</button>
-          <button type="submit" class="btn btn-primary">Simpan Nota</button>
+          <button type="button" class="btn btn-soft" onclick="closeRadasContentEditor()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Note</button>
         </div>
       </form>
     </dialog>
@@ -1023,25 +1023,25 @@
         <div class="section-head">
           <div>
             <div class="eyebrow">DexSato Content List</div>
-            <h2 id="dexsatoNoteDialogTitle">Tambah Nota</h2>
+            <h2 id="dexsatoNoteDialogTitle">Add Note</h2>
           </div>
           <button type="button" class="icon-btn" onclick="closeDexsatoNoteEditor()">✕</button>
         </div>
         <input type="hidden" id="dexsatoNoteId" />
         <div class="form-grid">
           <div class="full">
-            <label class="field-label" for="dexsatoNoteTitle">Tajuk</label>
-            <input id="dexsatoNoteTitle" required placeholder="Contoh: DexSato Signal — $TOKEN" />
+            <label class="field-label" for="dexsatoNoteTitle">Title</label>
+            <input id="dexsatoNoteTitle" required placeholder="Example: DexSato Signal — $TOKEN" />
           </div>
           <div class="full">
-            <label class="field-label" for="dexsatoNoteEditor">Nota</label>
-            <textarea id="dexsatoNoteEditor" placeholder="Tulis idea, draft, signal, hook atau content plan..."></textarea>
+            <label class="field-label" for="dexsatoNoteEditor">Notes</label>
+            <textarea id="dexsatoNoteEditor" placeholder="Write ideas, drafts, signals, hooks or a content plan..."></textarea>
             <div style="margin-top:7px;color:var(--muted);font-size:12px">Format ringkas Markdown disokong: # tajuk, ## sub-tajuk, - bullet, &gt; quote, **bold**.</div>
           </div>
         </div>
         <div class="actions" style="justify-content:flex-end;margin-top:18px">
-          <button type="button" class="btn btn-soft" onclick="closeDexsatoNoteEditor()">Batal</button>
-          <button type="submit" class="btn btn-primary">Simpan Nota</button>
+          <button type="button" class="btn btn-soft" onclick="closeDexsatoNoteEditor()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Note</button>
         </div>
       </form>
     </dialog>
@@ -1051,25 +1051,25 @@
         <div class="section-head">
           <div>
             <div class="eyebrow">Isteri Malam Content List</div>
-            <h2 id="isteriNoteDialogTitle">Tambah Nota</h2>
+            <h2 id="isteriNoteDialogTitle">Add Note</h2>
           </div>
           <button type="button" class="icon-btn" onclick="closeIsteriNoteEditor()">✕</button>
         </div>
         <input type="hidden" id="isteriNoteId" />
         <div class="form-grid">
           <div class="full">
-            <label class="field-label" for="isteriNoteTitle">Tajuk</label>
-            <input id="isteriNoteTitle" required placeholder="Contoh: Idea content Isteri Malam" />
+            <label class="field-label" for="isteriNoteTitle">Title</label>
+            <input id="isteriNoteTitle" required placeholder="Example: Isteri Malam content idea" />
           </div>
           <div class="full">
-            <label class="field-label" for="isteriNoteEditor">Nota</label>
-            <textarea id="isteriNoteEditor" placeholder="Tulis idea, draft, signal, hook atau content plan..."></textarea>
+            <label class="field-label" for="isteriNoteEditor">Notes</label>
+            <textarea id="isteriNoteEditor" placeholder="Write ideas, drafts, signals, hooks or a content plan..."></textarea>
             <div style="margin-top:7px;color:var(--muted);font-size:12px">Format ringkas Markdown disokong: # tajuk, ## sub-tajuk, - bullet, &gt; quote, **bold**.</div>
           </div>
         </div>
         <div class="actions" style="justify-content:flex-end;margin-top:18px">
-          <button type="button" class="btn btn-soft" onclick="closeIsteriNoteEditor()">Batal</button>
-          <button type="submit" class="btn btn-primary">Simpan Nota</button>
+          <button type="button" class="btn btn-soft" onclick="closeIsteriNoteEditor()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Note</button>
         </div>
       </form>
     </dialog>
@@ -1079,18 +1079,18 @@
         <div class="section-head">
           <div>
             <div class="eyebrow">RADAS Reference Note</div>
-            <h2>Edit Nota</h2>
+            <h2>Edit Note</h2>
           </div>
           <button type="button" class="icon-btn" onclick="closeNoteEditor()">✕</button>
         </div>
         <div class="full">
-          <label class="field-label" for="noteEditor">Nota</label>
+          <label class="field-label" for="noteEditor">Notes</label>
           <textarea id="noteEditor" required></textarea>
           <div style="margin-top:7px;color:var(--muted);font-size:12px">Format ringkas Markdown disokong: # tajuk, ## sub-tajuk, - bullet, &gt; quote, **bold**.</div>
         </div>
         <div class="actions" style="justify-content:flex-end;margin-top:18px">
-          <button type="button" class="btn btn-soft" onclick="closeNoteEditor()">Batal</button>
-          <button type="submit" class="btn btn-primary">Simpan Nota</button>
+          <button type="button" class="btn btn-soft" onclick="closeNoteEditor()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Note</button>
         </div>
       </form>
     </dialog>
@@ -1100,7 +1100,7 @@
         <div class="section-head">
           <div>
             <div class="eyebrow">RADAS Product Database</div>
-            <h2 id="productDialogTitle">Tambah Produk</h2>
+            <h2 id="productDialogTitle">Add Product</h2>
           </div>
           <button type="button" class="icon-btn" onclick="closeProductDialog()">✕</button>
         </div>
@@ -1108,57 +1108,57 @@
         <input type="hidden" id="productEditId" />
         <div class="form-grid">
           <div class="full">
-            <label class="field-label" for="productNameInput">Nama Produk</label>
-            <input id="productNameInput" required placeholder="Contoh: Nama produk" />
+            <label class="field-label" for="productNameInput">Product Name</label>
+            <input id="productNameInput" required placeholder="Example: Product name" />
           </div>
           <div>
-            <label class="field-label" for="productCategoryInput">Kategori</label>
-            <input id="productCategoryInput" list="productCategoryList" placeholder="Pilih atau taip kategori baru" />
+            <label class="field-label" for="productCategoryInput">Category</label>
+            <input id="productCategoryInput" list="productCategoryList" placeholder="Choose or enter a new category" />
             <datalist id="productCategoryList"></datalist>
-            <div style="margin-top:6px;color:var(--muted);font-size:12px">Kategori baru yang ditaip akan disimpan dan tersedia untuk produk seterusnya.</div>
+            <div style="margin-top:6px;color:var(--muted);font-size:12px">New categories will be saved and available for future products.</div>
           </div>
           <div>
-            <label class="field-label" for="productPriceInput">Harga</label>
-            <input id="productPriceInput" placeholder="Contoh: RM59.90" />
+            <label class="field-label" for="productPriceInput">Price</label>
+            <input id="productPriceInput" placeholder="Example: RM59.90" />
           </div>
           <div>
-            <label class="field-label" for="productCommissionInput">Komisen RM</label>
-            <input id="productCommissionInput" placeholder="Contoh: RM10.00" />
+            <label class="field-label" for="productCommissionInput">Commission (RM)</label>
+            <input id="productCommissionInput" placeholder="Example: RM10.00" />
           </div>
           <div>
-            <label class="field-label" for="productCommissionRateInput">Komisen %</label>
-            <input id="productCommissionRateInput" placeholder="Contoh: 15%" />
+            <label class="field-label" for="productCommissionRateInput">Commission (%)</label>
+            <input id="productCommissionRateInput" placeholder="Example: 15%" />
           </div>
           <div>
             <label class="field-label" for="productCreatorInput">Creator</label>
-            <input id="productCreatorInput" placeholder="Contoh: 1.2K+" />
+            <input id="productCreatorInput" placeholder="Example: 1.2K+" />
           </div>
           <div>
             <label class="field-label" for="productSoldInput">Sold</label>
-            <input id="productSoldInput" placeholder="Contoh: 10.5K+" />
+            <input id="productSoldInput" placeholder="Example: 10.5K+" />
           </div>
           <div>
             <label class="field-label" for="productRadarInput">Radar Score</label>
-            <input id="productRadarInput" placeholder="Contoh: 8.8 / 10" />
+            <input id="productRadarInput" placeholder="Example: 8.8 / 10" />
           </div>
           <div>
-            <label class="field-label" for="productStockInput">Stok</label>
-            <input id="productStockInput" placeholder="Jika ada" />
+            <label class="field-label" for="productStockInput">Stock</label>
+            <input id="productStockInput" placeholder="If available" />
           </div>
           <div>
             <label class="field-label" for="productReviewsInput">Positive Reviews</label>
-            <input id="productReviewsInput" placeholder="Contoh: 97%" />
+            <input id="productReviewsInput" placeholder="Example: 97%" />
           </div>
           <div>
             <label class="field-label" for="productRankingInput">Ranking</label>
-            <input id="productRankingInput" placeholder="Jika ada" />
+            <input id="productRankingInput" placeholder="If available" />
           </div>
           <label class="check-row"><input id="productWatchlistInput" type="checkbox" /><span>Watchlist</span></label>
           <label class="check-row"><input id="productPremiumInput" type="checkbox" /><span>Premium</span></label>
         </div>
         <div class="actions" style="justify-content:flex-end;margin-top:18px">
-          <button type="button" class="btn btn-soft" onclick="closeProductDialog()">Batal</button>
-          <button type="submit" class="btn btn-primary">Simpan Produk</button>
+          <button type="button" class="btn btn-soft" onclick="closeProductDialog()">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Product</button>
         </div>
       </form>
     </dialog>
@@ -1167,22 +1167,22 @@
       <div class="section-head">
         <div>
           <div class="eyebrow">Progress</div>
-          <h2>Berat Badan</h2>
+          <h2>Body Weight</h2>
         </div>
-        <button type="button" class="btn btn-soft" onclick="openWeight('goal')">+ Tambah Target</button>
+        <button type="button" class="btn btn-soft" onclick="openWeight('goal')">+ Add Target</button>
       </div>
       <div class="summary-row">
         <div class="metric">
-          <span>Berat Semasa</span>
+          <span>Current Weight</span>
           <b id="currentWeightVal">0 kg</b>
-          <button type="button" class="icon-btn metric-btn" onclick="openWeight('current')">Kemaskini</button>
+          <button type="button" class="icon-btn metric-btn" onclick="openWeight('current')">Update</button>
         </div>
         <div class="metric">
-          <span>Target Seterusnya</span>
+          <span>Next Target</span>
           <b id="nextGoalVal">—</b>
         </div>
         <div class="metric">
-          <span>Baki Untuk Turun</span>
+          <span>Remaining Weight to Lose</span>
           <b id="remainingVal">—</b>
         </div>
       </div>
@@ -1192,10 +1192,10 @@
     <section class="grid dashboard-section" id="dashboardFocusSection">
       <div class="card">
         <div class="eyebrow">Focus</div>
-        <h3>Fokus Minggu Ini</h3>
+        <h3>This Week’s Focus</h3>
         <textarea id="focusInput"></textarea>
         <div class="actions">
-          <button type="button" class="btn btn-soft" onclick="saveFocus()">Simpan Fokus</button>
+          <button type="button" class="btn btn-soft" onclick="saveFocus()">Save Focus</button>
         </div>
       </div>
 
@@ -1204,7 +1204,7 @@
         <h3>Weekly Target</h3>
         <textarea id="targetInput"></textarea>
         <div class="actions">
-          <button type="button" class="btn btn-soft" onclick="saveTarget()">Simpan Target</button>
+          <button type="button" class="btn btn-soft" onclick="saveTarget()">Save Target</button>
         </div>
       </div>
     </section>
@@ -1213,16 +1213,16 @@
       <div class="section-head">
         <div>
           <div class="eyebrow">Weekly Summary</div>
-          <h2>Ringkasan</h2>
+          <h2>Summary</h2>
         </div>
       </div>
       <div class="summary-row">
         <div class="metric">
-          <span>Jumlah Task</span>
+          <span>Total Tasks</span>
           <b id="totalCount">0</b>
         </div>
         <div class="metric">
-          <span>Task Siap</span>
+          <span>Completed Tasks</span>
           <b id="doneCount">0</b>
         </div>
         <div class="metric">
@@ -1236,22 +1236,22 @@
       <div class="section-head">
         <div>
           <div class="eyebrow">Execution</div>
-          <h2>Task Minggu Ini</h2>
+          <h2>This Week’s Tasks</h2>
         </div>
-        <button type="button" class="btn btn-primary" onclick="openAddTask()">+ Tambah Task</button>
+        <button type="button" class="btn btn-primary" onclick="openAddTask()">+ Add Task</button>
       </div>
       <div id="taskList" class="task-list"></div>
     </section>
 
-    <p class="footer">Data disimpan dalam akaun owner. Tunggu status “Berjaya disimpan” sebelum menutup halaman.</p>
+    <p class="footer">Data is saved to the owner’s account. Wait for the “Saved successfully” status before closing this page.</p>
   </main>
 
   <dialog id="weightDialog">
     <form class="modal" id="weightForm">
       <div class="section-head">
         <div>
-          <div class="eyebrow">Berat Badan</div>
-          <h2 id="weightDialogTitle">Kemaskini Berat</h2>
+          <div class="eyebrow">Body Weight</div>
+          <h2 id="weightDialogTitle">Update Weight</h2>
         </div>
         <button type="button" class="icon-btn" onclick="closeWeightDialog()">✕</button>
       </div>
@@ -1261,19 +1261,19 @@
 
       <div class="form-grid">
         <div class="full" id="weightNameWrap">
-          <label class="field-label" for="weightName">Nama Target</label>
-          <input id="weightName" placeholder="Contoh: Target 2" />
+          <label class="field-label" for="weightName">Target Name</label>
+          <input id="weightName" placeholder="Example: Target 2" />
         </div>
 
         <div class="full">
-          <label class="field-label" for="weightValue">Berat (kg)</label>
-          <input id="weightValue" type="number" inputmode="decimal" step="0.1" min="20" max="400" required placeholder="Contoh: 95" />
+          <label class="field-label" for="weightValue">Weight (kg)</label>
+          <input id="weightValue" type="number" inputmode="decimal" step="0.1" min="20" max="400" required placeholder="Example: 95" />
         </div>
       </div>
 
       <div class="actions" style="justify-content:flex-end;margin-top:18px">
-        <button type="button" class="btn btn-soft" onclick="closeWeightDialog()">Batal</button>
-        <button type="submit" class="btn btn-primary">Simpan</button>
+        <button type="button" class="btn btn-soft" onclick="closeWeightDialog()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save</button>
       </div>
     </form>
   </dialog>
@@ -1283,7 +1283,7 @@
       <div class="section-head">
         <div>
           <div class="eyebrow">Custom Task</div>
-          <h2 id="dialogTitle">Tambah Task</h2>
+          <h2 id="dialogTitle">Add Task</h2>
         </div>
         <button type="button" class="icon-btn" onclick="closeDialog()">✕</button>
       </div>
@@ -1293,11 +1293,11 @@
       <div class="form-grid">
         <div class="full">
           <label class="field-label" for="taskTitle">Task</label>
-          <input id="taskTitle" required placeholder="Contoh: Generate 3 video affiliate" />
+          <input id="taskTitle" required placeholder="Example: Generate 3 affiliate videos" />
         </div>
 
         <div>
-          <label class="field-label" for="taskCategory">Kategori</label>
+          <label class="field-label" for="taskCategory">Category</label>
           <input id="taskCategory" placeholder="Content / Sales / Product" />
         </div>
 
@@ -1325,19 +1325,19 @@
         </div>
 
         <div class="full">
-          <label class="field-label" for="taskNotes">Nota</label>
-          <textarea id="taskNotes" placeholder="Nota ringkas jika perlu"></textarea>
+          <label class="field-label" for="taskNotes">Notes</label>
+          <textarea id="taskNotes" placeholder="Short notes if needed"></textarea>
         </div>
 
         <label class="check-row full">
           <input id="taskMoney" type="checkbox" />
-          <span>Tandakan sebagai task yang berkait terus dengan revenue</span>
+          <span>Mark this task as directly related to revenue</span>
         </label>
       </div>
 
       <div class="actions" style="justify-content:flex-end;margin-top:18px">
-        <button type="button" class="btn btn-soft" onclick="closeDialog()">Batal</button>
-        <button type="submit" class="btn btn-primary">Simpan Task</button>
+        <button type="button" class="btn btn-soft" onclick="closeDialog()">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save Task</button>
       </div>
     </form>
   </dialog>
@@ -2435,7 +2435,7 @@
     }
 
     function cloudMessage(message,retry=false){
-      cloudStatus.textContent = message + (browserBackupAvailable ? "" : " Backup browser tidak tersedia; muat turun backup jika perlu.");
+      cloudStatus.textContent = message + (browserBackupAvailable ? "" : " Browser backup is unavailable; download a backup if needed.");
       cloudRetry.hidden = !retry;
       cloudReload.hidden = !cloudConflict;
     }
@@ -2459,7 +2459,7 @@
     function queueCloudSave(){
       if(!cloudReady || cloudConflict) return;
       cloudDirty = true; cacheCloud();
-      cloudMessage("Belum disimpan — menunggu simpanan…");
+      cloudMessage("Not saved — waiting to save…");
       clearTimeout(cloudTimer);
       cloudTimer = setTimeout(flushCloud,400);
     }
@@ -2473,18 +2473,18 @@
             cloudPending = {state:JSON.parse(JSON.stringify(state)),version:cloudVersion,mutationId:crypto.randomUUID()};
             cloudDirty = false; cacheCloud();
           }
-          cloudMessage("Sedang simpan ke akaun…");
+          cloudMessage("Saving to your account…");
           const result = await cloudRequest("PUT",cloudPending);
           if(result.version !== cloudPending.version + 1 || result.mutation_id !== cloudPending.mutationId) throw new Error("invalid_response");
           cloudVersion = result.version; cloudPending = null; cacheCloud();
         }
-        cloudMessage("Berjaya disimpan dalam akaun.");
+        cloudMessage("Saved successfully to your account.");
       }catch(error){
         if(error.conflict){
           cloudConflict = true; lockCenter(true);
-          cloudMessage("Data akaun telah berubah di tab atau peranti lain. Muat turun backup perubahan di sini sebelum memuat semula data akaun.");
+          cloudMessage("Account data has changed in another tab or device. Download a backup of your changes here before reloading the account data.");
         }else{
-          cloudMessage("Belum berjaya disimpan ke akaun. Jangan tutup halaman; cuba semula apabila sambungan pulih.",true);
+          cloudMessage("Your changes have not been saved to your account. Do not close this page; retry when your connection is restored.",true);
         }
       }finally{ cloudBusy = false; }
     }
@@ -2492,7 +2492,7 @@
     async function initializeCloud(){
       if(cloudBusy || cloudLoading) return;
       cloudLoading = true;
-      lockCenter(true); cloudMessage("Sedang memuatkan data akaun…");
+      lockCenter(true); cloudMessage("Loading account data…");
       try{
         // Preserve the exact legacy data before any cloud read can replace the view.
         try{
@@ -2512,7 +2512,7 @@
             cloudPending = null;
           }else if((cloudPending ? cloudPending.version : cached.version) !== cloudVersion){
             cloudConflict = true; render(); lockCenter(true);
-            cloudMessage("Ada perubahan browser yang belum disimpan dan data akaun lebih baharu. Muat turun backup dahulu, kemudian muat semula data akaun.");
+            cloudMessage("There are unsaved browser changes and newer account data. Download a backup first, then reload the account data.");
             return;
           }
         }else if(record){
@@ -2523,10 +2523,10 @@
         if(seedWanSufiContent(state)) cloudDirty = true;
         cloudReady = true; render(); lockCenter(false); cacheCloud();
         if(!record || cloudPending || cloudDirty){ cloudDirty = cloudDirty || !record; await flushCloud(); }
-        else cloudMessage("Data akaun dimuatkan. Semua perubahan telah disimpan.");
+        else cloudMessage("Account data loaded. All changes have been saved.");
       }catch{
         cloudReady = false; lockCenter(true);
-        cloudMessage("Data akaun belum dapat dimuatkan. Data browser dikekalkan. Cuba semula untuk menyambung.",true);
+        cloudMessage("Account data could not be loaded. Browser data has been retained. Try again to reconnect.",true);
       }finally{ cloudLoading = false; }
     }
 
@@ -2538,11 +2538,11 @@
     });
     cloudRetry.addEventListener("click",()=>cloudReady ? flushCloud() : initializeCloud());
     cloudReload.addEventListener("click",()=>{
-      if(!window.confirm("Sudah muat turun backup? Perubahan yang belum disimpan di sini akan diganti dengan data akaun.")) return;
+      if(!window.confirm("Have you downloaded a backup? Unsaved changes here will be replaced with account data.")) return;
       try{
         localStorage.setItem(STORAGE_KEY+":conflict-backup",JSON.stringify(state));
         localStorage.removeItem(CLOUD_CACHE_KEY);
-      }catch{ cloudMessage("Backup browser gagal. Muat turun backup sebelum meneruskan."); return; }
+      }catch{ cloudMessage("Browser backup failed. Download a backup before continuing."); return; }
       window.location.reload();
     });
     window.addEventListener("online",()=>cloudReady ? flushCloud() : initializeCloud());
@@ -2551,7 +2551,7 @@
     });
 
     function projectName(key){
-      if(key === "produk") return "Produk";
+      if(key === "produk") return "Products";
       if(key === "isteri") return "Isteri Malam";
       if(key === "radas") return "RADAS";
       if(key === "biscotto") return "Biscotto";
@@ -2570,9 +2570,9 @@
       const end = new Date(start);
       end.setDate(end.getDate() + 6);
 
-      return start.toLocaleDateString("ms-MY",{day:"2-digit",month:"short"}) +
+      return start.toLocaleDateString("en-MY",{day:"2-digit",month:"short"}) +
         " – " +
-        end.toLocaleDateString("ms-MY",{day:"2-digit",month:"short",year:"numeric"});
+        end.toLocaleDateString("en-MY",{day:"2-digit",month:"short",year:"numeric"});
     }
 
     function switchProject(project){
@@ -2617,7 +2617,7 @@
       const tasks = state.projects[state.activeProject].tasks;
 
       if(!tasks.length){
-        list.innerHTML = '<div class="empty">Belum ada task. Klik <strong>+ Tambah Task</strong>.</div>';
+        list.innerHTML = "<div class=\"empty\">No tasks yet. Click <strong>+ Add Task</strong>.</div>";
         return;
       }
 
@@ -2682,17 +2682,17 @@
       if(!active) return;
 
       const current = activeProdukCategory();
-      document.getElementById("projectTitle").textContent = "Produk";
-      document.getElementById("produkWorkspaceTitle").textContent = current ? current.name : "Produk";
+      document.getElementById("projectTitle").textContent = "Products";
+      document.getElementById("produkWorkspaceTitle").textContent = current ? current.name : "Products";
       const tabs = document.getElementById("produkTabs");
       tabs.className = "produk-tab-row";
       tabs.innerHTML = state.produkCategories.map(item=>`
         <button type="button" class="produk-tab-button ${current && current.id === item.id ? "active" : ""}" onclick="switchProdukCategory('${escapeHtml(item.id)}')">${escapeHtml(item.name)}</button>
-      `).join("") + `<button type="button" class="produk-tab-button" onclick="addProdukCategory()">+ Tambah Produk</button>`;
+      `).join("") + `<button type="button" class="produk-tab-button" onclick="addProdukCategory()">+ Add Product</button>`;
 
       const list = document.getElementById("produkContentList");
       if(!current || !current.items.length){
-        list.innerHTML = '<div class="note-empty"><strong>Belum ada kandungan.</strong><br>Klik <strong>+ Tambah Kandungan</strong> untuk mula.</div>';
+        list.innerHTML = "<div class=\"note-empty\"><strong>No content yet.</strong><br>Click <strong>+ Add Content</strong> to get started.</div>";
         return;
       }
       list.innerHTML = current.items.map(item=>`
@@ -2700,7 +2700,7 @@
           <div class="content-note-head">
             <div class="content-note-title">${escapeHtml(item.title)}</div>
             <div class="content-note-actions">
-              <label class="content-done-label"><input type="checkbox" ${item.done ? "checked" : ""} onchange="toggleProdukContent('${escapeHtml(current.id)}','${escapeHtml(item.id)}',this.checked)" aria-label="Siap: ${escapeHtml(item.title)}" /> Siap</label>
+              <label class="content-done-label"><input type="checkbox" ${item.done ? "checked" : ""} onchange="toggleProdukContent('${escapeHtml(current.id)}','${escapeHtml(item.id)}',this.checked)" aria-label="Completed: ${escapeHtml(item.title)}" /> Completed</label>
               <button type="button" class="icon-btn" onclick="editProdukContent('${escapeHtml(current.id)}','${escapeHtml(item.id)}')">Edit</button>
               <button type="button" class="icon-btn" onclick="deleteProdukContent('${escapeHtml(current.id)}','${escapeHtml(item.id)}')">Delete</button>
             </div>
@@ -2711,11 +2711,11 @@
     }
 
     function addProdukCategory(){
-      const name = window.prompt("Nama produk baharu:");
+      const name = window.prompt("New product name:");
       if(name === null) return;
       const clean = name.trim();
-      if(!clean){ window.alert("Nama produk tidak boleh kosong."); return; }
-      if(state.produkCategories.some(item=>item.name.toLowerCase() === clean.toLowerCase())){ window.alert("Nama produk ini sudah wujud."); return; }
+      if(!clean){ window.alert("The product name cannot be empty."); return; }
+      if(state.produkCategories.some(item=>item.name.toLowerCase() === clean.toLowerCase())){ window.alert("This product name already exists."); return; }
       const item = {id:makeId(),name:clean,items:[]};
       state.produkCategories.push(item);
       state.activeProdukCategory = item.id;
@@ -2725,23 +2725,23 @@
     function manageProduk(){
       const current = activeProdukCategory();
       if(!current) return addProdukCategory();
-      const action = window.prompt("Urus produk: taip E untuk edit nama, P untuk padam produk.", "E");
+      const action = window.prompt("Manage product: type E to edit the name, or P to delete the product.", "E");
       if(action === null) return;
       if(action.trim().toUpperCase() === "E"){
-        const name = window.prompt("Nama produk:", current.name);
+        const name = window.prompt("Product name:", current.name);
         if(name === null) return;
         const clean = name.trim();
-        if(!clean){ window.alert("Nama produk tidak boleh kosong."); return; }
-        if(state.produkCategories.some(item=>item.id !== current.id && item.name.toLowerCase() === clean.toLowerCase())){ window.alert("Nama produk ini sudah digunakan."); return; }
+        if(!clean){ window.alert("The product name cannot be empty."); return; }
+        if(state.produkCategories.some(item=>item.id !== current.id && item.name.toLowerCase() === clean.toLowerCase())){ window.alert("This product name is already in use."); return; }
         current.name = clean; saveState(); renderProdukWorkspace();
       }else if(action.trim().toUpperCase() === "P"){
-        if(!window.confirm(`Padam produk "${current.name}" bersama semua kandungannya? Tindakan ini tidak boleh dibuat asal.`)) return;
+        if(!window.confirm(`Delete product "${current.name}" and all its content? This action cannot be undone.`)) return;
         state.produkCategories = state.produkCategories.filter(item=>item.id !== current.id);
-        if(!state.produkCategories.length) state.produkCategories.push({id:makeId(),name:"Produk Baharu",items:[]});
+        if(!state.produkCategories.length) state.produkCategories.push({id:makeId(),name:"New Product",items:[]});
         state.activeProdukCategory = state.produkCategories[0].id;
         saveState(); render();
       }else{
-        window.alert("Pilihan tidak dikenali. Taip E atau P.");
+        window.alert("Unknown option. Type E or P.");
       }
     }
 
@@ -2781,10 +2781,10 @@
       const category = state.produkCategories.find(item=>item.id === categoryId);
       const item = category && category.items.find(entry=>entry.id === itemId);
       if(!item) return;
-      const title = window.prompt("Tajuk kandungan:", item.title);
+      const title = window.prompt("Content title:", item.title);
       if(title === null) return;
-      if(!title.trim()){ window.alert("Tajuk kandungan diperlukan."); return; }
-      const content = window.prompt("Nota / isi kandungan:", item.content || "");
+      if(!title.trim()){ window.alert("A content title is required."); return; }
+      const content = window.prompt("Notes / content:", item.content || "");
       if(content === null) return;
       item.title = title.trim(); item.content = content;
       saveState(); renderProdukWorkspace();
@@ -2793,7 +2793,7 @@
     function deleteProdukContent(categoryId,itemId){
       const category = state.produkCategories.find(item=>item.id === categoryId);
       const item = category && category.items.find(entry=>entry.id === itemId);
-      if(!item || !window.confirm(`Padam kandungan "${item.title}"?`)) return;
+      if(!item || !window.confirm(`Delete content "${item.title}"?`)) return;
       category.items = category.items.filter(entry=>entry.id !== itemId);
       saveState(); renderProdukWorkspace();
     }
@@ -2854,7 +2854,7 @@
     }
 
     function productStatusLabel(status){
-      return ({untested:"Belum Uji",want:"Nak Uji",promoting:"Sedang Promote",done:"Done"})[status] || "Belum Uji";
+      return ({untested:"Not Tested",want:"To Test",promoting:"Promoting",done:"Done"})[status] || "Not Tested";
     }
 
     function toggleProductDetail(id){
@@ -2866,10 +2866,10 @@
       const product = products().find(item=>item.id === id);
       if(!product) return;
       const tasks = state.projects.radas.tasks;
-      const marker = "Produk #" + String(id).padStart(3,"0");
+      const marker = "Product #" + String(id).padStart(3,"0");
       const existing = tasks.find(task => String(task.notes || "").includes(marker));
       if(existing){
-        window.alert("Produk ini sudah ada dalam Task Minggu Ini.");
+        window.alert("This product is already in This Week’s Tasks.");
         return;
       }
       tasks.push({
@@ -2879,13 +2879,13 @@
         priority:"high",
         status:"todo",
         due:"",
-        notes:marker + (product.commission ? " • Komisen " + product.commission : ""),
+        notes:marker + (product.commission ? " • Commission " + product.commission : ""),
         money:true
       });
       state.productStatuses[id] = "want";
       saveState();
       render();
-      window.alert("Produk ditambah ke Task Minggu Ini.");
+      window.alert("Product added to This Week’s Tasks.");
     }
 
 
@@ -2898,7 +2898,7 @@
       const filter = document.getElementById("productCategoryFilter");
       if(filter){
         const current = filter.value || "all";
-        filter.innerHTML = '<option value="all">Semua Kategori</option>' + values.map(cat=>`<option value="${escapeHtml(cat)}">${escapeHtml(cat)}</option>`).join("");
+        filter.innerHTML = "<option value=\"all\">All Categories</option>" + values.map(cat=>`<option value="${escapeHtml(cat)}">${escapeHtml(cat)}</option>`).join("");
         filter.value = values.includes(current) ? current : "all";
       }
       const list = document.getElementById("productCategoryList");
@@ -2913,7 +2913,7 @@
       refreshCategoryControls();
       document.getElementById("productEditId").value = id || "";
       const product = id ? products().find(item=>item.id === id) : null;
-      document.getElementById("productDialogTitle").textContent = product ? "Edit Produk" : "Tambah Produk";
+      document.getElementById("productDialogTitle").textContent = product ? "Edit Product" : "Add Product";
       if(product){
         document.getElementById("productNameInput").value = product.name || "";
         document.getElementById("productCategoryInput").value = product.category || "";
@@ -2937,7 +2937,7 @@
     function deleteProduct(id){
       const product = products().find(item=>item.id === id);
       if(!product) return;
-      if(!window.confirm(`Padam produk #${String(id).padStart(3,"0")} — ${product.name}?`)) return;
+      if(!window.confirm(`Delete product #${String(id).padStart(3,"0")} — ${product.name}?`)) return;
       state.radasProducts = products().filter(item=>item.id !== id);
       delete state.productStatuses[id];
       saveState();
@@ -2981,7 +2981,7 @@
 
     function renderSimpleMarkdown(markdown){
       const source = String(markdown || "").replace(/\r\n?/g,"\n");
-      if(!source.trim()) return '<div class="note-empty"><strong>Nota telah dipadam.</strong><br>Klik Edit Nota untuk tambah semula kandungan.</div>';
+      if(!source.trim()) return "<div class=\"note-empty\"><strong>The note has been deleted.</strong><br>Click Edit Note to add content again.</div>";
       const inline = value => escapeHtml(value)
         .replace(/\*\*(.+?)\*\*/g,"<strong>$1</strong>");
       const lines = source.split("\n");
@@ -3026,7 +3026,7 @@
     function closeNoteEditor(){ noteDialog.close(); }
 
     function deleteRadasNote(){
-      if(!window.confirm("Padam nota RADAS ini?")) return;
+      if(!window.confirm("Delete this RADAS note?")) return;
       state.radasNote = "";
       saveState();
       renderRadasNote();
@@ -3053,7 +3053,7 @@
       radasContentForm.reset();
       document.getElementById("radasContentId").value = id || "";
       const note = id ? state.radasContentNotes.find(item=>item.id === id) : null;
-      document.getElementById("radasContentDialogTitle").textContent = note ? "Edit Nota" : "Tambah Nota";
+      document.getElementById("radasContentDialogTitle").textContent = note ? "Edit Note" : "Add Note";
       if(note){
         document.getElementById("radasContentTitle").value = note.title || "";
         document.getElementById("radasContentEditor").value = note.content || "";
@@ -3066,7 +3066,7 @@
     function deleteRadasContentNote(id){
       const note = state.radasContentNotes.find(item=>item.id === id);
       if(!note) return;
-      if(!window.confirm(`Padam nota “${note.title}”?`)) return;
+      if(!window.confirm(`Delete note “${note.title}”?`)) return;
       state.radasContentNotes = state.radasContentNotes.filter(item=>item.id !== id);
       saveState();
       renderRadasContentList();
@@ -3102,7 +3102,7 @@
       if(!list) return;
       const notes = state.radasContentNotes || [];
       if(!notes.length){
-        list.innerHTML = '<div class="note-empty"><strong>Belum ada nota content.</strong><br>Klik <strong>+ Tambah Nota</strong> untuk mula bina Content List RADAS.</div>';
+        list.innerHTML = "<div class=\"note-empty\"><strong>No content notes yet.</strong><br>Click <strong>+ Add Note</strong> to start building the RADAS Content List.</div>";
         return;
       }
       list.innerHTML = notes.map(note=>`
@@ -3110,12 +3110,12 @@
           <div class="content-note-head">
             <div class="content-note-title">${escapeHtml(note.title)}</div>
             <div class="content-note-actions">
-              ${note.id === "wan-sufi-plan-v1" ? "" : `<label class="content-done-label"><input type="checkbox" data-content-done="${escapeHtml(note.id)}" ${note.done ? "checked" : ""} aria-label="Siap: ${escapeHtml(note.title)}" /> Siap</label>`}
+              ${note.id === "wan-sufi-plan-v1" ? "" : `<label class="content-done-label"><input type="checkbox" data-content-done="${escapeHtml(note.id)}" ${note.done ? "checked" : ""} aria-label="Completed: ${escapeHtml(note.title)}" /> Completed</label>`}
               <button type="button" class="icon-btn" onclick="openRadasContentEditor('${note.id}')">Edit</button>
               <button type="button" class="icon-btn" onclick="deleteRadasContentNote('${note.id}')">Delete</button>
             </div>
           </div>
-          <div class="content-note-body">${renderSimpleMarkdown(note.done ? (note.content || "").replace(/^\*\*Status:\*\* Idea \/ Draf$/m,"**Status:** Siap") : (note.content || ""))}</div>
+          <div class="content-note-body">${renderSimpleMarkdown(note.done ? (note.content || "").replace(/^\*\*Status:\*\* Idea \/ Draf$/m,"**Status:** Completed") : (note.content || ""))}</div>
         </article>
       `).join("");
     }
@@ -3173,7 +3173,7 @@
       dexsatoNoteForm.reset();
       document.getElementById("dexsatoNoteId").value = id || "";
       const note = id ? state.dexsatoContentNotes.find(item=>item.id === id) : null;
-      document.getElementById("dexsatoNoteDialogTitle").textContent = note ? "Edit Nota" : "Tambah Nota";
+      document.getElementById("dexsatoNoteDialogTitle").textContent = note ? "Edit Note" : "Add Note";
       if(note){
         document.getElementById("dexsatoNoteTitle").value = note.title || "";
         document.getElementById("dexsatoNoteEditor").value = note.content || "";
@@ -3186,7 +3186,7 @@
     function deleteDexsatoNote(id){
       const note = state.dexsatoContentNotes.find(item=>item.id === id);
       if(!note) return;
-      if(!window.confirm(`Padam nota “${note.title}”?`)) return;
+      if(!window.confirm(`Delete note “${note.title}”?`)) return;
       state.dexsatoContentNotes = state.dexsatoContentNotes.filter(item=>item.id !== id);
       saveState();
       renderDexsatoContentList();
@@ -3214,7 +3214,7 @@
       if(!list) return;
       const notes = state.dexsatoContentNotes || [];
       if(!notes.length){
-        list.innerHTML = '<div class="note-empty"><strong>Belum ada nota content.</strong><br>Klik <strong>+ Tambah Nota</strong> untuk mula bina Content List DexSato.</div>';
+        list.innerHTML = "<div class=\"note-empty\"><strong>No content notes yet.</strong><br>Click <strong>+ Add Note</strong> to start building the DexSato Content List.</div>";
         return;
       }
       list.innerHTML = notes.map(note=>`
@@ -3262,7 +3262,7 @@
       isteriNoteForm.reset();
       document.getElementById("isteriNoteId").value = id || "";
       const note = id ? state.isteriContentNotes.find(item=>item.id === id) : null;
-      document.getElementById("isteriNoteDialogTitle").textContent = note ? "Edit Nota" : "Tambah Nota";
+      document.getElementById("isteriNoteDialogTitle").textContent = note ? "Edit Note" : "Add Note";
       if(note){
         document.getElementById("isteriNoteTitle").value = note.title || "";
         document.getElementById("isteriNoteEditor").value = note.content || "";
@@ -3275,7 +3275,7 @@
     function deleteIsteriNote(id){
       const note = state.isteriContentNotes.find(item=>item.id === id);
       if(!note) return;
-      if(!window.confirm(`Padam nota “${note.title}”?`)) return;
+      if(!window.confirm(`Delete note “${note.title}”?`)) return;
       state.isteriContentNotes = state.isteriContentNotes.filter(item=>item.id !== id);
       saveState();
       renderIsteriContentList();
@@ -3303,13 +3303,13 @@
       if(!list) return;
       const notes = state.isteriContentNotes || [];
       if(!notes.length){
-        list.innerHTML = '<div class="note-empty">Belum ada nota content. Klik + Tambah Nota untuk mula.</div>';
+        list.innerHTML = "<div class=\"note-empty\">No content notes yet. Click + Add Note to get started.</div>";
         return;
       }
       list.innerHTML = '<ol class="isteri-idea-list">' + notes.map(note=>`
         <li class="isteri-idea-row">
           <div class="isteri-idea-main">
-            <span class="isteri-idea-category">${escapeHtml(note.category || "Nota")}</span>
+            <span class="isteri-idea-category">${escapeHtml(note.category || "Notes")}</span>
             <div class="content-note-title">${escapeHtml(note.title)}</div>
             <div class="content-note-body">${renderSimpleMarkdown(note.content || "")}</div>
           </div>
@@ -3346,11 +3346,11 @@
 
     /* Video URLs are parsed locally. No metadata fetch or uploaded video copies. */
     function parseIsteriVideoUrl(value){
-      if(typeof value !== "string" || value.length > 4096) throw new Error("Link video tidak sah.");
+      if(typeof value !== "string" || value.length > 4096) throw new Error("Invalid video link.");
       let url;
-      try{ url = new URL(value.trim()); }catch{ throw new Error("Masukkan link video penuh yang sah."); }
+      try{ url = new URL(value.trim()); }catch{ throw new Error("Enter a valid, complete video URL."); }
       if(url.protocol !== "https:" || url.username || url.password || url.port){
-        throw new Error("Gunakan link HTTPS tanpa nama pengguna, kata laluan atau port khas.");
+        throw new Error("Use an HTTPS link without a username, password or custom port.");
       }
       const host = url.hostname.toLowerCase();
       const youtube = ["youtube.com","www.youtube.com","m.youtube.com","youtu.be","www.youtu.be"].includes(host);
@@ -3362,7 +3362,7 @@
           const match = /^\/(shorts|embed)\/([A-Za-z0-9_-]{11})\/?$/.exec(url.pathname);
           if(match){ id = match[2]; vertical = match[1] === "shorts"; }
         }
-        if(!/^[A-Za-z0-9_-]{11}$/.test(id)) throw new Error("Gunakan link video YouTube atau Shorts yang lengkap.");
+        if(!/^[A-Za-z0-9_-]{11}$/.test(id)) throw new Error("Use a complete YouTube or Shorts video link.");
         return {url:vertical ? "https://www.youtube.com/shorts/"+id : "https://www.youtube.com/watch?v="+id,
           key:"youtube:"+id, label:vertical ? "YouTube Shorts" : "YouTube", fallback:(vertical ? "YouTube Shorts" : "YouTube")+" · "+id,
           embed:"https://www.youtube-nocookie.com/embed/"+id, type:"iframe", vertical};
@@ -3375,10 +3375,10 @@
             embed:"https://www.facebook.com/plugins/video.php?href="+encodeURIComponent(canonical)+"&show_text=false&width=320&height=568",
             type:"iframe",vertical:true};
         }
-        return {url:url.href,key:url.href,label:"Facebook",fallback:"Video Facebook",type:"link"};
+        return {url:url.href,key:url.href,label:"Facebook",fallback:"Facebook video",type:"link"};
       }
       const direct = /\.(mp4|webm)$/i.test(url.pathname);
-      return {url:url.href,key:url.href,label:direct ? "Fail video" : "Link video",fallback:url.hostname,
+      return {url:url.href,key:url.href,label:direct ? "Video file" : "Video link",fallback:url.hostname,
         type:direct ? "video" : "link",vertical:false};
     }
 
@@ -3398,12 +3398,12 @@
       const wasOpen = activeIsteriPreview && activeIsteriPreview.box === box;
       closeIsteriVideoPreview();
       if(wasOpen) return;
-      box.hidden = false; button.textContent = "Tutup Preview"; button.setAttribute("aria-expanded","true");
+      box.hidden = false; button.textContent = "Close Preview"; button.setAttribute("aria-expanded","true");
       activeIsteriPreview = {box,button};
       const help = document.createElement("p"); help.className = "isteri-video-help";
-      help.textContent = "Jika preview disekat, tidak tersedia atau memerlukan login, gunakan butang Buka. Preview dimuatkan daripada sumber asal.";
+      help.textContent = "If the preview is blocked, unavailable or requires login, use the Open button. Previews load from the original source.";
       if(info.type === "link"){
-        help.textContent = "Preview tidak tersedia untuk format link ini. Gunakan butang Buka.";
+        help.textContent = "A preview is not available for this link format. Use the Open button.";
       }else{
         const player = document.createElement(info.type === "iframe" ? "iframe" : "video");
         player.className = "isteri-video-player"+(info.vertical ? " vertical" : "");
@@ -3415,7 +3415,7 @@
           player.setAttribute("referrerpolicy","strict-origin-when-cross-origin");
         }else{
           player.src = info.url; player.controls = true; player.preload = "metadata"; player.playsInline = true;
-          player.addEventListener("error",()=>{ help.textContent = "Video tidak dapat dimainkan. Gunakan butang Buka untuk semak link asal."; });
+          player.addEventListener("error",()=>{ help.textContent = "The video could not be played. Use the Open button to check the original link."; });
         }
         box.append(player);
       }
@@ -3438,7 +3438,7 @@
       document.getElementById("isteriVideoId").value = item ? item.id : "";
       document.getElementById("isteriVideoUrl").value = item ? item.url : "";
       document.getElementById("isteriVideoTitle").value = item ? item.title || "" : "";
-      document.getElementById("isteriVideoDialogTitle").textContent = item ? "Edit Video" : "Tambah Video";
+      document.getElementById("isteriVideoDialogTitle").textContent = item ? "Edit Video" : "Add Video";
       document.getElementById("isteriVideoError").textContent = "";
       isteriVideoDialog.showModal();
     }
@@ -3465,24 +3465,24 @@
         preview.textContent = "Preview"; preview.setAttribute("aria-expanded","false");
         const box = document.createElement("div"); box.className = "isteri-video-preview"; box.hidden = true;
         preview.addEventListener("click",()=>showIsteriVideoPreview(info,box,preview));
-        const open = document.createElement("a"); open.className = "icon-btn"; open.textContent = "Buka";
-        open.href = info.url; open.target = "_blank"; open.rel = "noopener noreferrer"; open.setAttribute("aria-label","Buka "+(item.title || info.fallback));
+        const open = document.createElement("a"); open.className = "icon-btn"; open.textContent = "Open";
+        open.href = info.url; open.target = "_blank"; open.rel = "noopener noreferrer"; open.setAttribute("aria-label","Open "+(item.title || info.fallback));
         const edit = document.createElement("button"); edit.type = "button"; edit.className = "icon-btn"; edit.textContent = "Edit";
         edit.addEventListener("click",()=>openIsteriVideoEditor(item.id));
-        const remove = document.createElement("button"); remove.type = "button"; remove.className = "icon-btn"; remove.textContent = "Padam";
+        const remove = document.createElement("button"); remove.type = "button"; remove.className = "icon-btn"; remove.textContent = "Delete";
         remove.addEventListener("click",()=>{
-          if(!window.confirm("Padam link video ini daripada senarai?")) return;
+          if(!window.confirm("Remove this video link from the list?")) return;
           if(!persistIsteriVideos(state.isteriVideos.filter(video=>video !== item))){
-            document.getElementById("isteriVideoMessage").textContent = "Perubahan belum disimpan. Simpanan browser mungkin penuh atau tidak tersedia."; return;
+            document.getElementById("isteriVideoMessage").textContent = "Your changes have not been saved. Browser storage may be full or unavailable."; return;
           }
-          document.getElementById("isteriVideoMessage").textContent = "Link video dipadam daripada senarai.";
+          document.getElementById("isteriVideoMessage").textContent = "Video link removed from the list.";
           renderIsteriVideos();
         });
         actions.append(preview,open,edit,remove); head.append(main,actions); row.append(head,box); list.append(row);
       });
       if(!valid){
         const empty = document.createElement("div"); empty.className = "empty";
-        empty.textContent = "Belum ada video. Klik + Tambah Video dan masukkan link."; list.append(empty);
+        empty.textContent = "No videos yet. Click + Add Video and enter a link."; list.append(empty);
       }
     }
 
@@ -3496,19 +3496,19 @@
         const info = parseIsteriVideoUrl(document.getElementById("isteriVideoUrl").value);
         const id = document.getElementById("isteriVideoId").value;
         const title = document.getElementById("isteriVideoTitle").value.trim();
-        if(title.length > 160) throw new Error("Tajuk maksimum 160 aksara.");
+        if(title.length > 160) throw new Error("The title must not exceed 160 characters.");
         const duplicate = state.isteriVideos.some(item=>{
           if(!item || item.id === id) return false;
           try{ return parseIsteriVideoUrl(item.url).key === info.key; }catch{ return false; }
         });
-        if(duplicate) throw new Error("Video ini sudah ada dalam senarai.");
-        if(id && !state.isteriVideos.some(item=>item && item.id === id)) throw new Error("Rekod video tidak ditemui. Tutup borang dan cuba semula.");
+        if(duplicate) throw new Error("This video is already in the list.");
+        if(id && !state.isteriVideos.some(item=>item && item.id === id)) throw new Error("The video record was not found. Close the form and try again.");
         const next = id ? state.isteriVideos.map(item=>item && item.id === id ? {...item,title,url:info.url} : item)
           : [{id:makeId(),title,url:info.url},...state.isteriVideos];
-        if(!persistIsteriVideos(next)) throw new Error("Video belum disimpan. Simpanan browser mungkin penuh atau tidak tersedia.");
+        if(!persistIsteriVideos(next)) throw new Error("The video has not been saved. Browser storage may be full or unavailable.");
         isteriVideoDialog.close(); renderIsteriVideos();
-        document.getElementById("isteriVideoMessage").textContent = "Senarai video dikemas kini. Semak status simpanan di atas.";
-      }catch(problem){ error.textContent = problem.message || "Video belum disimpan."; }
+        document.getElementById("isteriVideoMessage").textContent = "The video list has been updated. Check the save status above.";
+      }catch(problem){ error.textContent = problem.message || "The video has not been saved."; }
     });
 
     function renderProducts(){
@@ -3539,9 +3539,9 @@
         return a.id-b.id;
       });
 
-      document.getElementById("productCountLabel").textContent = rows.length + " dipaparkan • " + products().length + " jumlah";
+      document.getElementById("productCountLabel").textContent = rows.length + " shown • " + products().length + " total";
       if(!rows.length){
-        body.innerHTML = '<tr><td colspan="7"><div class="empty">Tiada produk sepadan dengan filter.</div></td></tr>';
+        body.innerHTML = "<tr><td colspan=\"7\"><div class=\"empty\">No products match the filters.</div></td></tr>";
         return;
       }
 
@@ -3550,38 +3550,38 @@
         const badges = [
           product.watchlist ? '<span class="tag watch">Watchlist</span>' : '',
           product.premium ? '<span class="tag money">Premium</span>' : '',
-          product.sourceMissingName ? '<span class="tag source-note">Nama tiada dalam sumber</span>' : '',
+          product.sourceMissingName ? "<span class=\"tag source-note\">Name missing from source</span>" : '',
           product.commissionRate ? `<span class="tag">${escapeHtml(product.commissionRate)} rate</span>` : ''
         ].join("");
         const detailItems = [
           ["Commission Rate",product.commissionRate],
-          ["Stok",product.stock],
+          ["Stock",product.stock],
           ["Positive Reviews",product.reviews],
           ["Ranking",product.ranking]
         ].filter(item=>item[1]);
-        const details = detailItems.length ? detailItems.map(item=>`<div class="product-detail-item"><span>${escapeHtml(item[0])}</span><b>${escapeHtml(item[1])}</b></div>`).join("") : '<div class="product-detail-item"><span>Maklumat tambahan</span><b>Tiada dalam nota sumber</b></div>';
+        const details = detailItems.length ? detailItems.map(item=>`<div class="product-detail-item"><span>${escapeHtml(item[0])}</span><b>${escapeHtml(item[1])}</b></div>`).join("") : "<div class=\"product-detail-item\"><span>Additional information</span><b>Not in source notes</b></div>";
         return `
           <tr>
             <td class="product-main-cell">
               <div class="product-name">${escapeHtml(product.name)}</div>
               <div class="product-submeta">
                 <span class="product-id">#${String(product.id).padStart(3,"0")}</span>
-                <span class="product-category">Kategori: ${escapeHtml(product.category || "—")}</span>
+                <span class="product-category">Category: ${escapeHtml(product.category || "—")}</span>
               </div>
               <div class="product-badges">${badges}</div>
             </td>
             <td class="price-commission">
               <div class="price">${escapeHtml(product.price || "—")}</div>
-              <div class="commission">Komisen: ${escapeHtml(product.commission || "—")}</div>
+              <div class="commission">Commission: ${escapeHtml(product.commission || "—")}</div>
             </td>
             <td class="product-number">${escapeHtml(product.creator || "—")}</td>
             <td class="product-number">${escapeHtml(product.sold || "—")}</td>
             <td class="product-score">${escapeHtml(product.radarScore || "—")}</td>
             <td class="product-status-cell">
-              <select class="status-select" onchange="setProductStatus(${product.id},this.value)" aria-label="Status produk ${product.id}">
-                <option value="untested" ${status === "untested" ? "selected" : ""}>Belum Uji</option>
-                <option value="want" ${status === "want" ? "selected" : ""}>Nak Uji</option>
-                <option value="promoting" ${status === "promoting" ? "selected" : ""}>Sedang Promote</option>
+              <select class="status-select" onchange="setProductStatus(${product.id},this.value)" aria-label="Product status ${product.id}">
+                <option value="untested" ${status === "untested" ? "selected" : ""}>Not Tested</option>
+                <option value="want" ${status === "want" ? "selected" : ""}>To Test</option>
+                <option value="promoting" ${status === "promoting" ? "selected" : ""}>Promoting</option>
                 <option value="done" ${status === "done" ? "selected" : ""}>Done</option>
               </select>
             </td>
@@ -3590,9 +3590,9 @@
                 <button type="button" class="icon-btn" onclick="toggleProductDetail(${product.id})">Detail</button>
                 <button type="button" class="icon-btn" onclick="openProductDialog(${product.id})">Edit</button>
                 <details class="product-more">
-                  <summary aria-label="Lagi tindakan">⋯</summary>
+                  <summary aria-label="More actions">⋯</summary>
                   <div class="product-more-menu">
-                    <button type="button" onclick="addProductToTask(${product.id});this.closest('details').removeAttribute('open')">+ Tambah Task</button>
+                    <button type="button" onclick="addProductToTask(${product.id});this.closest('details').removeAttribute('open')">+ Add Task</button>
                     <button type="button" class="danger" onclick="deleteProduct(${product.id})">Delete</button>
                   </div>
                 </details>
@@ -3630,20 +3630,20 @@
       document.getElementById("currentWeightVal").textContent = fmtKg(current);
       document.getElementById("nextGoalVal").textContent = next ? fmtKg(next.kg) : "—";
       document.getElementById("remainingVal").textContent =
-        next ? fmtKg(current - Number(next.kg)) : (goals.length ? "Tercapai" : "—");
+        next ? fmtKg(current - Number(next.kg)) : (goals.length ? "Achieved" : "—");
 
       const list = document.getElementById("goalList");
 
       if(!goals.length){
-        list.innerHTML = '<div class="empty">Belum ada target. Klik <strong>+ Tambah Target</strong>.</div>';
+        list.innerHTML = "<div class=\"empty\">No targets yet. Click <strong>+ Add Target</strong>.</div>";
         return;
       }
 
       list.innerHTML = goals.map(goal=>{
         const diff = current - Number(goal.kg);
         const status = diff > 0
-          ? `<span class="tag high">Baki ${escapeHtml(fmtKg(diff))}</span>`
-          : '<span class="tag money">Tercapai</span>';
+          ? `<span class="tag high">Remaining ${escapeHtml(fmtKg(diff))}</span>`
+          : "<span class=\"tag money\">Achieved</span>";
 
         return `
           <article class="goal">
@@ -3677,7 +3677,7 @@
       document.getElementById("weightId").value = id || "";
 
       if(mode === "current"){
-        document.getElementById("weightDialogTitle").textContent = "Kemaskini Berat Semasa";
+        document.getElementById("weightDialogTitle").textContent = "Update Current Weight";
         nameWrap.hidden = true;
         nameInput.required = false;
         valueInput.value = w.currentWeight;
@@ -3691,7 +3691,7 @@
           nameInput.value = goal.name;
           valueInput.value = goal.kg;
         }else{
-          document.getElementById("weightDialogTitle").textContent = "Tambah Target";
+          document.getElementById("weightDialogTitle").textContent = "Add Target";
           nameInput.value = "Target " + (w.goals.length + 1);
         }
       }
@@ -3704,7 +3704,7 @@
     }
 
     function deleteGoal(id){
-      if(!window.confirm("Padam target ini?")) return;
+      if(!window.confirm("Delete this target?")) return;
 
       const w = state.projects.weight;
       w.goals = w.goals.filter(item=>item.id !== id);
@@ -3771,7 +3771,7 @@
     }
 
     function deleteTask(id){
-      if(!window.confirm("Padam task ini?")) return;
+      if(!window.confirm("Delete this task?")) return;
 
       state.projects[state.activeProject].tasks =
         state.projects[state.activeProject].tasks.filter(item=>item.id !== id);
@@ -3785,7 +3785,7 @@
 
     function openAddTask(){
       form.reset();
-      document.getElementById("dialogTitle").textContent = "Tambah Task";
+      document.getElementById("dialogTitle").textContent = "Add Task";
       document.getElementById("taskId").value = "";
       document.getElementById("taskPriority").value = "medium";
       document.getElementById("taskStatus").value = "todo";

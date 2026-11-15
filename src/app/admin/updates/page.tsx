@@ -8,6 +8,6 @@ export const metadata: Metadata = { title: 'RADAS — Updates & Support' };
 export const dynamic = 'force-dynamic';
 export default async function Page() {
  let actor: string; try { actor = await verifiedUser(); } catch { redirect('/login'); }
- try { await updatesOperation(actor,'admin_list'); } catch { return <main className="workspace"><h1>Akses tidak tersedia</h1><a href="/studio">Kembali ke studio</a></main>; }
- return <main className="workspace"><nav className="affiliate-actions"><Brand href="/studio"/><a href="/studio">← Studio</a><a href="/updates">Lihat halaman pengguna</a></nav><UpdatesPanel admin/></main>;
+ try { await updatesOperation(actor,'admin_list'); } catch { return <main lang="en" className="workspace"><h1>Access unavailable</h1><a href="/studio">Back to Studio</a></main>; }
+ return <main lang="en" className="workspace"><nav className="affiliate-actions"><Brand href="/studio" english/><a href="/studio">← Studio</a><a href="/updates">View user page</a></nav><UpdatesPanel admin/></main>;
 }
