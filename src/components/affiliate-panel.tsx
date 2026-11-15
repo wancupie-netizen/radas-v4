@@ -25,10 +25,9 @@ export function AffiliatePanel({ admin = false, accountName = '' }: { admin?: bo
   const [locationReady,setLocationReady] = useState(false), [addedId,setAddedId] = useState('');
   const controller = useRef<AbortController | null>(null), sequence = useRef(0), writing = useRef(false), reading = useRef(false);
   useEffect(()=>{
-    if(!admin)return;
     const restore=()=>{
       const state=readCatalogLocation(new URL(window.location.href));
-      setQuery(state.query);setCategory(state.category);setPage(state.page);setOnlyDrafts(state.onlyDrafts);
+      setQuery(state.query);setCategory(state.category);setPage(state.page);setOnlyDrafts(admin && state.onlyDrafts);
       setLocationReady(true);
     };
     restore();window.addEventListener('popstate',restore);
@@ -79,10 +78,10 @@ export function AffiliatePanel({ admin = false, accountName = '' }: { admin?: bo
   const pageCount = Math.max(1,Math.ceil(filtered.length/PAGE_SIZE));
   const currentPage = Math.min(page,pageCount);
   useEffect(()=>{
-    if(!admin || !locationReady)return;
+    if(!locationReady)return;
     // Do not collapse a restored page while the catalogue is still loading.
     const nextPage=catalog ? currentPage : page;
-    const next=writeCatalogLocation(new URL(window.location.href),{page:nextPage,query,category,onlyDrafts});
+    const next=writeCatalogLocation(new URL(window.location.href),{page:nextPage,query,category,onlyDrafts:admin && onlyDrafts});
     if(next!==window.location.pathname+window.location.search+window.location.hash)window.history.replaceState(window.history.state,'',next);
     if(catalog && page!==currentPage)setPage(currentPage);
   },[admin,locationReady,catalog,currentPage,page,query,category,onlyDrafts]);
@@ -94,6 +93,15 @@ export function AffiliatePanel({ admin = false, accountName = '' }: { admin?: bo
   },[addedId]);
   const visibleProducts = filtered.slice((currentPage-1)*PAGE_SIZE,currentPage*PAGE_SIZE);
   const editing = !!draft;
+  function changePage(nextPage: number) {
+    if(busy || draft || nextPage===currentPage)return;
+    if(!admin) {
+      const next=writeCatalogLocation(new URL(window.location.href),{page:nextPage,query,category,onlyDrafts:false});
+      // User pagination adds history; restoration, filtering and page clamping still replace it.
+      if(next!==window.location.pathname+window.location.search+window.location.hash)window.history.pushState(window.history.state,'',next);
+    }
+    setPage(nextPage);
+  }
   function startEdit(product: Product) {
     if(busy || draft) return;
     setDraft({...product,contentTypes:[...product.contentTypes]});setError('');
@@ -137,7 +145,7 @@ export function AffiliatePanel({ admin = false, accountName = '' }: { admin?: bo
         </div></>}</article>)}</div>}
       {filtered.length>0 && <nav className="affiliate-pagination" aria-label="Halaman produk">
         <span className="input-help">{(currentPage-1)*PAGE_SIZE+1}–{Math.min(currentPage*PAGE_SIZE,filtered.length)} daripada {filtered.length} produk</span>
-        <div className="affiliate-page-buttons">{Array.from({length:pageCount},(_,i)=>i+1).map(n=><button key={n} type="button" aria-label={`Halaman ${n}`} aria-current={n===currentPage?'page':undefined} disabled={busy || editing} onClick={()=>{if(!busy && !draft)setPage(n);}}>{n}</button>)}</div>
+        <div className="affiliate-page-buttons">{Array.from({length:pageCount},(_,i)=>i+1).map(n=><button key={n} type="button" aria-label={`Halaman ${n}`} aria-current={n===currentPage?'page':undefined} disabled={busy || editing} onClick={()=>changePage(n)}>{n}</button>)}</div>
       </nav>}
     </>}
   </section>;

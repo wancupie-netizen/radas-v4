@@ -1,5 +1,5 @@
 'use client';
-import { useActionState, useRef, useState } from 'react';
+import { useActionState, useEffect, useRef, useState } from 'react';
 import { WorkspaceGreeting } from '@/components/workspace-greeting';
 import { Brand } from '@/components/brand';
 import { logout } from '@/app/auth/actions';
@@ -9,10 +9,22 @@ import { VideoStudio } from '@/components/video-studio';
 import { PaymentPanel } from '@/components/payment-panel';
 import { AffiliatePanel } from '@/components/affiliate-panel';
 import { requestJson, RequestError } from '@/lib/errors/client';
+import { readStudioTab, writeStudioTab, type StudioTab } from '@/lib/affiliate/location';
 export function VideoWorkspace({ accountEmail, accountName = '', initialCredits, generationEnabled }: { accountEmail: string; accountName?: string; initialCredits: CreditSnapshot; generationEnabled: boolean }) {
   const [credits, setCredits] = useState(initialCredits);
   const [isPaymentAdmin, setIsPaymentAdmin] = useState(false);
-  const [tab, setTab] = useState<'video' | 'affiliate'>('video');
+  const [tab, setTabState] = useState<StudioTab>('video');
+  useEffect(()=>{
+    const restore=()=>setTabState(readStudioTab(new URL(window.location.href)));
+    restore();window.addEventListener('popstate',restore);
+    return ()=>window.removeEventListener('popstate',restore);
+  },[]);
+  function setTab(next: StudioTab) {
+    const location=writeStudioTab(new URL(window.location.href),next);
+    // Update the URL before mounting the catalogue so its restored page is available.
+    if(location!==window.location.pathname+window.location.search+window.location.hash)window.history.pushState(window.history.state,'',location);
+    setTabState(next);
+  }
   const [refreshing, setRefreshing] = useState(false);
   const creditDialog = useRef<HTMLDialogElement>(null);
   async function refreshCredits() {

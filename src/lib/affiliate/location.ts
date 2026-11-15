@@ -1,5 +1,16 @@
 export type CatalogLocation = { page: number; query: string; category: string; onlyDrafts: boolean };
 export const CATALOG_PAGE_SIZE = 9;
+export type StudioTab = 'video' | 'affiliate';
+
+export function readStudioTab(url: URL): StudioTab {
+ return url.searchParams.get('tab') === 'affiliate' ? 'affiliate' : 'video';
+}
+
+export function writeStudioTab(url: URL, tab: StudioTab): string {
+ const next = new URL(url);
+ if(tab === 'affiliate')next.searchParams.set('tab',tab);else next.searchParams.delete('tab');
+ return next.pathname + next.search + next.hash;
+}
 
 export function readCatalogLocation(url: URL): CatalogLocation {
  const p = url.searchParams;

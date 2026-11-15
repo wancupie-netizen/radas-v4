@@ -26,14 +26,16 @@ const safe=renderToStaticMarkup(React.createElement(greeting.WorkspaceGreeting,{
 const affiliateHtml=renderToStaticMarkup(React.createElement(greeting.WorkspaceGreeting,{name:'Wan',affiliate:true,id:'affiliate-title'}));assert.match(affiliateHtml,/Nak cari produk untuk content seterusnya/);assert.match(affiliateHtml,/anggaran komisen/);assert.match(affiliateHtml,/id="affiliate-title"/);
 // Real workspace handlers; mock only nested components and the server logout action.
 const originalLoad=load;
-function workspaceHarness(){const slots=[];let index=0;const fakeReact={...React,useActionState:(_a,v)=>[v,()=>{},false],useState(initial){const n=index++;if(!(n in slots))slots[n]=initial;return[slots[n],v=>slots[n]=typeof v==='function'?v(slots[n]):v];},useRef(initial){const n=index++;return slots[n]||(slots[n]={current:initial});}};
+function workspaceHarness(){const slots=[];let index=0;const fakeReact={...React,useEffect(){},useActionState:(_a,v)=>[v,()=>{},false],useState(initial){const n=index++;if(!(n in slots))slots[n]=initial;return[slots[n],v=>slots[n]=typeof v==='function'?v(slots[n]):v];},useRef(initial){const n=index++;return slots[n]||(slots[n]={current:initial});}};
  const mod={exports:{}};const code=ts.transpileModule(fs.readFileSync('src/components/video-workspace.tsx','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX}}).outputText;
  const AffiliatePanel=()=>null,VideoStudio=()=>null,PaymentPanel=()=>null;
  new Function('require','module','exports',code)(name=>{if(name==='react')return fakeReact;if(name==='@/components/workspace-greeting')return greeting;if(name==='@/app/auth/actions')return{logout:()=>{}};if(name==='@/components/affiliate-panel')return{AffiliatePanel};if(name==='@/components/video-studio')return{VideoStudio};if(name==='@/components/payment-panel')return{PaymentPanel};if(name.startsWith('@/'))return originalLoad('src/'+name.slice(2)+'.'+(name.includes('components/')?'tsx':'ts'));return require(name);},mod,mod.exports);
  return {render(){index=0;return mod.exports.VideoWorkspace({accountName:'Wan Sufi',accountEmail:'private@example.com',initialCredits:{status:'ready',balance:55,transactions:[]},generationEnabled:true});},AffiliatePanel};
 }
+const originalWindow=global.window;let workspaceUrl=new URL('https://video.radas.my/studio');
+global.window={location:{get href(){return workspaceUrl.href;},get pathname(){return workspaceUrl.pathname;},get search(){return workspaceUrl.search;},get hash(){return workspaceUrl.hash;}},history:{state:null,pushState(_state,_title,url){workspaceUrl=new URL(url,workspaceUrl);}}};
 const ws=workspaceHarness();let tree=ws.render();const greet=nodes(tree).find(n=>n.type===greeting.WorkspaceGreeting);assert.ok(greet);assert.equal(greet.props.name,'Wan Sufi');assert.equal(words(nodes(tree).find(n=>n.type==='header')), 'Create VideoCredits: 55Top Up');
-greet.props.onFindProducts();tree=ws.render();const panel=nodes(tree).find(n=>n.type===ws.AffiliatePanel);assert.ok(panel);assert.equal(panel.props.accountName,'Wan Sufi');assert.equal(panel.props.balance,55);assert.equal(words(nodes(tree).find(n=>n.type==='header')),'Produk AffiliateCredits: 55Top Up');assert.ok(nodes(tree).some(n=>n.type==='a'&&n.props.href==='/updates'));
+greet.props.onFindProducts();tree=ws.render();const panel=nodes(tree).find(n=>n.type===ws.AffiliatePanel);assert.ok(panel);assert.equal(panel.props.accountName,'Wan Sufi');assert.equal(panel.props.balance,undefined);assert.equal(workspaceUrl.searchParams.get('tab'),'affiliate');assert.equal(words(nodes(tree).find(n=>n.type==='header')),'Produk AffiliateCredits: 55Top Up');assert.ok(nodes(tree).some(n=>n.type==='a'&&n.props.href==='/updates'));
 // Profile uses only the server-resolved payment permission, shared with Top Up.
 const paymentNode=nodes(ws.render()).find(n=>n.type?.name==='PaymentPanel');
 const profileLinks=()=>nodes(nodes(ws.render()).find(n=>n.type==='dialog'&&n.props['aria-labelledby']==='profile-title')).filter(n=>n.type==='a'&&n.props.href==='/admin/payments');
@@ -43,3 +45,5 @@ paymentNode.props.onAdminResolved(false);assert.equal(profileLinks().length,0);
 assert.equal(nodes(ws.render()).filter(n=>n.type==='button'&&words(n)==='Profile').length,2);
 console.log('PASS admin Profile shortcut, default/user hidden, revoked permission hidden, shared desktop/mobile Profile');
 console.log('PASS personalized greeting, missing/invalid name fallback, React escaping, affiliate copy, real CTA tab navigation and preserved credit/header/support props');
+
+if(originalWindow===undefined)delete global.window;else global.window=originalWindow;
