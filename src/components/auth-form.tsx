@@ -21,6 +21,6 @@ export function AuthForm({ mode, configured, confirmationFailed = false }: { mod
         <button className="primary" type="submit" disabled={pending || !configured}>{pending ? "Please wait…" : isRegister ? 'Create account' : 'Login'}</button>
       </form>
       <p className="auth-switch">{isRegister ? "Already have an account?" : "Don't have an account?"} <Link href={isRegister ? '/login' : '/register'}>{isRegister ? 'Login' : "Sign up"}</Link></p>
-    </section><p className="auth-footnote">RM5 / 60 credits · Top up whenever you need.</p>
+    </section><p className="auth-footnote">RM8 / 60 credits · Top up whenever you need.</p>
   </div></main>;
 }

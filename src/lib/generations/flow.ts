@@ -1,4 +1,5 @@
 import 'server-only';
+import { PRODUCT } from '../config';
 import { generationLog, observeGeneration } from './log';
 import { randomUUID } from 'node:crypto';
 import { createNexabotClient, NexabotError, type VideoRequest } from '../nexabot/client';
@@ -30,7 +31,7 @@ export function createGenerationFlow(rawStore: GenerationStore, provider: Return
       catch (error) { if (!(error instanceof GenerationError) || error.code !== 'not_found') throw error; }
       if (!existing) {
         const credit = await observeGeneration('provider_credit', requestId, () => provider.getCredit(), true);
-        if (credit.creditCost !== 0.15 || credit.credit < credit.creditCost) throw new GenerationError('provider_unavailable');
+        if (credit.creditCost <= 0 || credit.creditCost > PRODUCT.providerCreditsPerGeneration || credit.credit < credit.creditCost) throw new GenerationError('provider_unavailable');
       }
       const details = { hash, mode: input.mode, prompt: input.prompt, orientation: input.orientation, resolution: Number(input.resolution) };
       let generation;
@@ -47,7 +48,7 @@ export function createGenerationFlow(rawStore: GenerationStore, provider: Return
       if (existing) {
         try {
           const credit = await observeGeneration('provider_credit', requestId, () => provider.getCredit(), true);
-          if (credit.creditCost !== 0.15 || credit.credit < credit.creditCost) throw new GenerationError('provider_unavailable');
+          if (credit.creditCost <= 0 || credit.creditCost > PRODUCT.providerCreditsPerGeneration || credit.credit < credit.creditCost) throw new GenerationError('provider_unavailable');
         } catch {
           // Cancel only if still unclaimed; a competing claimant's job is never refunded here.
           let cancelled;

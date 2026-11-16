@@ -8,9 +8,10 @@ require('@next/env').loadEnvConfig(process.cwd());
   });
   if (!response.ok) throw new Error(`HTTP_${response.status}`);
   const data = await response.json();
-  if (data.ok !== true || data.registered !== true || !Number.isFinite(data.credit) || data.credit < 0 || data.credit_cost !== 0.15) throw new Error('INVALID_CREDIT_RESPONSE');
+  if (data.ok !== true || data.registered !== true || !Number.isFinite(data.credit) || data.credit < 0 || (!Number.isFinite(data.credit_cost) || data.credit_cost <= 0 || data.credit_cost > 0.3)) throw new Error('INVALID_CREDIT_RESPONSE');
   console.log('NEXABOT_CONNECTION=PASS');
   console.log(`PROVIDER_CREDIT=${data.credit}`);
+  console.log(`CREDIT_COST=${data.credit_cost}`);
   console.log(`CREDIT_READY=${data.credit >= data.credit_cost}`);
 })().catch(error => {
   const safe = /^(MISSING_OR_INVALID_KEY|HTTP_\d{3}|INVALID_CREDIT_RESPONSE)$/.test(error.message) ? error.message : 'CONNECTION_FAILED';

@@ -4,7 +4,7 @@ const cache=new Map();function load(file){file=path.resolve(file);if(cache.has(f
 const page=load('src/app/page.tsx'),{PACKAGES}=load('src/lib/payments/packages.ts'),{PRODUCT}=load('src/lib/config.ts');
 assert.equal(PRODUCT.packagePriceMYR,PACKAGES[0].amountSen/100);assert.equal(PRODUCT.packageCredits,PACKAGES[0].credits);
 const original=global.fetch;let calls=0;global.fetch=()=>{calls++;throw Error('Landing must not call services');};let html;try{html=renderToStaticMarkup(React.createElement(page.default));}finally{global.fetch=original;}
-assert.equal(calls,0);assert.equal((html.match(/<h1\b/g)||[]).length,1);assert.match(html,/Generate AI Video/);assert.match(html,/Serendah RM5/);assert.match(html,/RM5 untuk 60 video AI/);assert.match(page.metadata.title,/RM5/);
+assert.equal(calls,0);assert.equal((html.match(/<h1\b/g)||[]).length,1);assert.match(html,/Generate AI Video/);assert.match(html,/Serendah RM8/);assert.match(html,/RM8 untuk 60 video AI/);assert.match(page.metadata.title,/RM8/);
 const cards=[...html.matchAll(/<article\b[^>]*>(.*?)<\/article>/g)].map(m=>m[1]);assert.equal(cards.length,4);
 for(const [i,pack]of PACKAGES.entries()){assert.match(cards[i],new RegExp('>'+pack.name+'<'));assert.match(cards[i],new RegExp('>RM'+pack.amountSen/100+'<'));assert.match(cards[i],new RegExp('>'+pack.credits+'<'));}
 assert.match(html,/Maybank QR disahkan secara manual sebelum kredit masuk/);assert.match(html,/720p/);assert.match(html,/1080p/);assert.match(html,/12 jam/);assert.match(html,/refresh atau logout/);assert.match(html,/10 saat/);

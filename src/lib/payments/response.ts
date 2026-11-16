@@ -1,10 +1,10 @@
 import { GenerationError } from '@/lib/generations/input';
-import { PACKAGES, type Payment } from './packages';
+import { paymentPackage, type Payment } from './packages';
 const uuid=/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 function fail():never { throw new GenerationError('unavailable',503); }
 function payment(value:unknown,owner:string|null,admin=false):Payment {
  if(!value||typeof value!=='object'||Array.isArray(value))return fail();
- const p=value as Record<string,unknown>;const pack=PACKAGES.find(x=>x.id===p.package_id);
+ const p=value as Record<string,unknown>;const pack=paymentPackage(p.package_id,p.amount_sen,p.credits);
  if(typeof p.id!=='string'||!uuid.test(p.id)||typeof p.user_id!=='string'||!uuid.test(p.user_id)||(owner&&p.user_id!==owner)||!pack||p.amount_sen!==pack.amountSen||p.credits!==pack.credits||!['pending','submitted','approved','rejected'].includes(String(p.status))||typeof p.created_at!=='string'||!Number.isFinite(Date.parse(p.created_at))||(p.customer_reference!==null&&(typeof p.customer_reference!=='string'||p.customer_reference.length<3||p.customer_reference.length>100))||(p.reason!==null&&(typeof p.reason!=='string'||p.reason.length>200)))return fail();
  if((p.status==='submitted'||p.status==='approved')&&p.customer_reference===null)return fail();
  if(p.status==='rejected'&&(typeof p.reason!=='string'||p.reason.length<3))return fail();

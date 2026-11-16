@@ -63,6 +63,10 @@ for(const [credit,status,topup] of [[0,'insufficient',10.8],[8.99,'insufficient'
 assert.equal(summary.calculateStock({...wallet,outstandingCredits:0,fundedAccounts:0,customerCredits:0},{credit:0,creditCost:.15}).status,'sufficient');
 for(const [n,required]of[[60,9],[120,18],[250,37.5],[620,93]])assert.equal(summary.calculateStock({...wallet,outstandingCredits:n,customerCredits:n},{credit:0,creditCost:.15}).requiredCredit,required);
 assert.equal(summary.calculateStock(wallet,{credit:15,creditCost:.2}).requiredCredit,12);
+for(const [n,required]of[[60,18],[120,36],[250,75],[620,186]])assert.equal(summary.calculateStock({...wallet,outstandingCredits:n,customerCredits:n},{credit:0,creditCost:.3}).requiredCredit,required);
+assert.equal(summary.calculateStock(wallet,{credit:20,creditCost:.3}).availableVideos,66);
+assert.equal(summary.calculateStock(wallet,{credit:18,creditCost:.3}).targetCredit,21.6);
+
 for(const data of [null,{...result,status:'insufficient'},{...result,suggestedTopUp:1},{...result,internalCredits:0},{...result,totalRequiredCredit:0},{...result,outstandingCredits:-1},{...result,checkedAt:'invalid'},{...result,providerCredit:.001},{...result,creditCost:0}])assert.throws(()=>summary.parseStockSummary(data));
 for(const mode of ['db','invalidDb','provider']){dbFailure=mode==='db';invalidDb=mode==='invalidDb';providerData=mode==='provider'?'fail':{ok:true,registered:true,credit:15,credit_cost:.15};response=await route.GET(req());assert.equal(response.status,503);assert.deepEqual(await response.json(),{error:'unavailable'});}dbFailure=invalidDb=false;
 await db.query('insert into radas_v4.payment_admins values($1)',[other]);actor=other;assert.equal((await snapshot(other)).outstandingCredits,180);await db.query('delete from radas_v4.payment_admins where user_id=$1',[other]);let calls=providerCalls;assert.equal((await route.GET(req())).status,403);assert.equal(providerCalls,calls);actor=admin;

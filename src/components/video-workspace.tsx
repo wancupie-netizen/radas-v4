@@ -49,7 +49,7 @@ export function VideoWorkspace({ accountEmail, accountName = '', initialCredits,
       <Brand href="/studio" english/>
       <div className="nav-group"><span className="eyebrow">WORKSPACE</span><button className={`nav-item ${tab==='video'?'active':''}`} aria-pressed={tab==='video'} onClick={()=>setTab('video')}><span aria-hidden="true">▣</span>Create Video</button><button className={`nav-item ${tab==='affiliate'?'active':''}`} aria-pressed={tab==='affiliate'} onClick={()=>setTab('affiliate')}><span aria-hidden="true">◇</span>Affiliate Products</button></div>
       <div className="nav-group"><a className="nav-item" href="/updates"><span aria-hidden="true">◉</span>Updates &amp; Support</a></div><div className="nav-group"><span className="eyebrow">ACCOUNT</span><button className="nav-item" onClick={() => creditDialog.current?.showModal()}><span aria-hidden="true">◈</span>Credits</button><button className="nav-item" onClick={topUp}><span aria-hidden="true">＋</span>Top Up</button></div>
-      <div className="sidebar-bottom"><div className="package-card"><span className="eyebrow">START WITH RM5</span><strong>60 video credits</strong><p>Top up whenever you need.</p><button onClick={topUp}>Top Up Credits</button></div><button className="nav-item" onClick={() => profile.current?.showModal()}>Profile</button><form action={logoutAction}><button className="nav-item" type="submit" disabled={logoutPending}>{logoutPending ? "Logging out…" : "Logout"}</button></form></div>
+      <div className="sidebar-bottom"><div className="package-card"><span className="eyebrow">START WITH RM8</span><strong>60 video credits</strong><p>Top up whenever you need.</p><button onClick={topUp}>Top Up Credits</button></div><button className="nav-item" onClick={() => profile.current?.showModal()}>Profile</button><form action={logoutAction}><button className="nav-item" type="submit" disabled={logoutPending}>{logoutPending ? "Logging out…" : "Logout"}</button></form></div>
     </aside>
     <main>
       <header className="topbar"><span>{tab==='video'?'Create Video':"Affiliate Products"}</span><div className="header-actions"><span className="balance">Credits: <strong>{credits.status === 'ready' ? credits.balance : '—'}</strong></span><button className="primary small" onClick={topUp}>Top Up</button></div></header>
@@ -62,7 +62,7 @@ export function VideoWorkspace({ accountEmail, accountName = '', initialCredits,
         </div>
         {tab==='affiliate' && <AffiliatePanel accountName={accountName}/>}
         {logoutState.error && <p className="notice" role="alert">{logoutState.error}</p>}
-        <footer className="workspace-footer"><span>RADAS AI VIDEO</span><span>RM5 / 60 credits · 1 credit / generation</span></footer>
+        <footer className="workspace-footer"><span>RADAS AI VIDEO</span><span>RM8 / 60 credits · 1 credit / generation</span></footer>
       </div>
     </main>
     <dialog ref={creditDialog} className="credit-dialog" aria-labelledby="credit-title">

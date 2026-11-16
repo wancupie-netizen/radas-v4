@@ -7,7 +7,7 @@ const migration = fs.readdirSync('supabase/migrations').find(name => name.endsWi
 const {installStorage,mockStorage,mp4}=require('./storage-fixture.cjs');const storage=mockStorage();
 const cache = new Map(); let db; let authUser = uid; let rpcFailures = 0; let submitKind = 'ok'; let providerStatus = 'processing';
 let loseResponse = '';
-let credit = 3; let posts = 0; let providerReads = 0; let jobCounter = 0; const jobs = new Map(); const providerBodies=[];
+let creditCost = .3; let credit = 3; let posts = 0; let providerReads = 0; let jobCounter = 0; const jobs = new Map(); const providerBodies=[];
 async function operation(action, user, id, data = {}) {
   return (await db.query('select public.radas_v4_generation_operation($1,$2,$3,$4) as result', [action,user,id,JSON.stringify(data)])).rows[0].result;
 }
@@ -99,13 +99,13 @@ function request(f,origin='http://localhost:3000') {return new Request('http://l
     assert.equal(new URL(url).origin,'https://nexabot.id');assert.equal(init.headers['x-api-key'],'nxb_FIXTURE');
     const p=new URL(url).pathname;
     const reply=(data,status=200)=>new Response(JSON.stringify(data),{status,headers:{'content-type':'application/json'}});
-    if(p==='/api/v1/api/credit'){providerReads++;return reply({ok:true,registered:true,credit,credit_cost:.15});}
+    if(p==='/api/v1/api/credit'){providerReads++;return reply({ok:true,registered:true,credit,credit_cost:creditCost});}
     if(p==='/api/v1/api'){
       posts++;const body=JSON.parse(init.body);providerBodies.push(body);assert.equal(typeof body.ratio,'number');assert.equal(typeof body.resolution,'number');assert.equal('duration' in body,false);
       if(submitKind==='unknown')throw new Error('upstream key secret');
       if(submitKind==='reject')return reply({secret:'upstream'},402);
       const job='fixture-'+(++jobCounter);jobs.set(job,body.mode);
-      return reply({ok:true,job_id:job,status:'queued',credit_cost:.15,credit_balance:2,est_seconds:60},202);
+      return reply({ok:true,job_id:job,status:'queued',credit_cost:creditCost,credit_balance:2,est_seconds:60},202);
     }
     const match=/^\/api\/v1\/jobs\/(fixture-\d+)(\/download)?$/.exec(p);assert.ok(match);assert.ok(jobs.has(match[1]));
     if(match[2])return new Response(mp4,{headers:{'content-type':'video/mp4'}});
@@ -138,6 +138,15 @@ function request(f,origin='http://localhost:3000') {return new Request('http://l
   for(const buffers of [[],[png,png,png,png],[png,Buffer.from('broken')]]) {const before=posts;assert.equal((await POST(request(ingredients(randomUUID(),buffers)))).status,400);assert.equal(posts,before);}
   const duplicate=form(randomUUID());duplicate.append('prompt','spoof');assert.equal((await POST(request(duplicate))).status,400);
   credit=0;response=await POST(request(form(id)));assert.equal(response.status,503);assert.equal(posts,0);credit=3;
+  await db.exec('reset role');
+  const beforeCostGuard=(await db.query('select count(*)::int n from radas_v4.generations')).rows[0].n;
+  await actor('service_role');
+  creditCost=.31;response=await POST(request(form(id)));assert.equal(response.status,503);assert.equal(posts,0);
+  await db.exec('reset role');
+  assert.equal((await db.query('select count(*)::int n from radas_v4.generations')).rows[0].n,beforeCostGuard);
+  await actor('service_role');
+  creditCost=.3;
+
   response=await POST(request(form(id)));assert.equal(response.status,202);g=await response.json();assert.equal(g.status,'queued');assert.equal(posts,1);
   assert.equal(response.headers.get('cache-control'),'private, no-store, max-age=0');assert.equal('providerJobId' in g,false);
   response=await POST(request(form(id)));assert.equal(response.status,202);assert.equal(posts,1);
