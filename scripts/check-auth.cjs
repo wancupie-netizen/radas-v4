@@ -28,7 +28,7 @@ async function stopServer(proc) {
 }
 async function runAuthTests(testRoot) {
   const nextBin = path.join(testRoot, path.relative(process.cwd(), originalNextBin));
-  let revoked = false, failLogout = false, refreshCount = 0, creditFailure = false;
+  let revoked = false, failLogout = false, refreshCount = 0, creditFailure = false, instantSignup = false;
   const user = { id:'11111111-1111-4111-8111-111111111111', aud:'authenticated', role:'authenticated', email:'test@example.com', email_confirmed_at:new Date().toISOString(), app_metadata:{provider:'email',providers:['email']}, user_metadata:{name:'Test'}, created_at:new Date().toISOString() };
   const b64 = x => Buffer.from(JSON.stringify(x)).toString('base64url');
   function session() { return { access_token: `${b64({alg:'HS256',typ:'JWT'})}.${b64({sub:user.id,exp:Math.floor(Date.now()/1000)+3600,aud:'authenticated',role:'authenticated'})}.testsignature`, token_type:'bearer', expires_in:3600, refresh_token:'local-test-refresh', user }; }
@@ -49,7 +49,7 @@ async function runAuthTests(testRoot) {
       return creditFailure ? send(500,{message:'test database failure'}) : send(200,{balance:59,updatedAt:'2026-10-02T00:00:00Z',transactions:[{id:'test-ledger-id',type:'debit',amount:-1,balanceAfter:59,createdAt:'2026-10-02T00:00:00Z'}]});
     }
     if(url.pathname==='/auth/v1/user') return revoked ? send(401,{code:'bad_jwt',msg:'revoked'}) : send(200,user);
-    if(url.pathname==='/auth/v1/signup') return send(200,{...user,email:data.email});
+    if(url.pathname==='/auth/v1/signup') return send(200,instantSignup ? session() : {...user,email:data.email});
     if(url.pathname==='/auth/v1/logout') return failLogout ? send(500,{code:'unexpected_failure',msg:'service failed'}) : send(204,{});
     send(404,{msg:'Not found'});
   });
@@ -57,6 +57,11 @@ async function runAuthTests(testRoot) {
   const proc = spawn(process.execPath,[nextBin,'start','--hostname','127.0.0.1','--port','3093'],{cwd:testRoot,env:{...process.env,NEXT_PUBLIC_SUPABASE_URL:'http://127.0.0.1:3094',NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:'sb_publishable_local_test',APP_URL:'http://127.0.0.1:3093'},stdio:['ignore','pipe','pipe']});
   let logs='';proc.stdout.on('data',d=>logs+=d);proc.stderr.on('data',d=>logs+=d);
   const origin='http://127.0.0.1:3093';
+  function dashboardRedirect(response,status) {
+    assert.equal(response.status,status);
+    const target=new URL(response.headers.get('location'),origin);
+    assert.equal(target.origin,origin);assert.equal(target.pathname,'/studio');assert.equal(target.search,'?tab=dashboard');
+  }
   const jar=new Map();
   function updateCookies(res) { for(const value of res.headers.getSetCookie()){ const pair=value.split(';')[0];const eq=pair.indexOf('=');if(!pair.slice(eq+1)) jar.delete(pair.slice(0,eq));else jar.set(pair.slice(0,eq),pair.slice(eq+1));} }
   async function request(path, options={}) { const res=await fetch(origin+path,{...options,redirect:'manual',headers:{Cookie:[...jar].map(([k,v])=>`${k}=${v}`).join('; '),...options.headers}});updateCookies(res);return res; }
@@ -88,13 +93,19 @@ async function runAuthTests(testRoot) {
     r=await submit('/register',{name:'Test',email:'new@example.com',password:'abcdefgh'});assert.equal(r.status,200);assert.match(await r.text(),/Check your inbox/);
     assert.equal((await request('/studio')).status,307);
     console.log('PASS failed login and confirmation-required signup grant no access');
-    r=await request('/auth/callback?code=test-confirmation-code&next=https://example.com');assert.equal(r.status,307);assert.ok(r.headers.get('location').endsWith('/studio'));assert.equal((await request('/studio')).status,200);
+    r=await request('/auth/callback?code=test-confirmation-code&next=https://example.com');dashboardRedirect(r,307);assert.match(r.headers.get('cache-control'),/no-store/);assert.equal((await request('/studio?tab=dashboard')).status,200);
     r=await submit('/studio',{},true);assert.equal(r.status,303);
-    console.log('PASS confirmation callback establishes cookies and ignores external redirects');
-    r=await submit('/login',{email:'test@example.com',password:'abcdefgh'});assert.equal(r.status,303);assert.ok(r.headers.get('location').endsWith('/studio'));assert.ok(jar.size>0);
+    console.log('PASS confirmation callback establishes cookies, opens Dashboard and ignores external redirects');
+    instantSignup=true;r=await submit('/register',{name:'Test',email:'instant@example.com',password:'abcdefgh'});instantSignup=false;dashboardRedirect(r,303);assert.ok(jar.size>0);
+    r=await request('/studio?tab=dashboard');assert.equal(r.status,200);assert.match(await r.text(),/What will you create today/);
+    r=await submit('/studio',{},true);assert.equal(r.status,303);assert.equal((await request('/studio?tab=dashboard')).status,307);
+    console.log('PASS signup with an established session opens Dashboard; confirmation-required signup stays unsigned');
+    r=await submit('/login',{email:'test@example.com',password:'abcdefgh'});dashboardRedirect(r,303);assert.ok(jar.size>0);
+    r=await request('/studio?tab=dashboard');assert.equal(r.status,200);assert.match(await r.text(),/What will you create today/);assert.match(r.headers.get('cache-control'),/no-store/);
+    r=await request('/studio');assert.equal(r.status,200);assert.match(await r.text(),/What video would you like to create today/);
     r=await request('/studio');assert.equal(r.status,200);assert.match(await r.text(),/test@example.com/);assert.match(r.headers.get('cache-control'),/no-store/);
     const publicPage=await request('/');const publicHtml=await publicPage.text();assert.equal(publicPage.status,200);assert.doesNotMatch(publicHtml,/test@example.com|Balance unavailable|credit-ledger/);
-    console.log('PASS successful login sets cookies, verified user sees workspace, response not cached');
+    console.log('PASS successful login opens Dashboard with cookies and no-store; direct /studio still opens Create Video');
     r=await request('/api/credits?user_id=someone-else');assert.equal(r.status,200);assert.equal((await r.json()).balance,59);assert.match(r.headers.get('cache-control'),/no-store/);
     creditFailure=true;r=await request('/api/credits');assert.equal(r.status,503);assert.equal((await r.json()).status,'unavailable');
     r=await request('/studio');assert.equal(r.status,200);assert.match(await r.text(),/Balance unavailable/);creditFailure=false;

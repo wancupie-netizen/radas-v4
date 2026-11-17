@@ -18,7 +18,7 @@ export async function login(_previous: AuthState, form: FormData): Promise<AuthS
       : "Login failed. Check your email and password." };
   } catch { return { error: "The account service could not be reached. Please try again." }; }
   revalidatePath('/', 'layout');
-  redirect('/studio');
+  redirect('/studio?tab=dashboard');
 }
 export async function register(_previous: AuthState, form: FormData): Promise<AuthState> {
   const input = readCredentials(form, true);
@@ -37,7 +37,7 @@ export async function register(_previous: AuthState, form: FormData): Promise<Au
     if (error) return { error: error.status === 429 ? "Too many attempts. Please try again shortly." : "Sign-up failed. Check your details and try again." };
     signedIn = Boolean(data.session);
   } catch { return { error: "The account service could not be reached. Please try again." }; }
-  if (signedIn) { revalidatePath('/', 'layout'); redirect('/studio'); }
+  if (signedIn) { revalidatePath('/', 'layout'); redirect('/studio?tab=dashboard'); }
   return { message: "Check your inbox or spam folder to confirm your email. If you already have an account, try logging in." };
 }
 export async function logout(_previous: AuthState, _form: FormData): Promise<AuthState> {

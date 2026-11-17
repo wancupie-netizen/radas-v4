@@ -8,7 +8,7 @@ export async function GET(request: NextRequest) {
       const supabase = await createClient();
       const { error } = await supabase.auth.exchangeCodeForSession(code);
       if (!error) {
-        const response = new NextResponse(null, { status: 307, headers: { Location: '/studio' } });
+        const response = new NextResponse(null, { status: 307, headers: { Location: '/studio?tab=dashboard' } });
         response.headers.set('Cache-Control', 'private, no-store');
         return response;
       }
