@@ -28,6 +28,7 @@
     "check:protection": "node scripts/check-protection.cjs",
     "check:landing": "node scripts/check-landing.cjs",
     "check:all": "node scripts/run-phase16.cjs",
+    "check:dashboard": "node scripts/check-dashboard.cjs && node scripts/check-dashboard-ui.cjs",
     "check:affiliate:sold": "node scripts/check-affiliate-sold.cjs && node scripts/check-affiliate-sold-ui.cjs",
     "check:api-stock": "node scripts/check-api-stock.cjs",
     "check:updates": "node scripts/check-updates.cjs"

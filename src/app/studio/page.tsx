@@ -5,9 +5,13 @@ import { accountDisplayName } from '@/components/workspace-greeting';
 import { VideoWorkspace } from '@/components/video-workspace';
 import { createClient } from '@/lib/supabase/server';
 import { hasSupabaseConfig } from '@/lib/supabase/settings';
-export const metadata: Metadata = { title: 'RADAS — Create Video' };
+type Search = Promise<{ [key:string]:string|string[]|undefined }>;
+export async function generateMetadata({ searchParams }: { searchParams:Search }): Promise<Metadata> {
+  const {tab}=await searchParams;
+  return {title:tab==='dashboard'?'RADAS — Dashboard':tab==='affiliate'?'RADAS — Affiliate Products':'RADAS — Create Video'};
+}
 export const dynamic = 'force-dynamic';
-export default async function Page() {
+export default async function Page({searchParams}: {searchParams:Search}) {
   if (!hasSupabaseConfig()) redirect('/login');
   const supabase = await createClient();
   let user;
@@ -17,5 +21,7 @@ export default async function Page() {
   } catch { /* Fail closed if verification is unavailable. */ }
   if (!user) redirect('/login');
   const credits = await getCreditSnapshot(supabase);
-  return <VideoWorkspace accountEmail={user.email || ''} accountName={accountDisplayName(user.user_metadata?.name)} initialCredits={credits} generationEnabled={process.env.RADAS_GENERATION_ENABLED === 'true'} />;
+  const {tab}=await searchParams;
+  const initialTab=tab==='dashboard'||tab==='affiliate'?tab:'video';
+  return <VideoWorkspace initialTab={initialTab} accountEmail={user.email || ''} accountName={accountDisplayName(user.user_metadata?.name)} initialCredits={credits} generationEnabled={process.env.RADAS_GENERATION_ENABLED === 'true'} />;
 }
