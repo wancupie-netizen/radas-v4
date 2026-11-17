@@ -69,7 +69,7 @@ async function failure(fn, code, outcome) { await assert.rejects(fn, e => e inst
   await failure(() => c.downloadVideo('abc'), 'UNSAFE_DOWNLOAD_REDIRECT');
   let hops = 0; c = client(() => ++hops === 1 ? new Response(null, { status: 302, headers: { location: '/safe.mp4' } }) : new Response('mp4', { headers: { 'content-type': 'video/mp4' } }));
   await (await c.downloadVideo('abc')).body.cancel(); assert.equal(hops, 2);
-  for (const origin of ['https://hrekuraxzpiqymgcrjyb.supabase.co', 'https://iosrygyeustxztewibzq.supabase.co', 'https://gvhsnjldhfczmylcagxe.supabase.co']) {
+  for (const origin of ['https://hrekuraxzpiqymgcrjyb.supabase.co', 'https://iosrygyeustxztewibzq.supabase.co', 'https://gvhsnjldhfczmylcagxe.supabase.co', 'https://bwcqhtntrfntnkjokihp.supabase.co']) {
     let downloadCalls = 0;
     c = client((url, init) => {
       downloadCalls++;
@@ -79,6 +79,7 @@ async function failure(fn, code, outcome) { await assert.rejects(fn, e => e inst
       }
       assert.equal(new URL(url).origin, origin);
       assert.equal(new Headers(init.headers).has('x-api-key'), false);
+      assert.equal(new Headers(init.headers).has('authorization'), false);
       assert.equal(init.redirect, 'manual');
       return new Response('mp4', { headers: { 'content-type': 'video/mp4' } });
     });
@@ -93,6 +94,10 @@ async function failure(fn, code, outcome) { await assert.rejects(fn, e => e inst
     'http://gvhsnjldhfczmylcagxe.supabase.co/file',
     'https://gvhsnjldhfczmylcagxe.supabase.co.evil.example/file',
     'https://user:pass@gvhsnjldhfczmylcagxe.supabase.co/file',
+    'http://bwcqhtntrfntnkjokihp.supabase.co/file',
+    'https://bwcqhtntrfntnkjokihp.supabase.co.evil.example/file',
+    'https://user:pass@bwcqhtntrfntnkjokihp.supabase.co/file',
+    'https://bwcqhtntrfntnkjokihp.supabase.co:444/file',
   ]) {
     let downloadCalls = 0;
     c = client(() => {
@@ -102,7 +107,21 @@ async function failure(fn, code, outcome) { await assert.rejects(fn, e => e inst
     await failure(() => c.downloadVideo('abc'), 'UNSAFE_DOWNLOAD_REDIRECT');
     assert.equal(downloadCalls, 1);
   }
-  console.log('PASS all three provider Storage origins; API key withheld on cross-origin download; unsafe origins blocked');
+  let crossOriginHops = 0;
+  c = client((url, init) => {
+    crossOriginHops++;
+    if (crossOriginHops === 1) {
+      assert.equal(init.headers['x-api-key'], key);
+      return new Response(null, { status: 307, headers: { location: 'https://bwcqhtntrfntnkjokihp.supabase.co/signed.mp4?token=fixture' } });
+    }
+    assert.equal(new URL(url).origin, 'https://bwcqhtntrfntnkjokihp.supabase.co');
+    assert.equal(new Headers(init.headers).has('x-api-key'), false);
+    assert.equal(new Headers(init.headers).has('authorization'), false);
+    return new Response(null, { status: 307, headers: { location: 'https://evil.example/file' } });
+  });
+  await failure(() => c.downloadVideo('abc'), 'UNSAFE_DOWNLOAD_REDIRECT');
+  assert.equal(crossOriginHops, 2);
+  console.log('PASS all four verified provider Storage origins; API key withheld on cross-origin download; unsafe origins and redirected escape blocked');
   c = client(() => new Response('not video', { headers: { 'content-type': 'text/html' } }));
   await failure(() => c.downloadVideo('abc'), 'INVALID_OR_UNAVAILABLE_RESPONSE');
   console.log('PASS job states and identity; private provider fields removed; zero credit; MP4 stream; redirects denied');
