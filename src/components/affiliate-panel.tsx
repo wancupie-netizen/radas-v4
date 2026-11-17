@@ -1,5 +1,7 @@
 'use client';
 import './affiliate-panel.css';
+import { AffiliateSoldList, ProductSold } from './affiliate-sold-list';
+import type { SoldUpdate } from '@/lib/affiliate/sold';
 import { WorkspaceGreeting } from './workspace-greeting';
 import { ProductPromptTemplates } from './product-prompt-templates';
 import { contentTypeLabel } from '@/lib/affiliate/labels';
@@ -23,11 +25,17 @@ export function AffiliatePanel({ admin = false, accountName = '' }: { admin?: bo
   const [query,setQuery] = useState(''), [category,setCategory] = useState(''), [draft,setDraft] = useState<Product | null>(null), [busy,setBusy] = useState(false);
   const [page,setPage] = useState(1);
   const [onlyDrafts,setOnlyDrafts] = useState(false);
+  const [adminView,setAdminView] = useState<'products' | 'sold'>('products');
+  const [soldEditing,setSoldEditing] = useState(false);
+  const soldNavigationGuard = useRef('');
   const [locationReady,setLocationReady] = useState(false), [addedId,setAddedId] = useState('');
   const controller = useRef<AbortController | null>(null), sequence = useRef(0), writing = useRef(false), reading = useRef(false);
   useEffect(()=>{
     const restore=()=>{
-      const state=readCatalogLocation(new URL(window.location.href));
+      if (soldNavigationGuard.current) { window.history.replaceState(window.history.state,'',soldNavigationGuard.current); return; }
+      const url = new URL(window.location.href);
+      const state=readCatalogLocation(url);
+      setAdminView(admin && url.searchParams.get('af_view') === 'sold' ? 'sold' : 'products');
       setQuery(state.query);setCategory(state.category);setPage(state.page);setOnlyDrafts(admin && state.onlyDrafts);
       setLocationReady(true);
     };
@@ -69,6 +77,30 @@ export function AffiliatePanel({ admin = false, accountName = '' }: { admin?: bo
     } catch(e) { if(e instanceof RequestError && e.status===401)window.location.assign('/login');setError(e instanceof RequestError && e.status===409?"This product has changed. Refresh the list and reopen the product before saving.":"The response has not yet been confirmed. Check the list first; your draft and original ID have been retained."); }
     finally { writing.current=false;setBusy(false);setLoading(false); }
   }
+  async function saveSold(product: SoldUpdate): Promise<boolean> {
+    if (writing.current) return false;
+    writing.current=true;setBusy(true);setError('');controller.current?.abort();const n=++sequence.current;
+    try {
+      const data=parseCatalog(await requestJson('/api/affiliate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({action:'sold',product})}));
+      if (n!==sequence.current) return false;
+      setCatalog(data);return true;
+    } catch (error) {
+      if(error instanceof RequestError && error.status===401)window.location.assign('/login');
+      setError(error instanceof RequestError && error.status===409 ? 'This product has changed. Cancel this edit, refresh and reopen it before saving.' : 'The sold update has not been confirmed. Your entry has been retained; retry or cancel to check the list.');
+      return false;
+    } finally { writing.current=false;setBusy(false);setLoading(false); }
+  }
+  function changeSoldEditing(editing: boolean) {
+    soldNavigationGuard.current = editing ? window.location.pathname+window.location.search+window.location.hash : '';
+    setSoldEditing(editing);
+  }
+  function changeAdminView(view: 'products' | 'sold') {
+    if (busy || draft || soldEditing) return;
+    setAdminView(view);setPage(1);setError('');
+    const url=new URL(window.location.href);
+    if(view==='sold')url.searchParams.set('af_view','sold');else url.searchParams.delete('af_view');
+    window.history.replaceState(window.history.state,'',url.pathname+url.search+url.hash);
+  }
   const accessible = !!catalog && catalog.access==='allowed';
   const products = accessible ? catalog.products : [];
   const categories=[...new Set(products.map(p=>p.category).filter(Boolean))].sort();
@@ -93,9 +125,9 @@ export function AffiliatePanel({ admin = false, accountName = '' }: { admin?: bo
     return ()=>window.clearTimeout(timer);
   },[addedId]);
   const visibleProducts = filtered.slice((currentPage-1)*PAGE_SIZE,currentPage*PAGE_SIZE);
-  const editing = !!draft;
+  const editing = !!draft || soldEditing;
   function changePage(nextPage: number) {
-    if(busy || draft || nextPage===currentPage)return;
+    if(busy || draft || soldEditing || nextPage===currentPage)return;
     if(!admin) {
       const next=writeCatalogLocation(new URL(window.location.href),{page:nextPage,query,category,onlyDrafts:false});
       // User pagination adds history; restoration, filtering and page clamping still replace it.
@@ -122,12 +154,13 @@ export function AffiliatePanel({ admin = false, accountName = '' }: { admin?: bo
     </fieldset></form> : null;
   }
   return <section className="affiliate-panel" aria-labelledby="affiliate-title">
-    <div className="affiliate-heading">{admin?<div><span className="eyebrow">CONTENT RESOURCES</span><h1 id="affiliate-title">Manage Products<span>.</span></h1><p>Choose a product and content type for your video.</p></div>:<WorkspaceGreeting name={accountName} affiliate id="affiliate-title"/>}<button className="secondary" disabled={busy} onClick={()=>void refresh()}>Refresh</button></div>
+    <div className="affiliate-heading">{admin?<div><span className="eyebrow">CONTENT RESOURCES</span><h1 id="affiliate-title">Manage Products<span>.</span></h1><p>Choose a product and content type for your video.</p></div>:<WorkspaceGreeting name={accountName} affiliate id="affiliate-title"/>}<button className="secondary" disabled={busy || soldEditing} onClick={()=>void refresh()}>Refresh</button></div>
     {error && <p className="notice" role="alert">{error}</p>}
     {addedId && <p className="input-help" role="status">New product added successfully. It is shown at the top of the list.</p>}
     {loading ? <p className="notice" role="status">Loading products…</p> : !catalog ? null : !accessible ? <p className="notice">The product list could not be loaded. Please refresh.</p> : <>
       {!admin && catalog.admin && <a className="secondary affiliate-admin-link" href="/admin/products">Manage products as admin</a>}
-      {admin && <div className="affiliate-toolbar"><button className="primary" disabled={busy || editing} onClick={()=>{if(busy || draft)return;setDraft(blank());setError('');}}>Add product</button>
+      {admin && <div className="affiliate-view-tabs" role="group" aria-label="Product management view"><button type="button" className={adminView==='products'?'primary':'secondary'} aria-pressed={adminView==='products'} disabled={busy || editing} onClick={()=>changeAdminView('products')}>Products</button><button type="button" className={adminView==='sold'?'primary':'secondary'} aria-pressed={adminView==='sold'} disabled={busy || editing} onClick={()=>changeAdminView('sold')}>Update Sold</button></div>}
+      {admin && <div className="affiliate-toolbar">{adminView==='products' && <button className="primary" disabled={busy || editing} onClick={()=>{if(busy || draft)return;setDraft(blank());setError('');}}>Add product</button>}
       <div className="affiliate-actions" role="group" aria-label="Product publishing status">
         <button type="button" className={onlyDrafts?'secondary':'primary'} aria-pressed={!onlyDrafts} disabled={busy || editing} onClick={()=>{setOnlyDrafts(false);setPage(1);}}>All ({products.length})</button>
         <button type="button" className={onlyDrafts?'primary':'secondary'} aria-pressed={onlyDrafts} disabled={busy || editing} onClick={()=>{setOnlyDrafts(true);setPage(1);}}>Unpublished ({draftCount})</button>
@@ -136,11 +169,11 @@ export function AffiliatePanel({ admin = false, accountName = '' }: { admin?: bo
       {admin && draft && !visibleProducts.some(p=>p.id===draft.id) && <article className="panel affiliate-card affiliate-new-card">{editorForm()}</article>}
       {editing && <p className="input-help">Save or cancel your edits before changing the page, search or product.</p>}
       <p className="input-help">{filtered.length} products · Prices and commissions are estimates; check current figures on the affiliate platform.</p>
-      {products.length===0 ? <p className="notice">{admin?"No products in the catalogue yet.":"No published products yet."}</p> : filtered.length===0 ? <p className="notice">No matching products. Try a different search or filter.</p> : <div className="affiliate-grid">{visibleProducts.map(p=><article id={`affiliate-product-${p.id}`} tabIndex={addedId===p.id?-1:undefined} className={`panel affiliate-card${draft?.id===p.id ? ' affiliate-card-editing' : ''}${addedId===p.id ? ' affiliate-card-added' : ''}`} key={p.id}>
+      {products.length===0 ? <p className="notice">{admin?"No products in the catalogue yet.":"No published products yet."}</p> : filtered.length===0 ? <p className="notice">No matching products. Try a different search or filter.</p> : admin && adminView==='sold' ? <AffiliateSoldList products={visibleProducts} busy={busy} onSave={saveSold} onEditingChange={changeSoldEditing}/> : <div className="affiliate-grid">{visibleProducts.map(p=><article id={`affiliate-product-${p.id}`} tabIndex={addedId===p.id?-1:undefined} className={`panel affiliate-card${draft?.id===p.id ? ' affiliate-card-editing' : ''}${addedId===p.id ? ' affiliate-card-added' : ''}`} key={p.id}>
         {admin && draft?.id===p.id ? editorForm() : <>
         {/* External images never carry app cookies/referrers. No server fetching of admin URLs. */}
         <ProductImage key={p.imageUrl} product={p}/>
-        <div className="affiliate-card-body"><div className="affiliate-card-heading"><h2 title={p.name}>{p.name}</h2>{admin && <span className={`affiliate-status ${p.published?'affiliate-status-live':'affiliate-status-draft'}`}>{p.published?"Published":"Draft"}</span>}</div><p className="affiliate-category">{p.category || "Category not provided"}</p><dl className="affiliate-metrics"><div><dt>Price</dt><dd>{money(p.priceSen)}</dd></div><div className="affiliate-commission"><dt>Estimated commission</dt><dd>{money(p.commissionSen)}</dd></div></dl>{p.contentTypes.length>0 && <div className="affiliate-tags">{p.contentTypes.map(t=><span key={t}>{contentTypeLabel(t)}</span>)}</div>}<p className="input-help affiliate-reviewed">Checked: {p.reviewedOn ? <time dateTime={p.reviewedOn}>{p.reviewedOn}</time> : "Not provided"}</p>
+        <div className="affiliate-card-body"><div className="affiliate-card-heading"><h2 title={p.name}>{p.name}</h2>{admin && <span className={`affiliate-status ${p.published?'affiliate-status-live':'affiliate-status-draft'}`}>{p.published?"Published":"Draft"}</span>}</div><p className="affiliate-category">{p.category || "Category not provided"}</p><dl className="affiliate-metrics"><div><dt>Price</dt><dd>{money(p.priceSen)}</dd></div><div className="affiliate-commission"><dt>Estimated commission</dt><dd>{money(p.commissionSen)}</dd></div></dl><ProductSold product={p}/>{p.contentTypes.length>0 && <div className="affiliate-tags">{p.contentTypes.map(t=><span key={t}>{contentTypeLabel(t)}</span>)}</div>}<p className="input-help affiliate-reviewed">Checked: {p.reviewedOn ? <time dateTime={p.reviewedOn}>{p.reviewedOn}</time> : "Not provided"}</p>
         <ProductPromptTemplates name={p.name} contentTypes={p.contentTypes}/>
         {admin ? <>{p.sourceNotes && <details><summary>Source notes</summary><pre className="input-help" style={{whiteSpace:'pre-wrap',overflowWrap:'anywhere'}}>{p.sourceNotes}</pre></details>}<div className="affiliate-actions"><button className="secondary" disabled={busy || editing} onClick={()=>startEdit(p)}>Edit</button><button className="text-button" disabled={busy || editing} onClick={()=>{if(busy || draft)return;if(window.confirm(`Delete ${p.name}?`))void mutate('delete',p);}}>Delete</button></div></> : p.url ? <a className="secondary" href={p.url} target="_blank" rel="noopener noreferrer sponsored">View product ↗</a> : <p className="input-help">Product link to be updated</p>}
         </div></>}</article>)}</div>}

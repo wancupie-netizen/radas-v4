@@ -3,12 +3,12 @@ const assert=require('node:assert/strict'),fs=require('node:fs'),crypto=require(
 // Ignore CRLF/LF differences only; actual content changes must still fail.
 const hash=value=>crypto.createHash('sha256').update(value.toString().replace(/\r\n/g,'\n')).digest('hex');
 // Translation baseline from 7aff46e; package prices and provider cost updated by the approved 2026-11-16 pricing change.
-// Provider/storage boundaries updated by the reviewed finalization patch; other protected content stays unchanged.
+// Provider/storage boundaries reflect finalization; affiliate types now preserve optional manual sold fields. Other protected content stays unchanged.
 const protectedFiles={
   "src/components/landing-page.tsx": "159d6db74522b56aa9b5668c37c0511af998c7527b3d4bfde651bd6a499c6211",
   "src/app/page.tsx": "845f4678a69ba94e179d1e3c16247c012ff15e725e5d80d027ae952fd5504c09",
   "src/lib/affiliate/templates.ts": "2682914fdf3e0df1532935852c8071732864820a0a10027c81fe1426cf5e32ae",
-  "src/lib/affiliate/types.ts": "19282d3e6b785374302364cbbae621d82f27c1a313a13261e036650ffce3557d",
+  "src/lib/affiliate/types.ts": "0006b8139473e322f3ba3b12b518cf38e6920ab1b6fb9928a174932436e7600c",
   "src/lib/config.ts": "fc6cb3e4f8fd21fc6b9a7306560e4fac51a1154ca2555a91c16ce822e02a7c2f",
   "src/lib/payments/packages.ts": "b2f032af9ecd14845a1eb480c6dd54b17c1fef92cd9ddf65ea3b00d7ce04b916",
   "src/lib/payments/telegram.ts": "dfe306653d6de884eba872222483765ffa8eebeb31aa271dd753f963d65a5d7a",

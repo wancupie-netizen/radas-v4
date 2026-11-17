@@ -1,5 +1,6 @@
+import { validSoldFields, type SoldFields } from './sold';
 export const CONTENT_TYPES = ['POV', 'UGC', 'Demonstrasi', 'Unboxing', 'Review', 'Storytelling', 'Perbandingan'] as const;
-export type Product = { id: string; name: string; imageUrl: string; category: string; priceSen: number | null; commissionSen: number | null; url: string; reviewedOn: string; contentTypes: string[]; published: boolean; revision: number; sourceNotes?: string };
+export type Product = SoldFields & { id: string; name: string; imageUrl: string; category: string; priceSen: number | null; commissionSen: number | null; url: string; reviewedOn: string; contentTypes: string[]; published: boolean; revision: number; sourceNotes?: string };
 export type Catalog = { admin: boolean; access: 'allowed' | 'locked'; products: Product[] };
 export function safeHttps(value: unknown): value is string {
   if (typeof value !== 'string' || value.length > 2048 || value !== value.trim()) return false;
@@ -13,7 +14,7 @@ function validDate(v: unknown, empty: boolean): boolean {
 function validFields(p: unknown, empty: boolean): p is Product {
   if (!p || typeof p !== 'object' || Array.isArray(p)) return false;
   const v = p as Product;
-  return typeof v.id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v.id) &&
+  return validSoldFields(v) && typeof v.id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v.id) &&
     textField(v.name,120,false) && textField(v.category,60,empty) &&
     (v.imageUrl === '' || safeHttps(v.imageUrl)) && (v.url === '' || safeHttps(v.url)) &&
     amount(v.priceSen,empty) && amount(v.commissionSen,empty) && (v.priceSen === null || v.commissionSen === null || v.commissionSen <= v.priceSen) &&
@@ -27,5 +28,5 @@ export function validProduct(p: unknown): p is Product { return validFields(p,(p
 export function parseCatalog(value: unknown): Catalog {
   const v = value as Catalog;
   if (!v || typeof v.admin !== 'boolean' || !['allowed','locked'].includes(v.access) || !Array.isArray(v.products) || v.products.length > 500 || !v.products.every(validProduct) || new Set(v.products.map(x=>x.id)).size !== v.products.length || (v.access === 'locked' && v.products.length !== 0) || (!v.admin && v.products.some(p=>!p.published))) throw new Error('invalid_catalog');
-  return { admin: v.admin, access: v.access, products: v.products.map(p=>({id:p.id,name:p.name,imageUrl:p.imageUrl,category:p.category,priceSen:p.priceSen,commissionSen:p.commissionSen,url:p.url,reviewedOn:p.reviewedOn,contentTypes:p.contentTypes,published:p.published,revision:p.revision,...(Object.hasOwn(p,'sourceNotes')?{sourceNotes:p.sourceNotes}:{})})) };
+  return { admin: v.admin, access: v.access, products: v.products.map(p=>({id:p.id,name:p.name,imageUrl:p.imageUrl,category:p.category,priceSen:p.priceSen,commissionSen:p.commissionSen,url:p.url,reviewedOn:p.reviewedOn,contentTypes:p.contentTypes,published:p.published,revision:p.revision,...(Object.hasOwn(p,'soldText')?{soldText:p.soldText,soldCheckedOn:p.soldCheckedOn}:{}),...(Object.hasOwn(p,'sourceNotes')?{sourceNotes:p.sourceNotes}:{})})) };
 }
