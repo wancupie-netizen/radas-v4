@@ -1,3 +1,4 @@
+import { withVideoState } from '@/lib/finalization/client';
 import { generationLog } from '@/lib/generations/log';
 import { createNexabotClient } from '@/lib/nexabot/client';
 import { createGenerationStore } from '@/lib/generations/store';
@@ -15,6 +16,6 @@ export async function GET(_request: Request, context: { params: Promise<{ id: st
     const { id } = await context.params; if (!UUID.test(id)) throw new GenerationError('not_found', 404);
     requestId = id;
     const generation = await createGenerationFlow(createGenerationStore(), createNexabotClient()).status(userId, id);
-    return Response.json(generation, { headers: PRIVATE_HEADERS });
+    return Response.json(await withVideoState(userId, generation), { headers: PRIVATE_HEADERS });
   } catch (error) { generationLog('request_status', { requestId, error, durationMs: performance.now() - started }); return errorResponse(error); }
 }

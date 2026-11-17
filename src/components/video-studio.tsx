@@ -9,7 +9,7 @@ import { RecentHistory } from './recent-history';
 import { pruneRecent, rememberRecent, type RecentDetails, type RecentVideo } from '@/lib/history/recent';
 import { emptyAttemptSummary, observeAttempt } from '@/lib/generations/guidance';
 import { recoverGeneration } from '@/lib/generations/recovery';
-import { canGenerateAgain, parseRequestedGeneration, type Generation } from '@/lib/generations/types';
+import { canGenerateAgain, shouldPollGeneration, parseRequestedGeneration, type Generation } from '@/lib/generations/types';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { PRODUCT } from '@/lib/config';
 import type { CreditSnapshot } from '@/lib/credits/types';
@@ -20,6 +20,28 @@ const STUDIO_DURATION_SECONDS = 15;
 
 export function VideoStudio({ credits, generationEnabled, onCreditsChanged }: { credits: CreditSnapshot; generationEnabled: boolean; onCreditsChanged: () => Promise<void> }) {
   const [history, setHistory] = useState<RecentVideo[]>([]);
+  useEffect(() => {
+    const controller = new AbortController();
+    let restoring = false;
+    const restore = async () => {
+      if (restoring || controller.signal.aborted) return;
+      restoring = true;
+      try {
+        const response = await fetch('/api/generations', { cache: 'no-store', signal: controller.signal });
+        if (!response.ok) return;
+        const data = await response.json();
+        if (!controller.signal.aborted && Array.isArray(data.items)) setHistory(previous => {
+          const ids = new Set(data.items.map((item: RecentVideo) => item.id));
+          return pruneRecent([...data.items, ...previous.filter(item => !ids.has(item.id))], Date.now()).slice(0, 20);
+        });
+      } catch { /* Existing session history remains available during an outage. */ }
+      finally { restoring = false; }
+    };
+    void restore();
+    window.addEventListener('focus', restore);
+    const timer = setInterval(restore, 10_000);
+    return () => { controller.abort(); clearInterval(timer); window.removeEventListener('focus', restore); };
+  }, []);
   const [selectedHistoryId, setSelectedHistoryId] = useState<string | null>(null);
   const details = useRef<RecentDetails | null>(null);
   const [attemptSummary, setAttemptSummary] = useState(emptyAttemptSummary);
@@ -81,7 +103,7 @@ export function VideoStudio({ credits, generationEnabled, onCreditsChanged }: { 
   const refreshCredits = useRef(onCreditsChanged);
   useEffect(() => { refreshCredits.current = onCreditsChanged; }, [onCreditsChanged]);
   useEffect(() => {
-    if (!generation || canGenerateAgain(generation)) return;
+    if (!generation || !shouldPollGeneration(generation)) return;
     let alive = true; let timer: ReturnType<typeof setTimeout>; let failures = 0;
     const controller = new AbortController(); const started = Date.now();
     async function poll() {
@@ -93,7 +115,7 @@ export function VideoStudio({ credits, generationEnabled, onCreditsChanged }: { 
         setGeneration(next); rememberCompletion(next);
         if (data.pollUnavailable) throw new Error('provider_poll_failed');
         failures = 0; setFlowError('');
-        if (canGenerateAgain(next)) { void refreshCredits.current(); return; }
+        if (!shouldPollGeneration(next)) { void refreshCredits.current(); return; }
       } catch (error) { if (!alive) return; if (error instanceof RequestError && error.status === 401) { window.location.assign('/login'); return; } failures += 1; }
       if (failures >= 3 || Date.now() - started > 15 * 60 * 1000) {
         setFlowError("The status could not be checked. Check it again; do not submit a new video request."); return;
@@ -102,10 +124,10 @@ export function VideoStudio({ credits, generationEnabled, onCreditsChanged }: { 
     }
     timer = setTimeout(poll, 1000);
     return () => { alive = false; clearTimeout(timer); controller.abort(); };
-  }, [generation?.id, generation?.status, generation?.releasedAt, pollAttempt, rememberCompletion]);
+  }, [generation?.id, generation?.status, generation?.releasedAt, generation?.videoState, pollAttempt, rememberCompletion]);
 
   useEffect(() => {
-    if (!generation || canGenerateAgain(generation)) return;
+    if (!generation || !shouldPollGeneration(generation)) return;
     const resume = () => {
       if (document.visibilityState === 'visible') setPollAttempt(previous => previous + 1);
     };
@@ -261,7 +283,7 @@ export function VideoStudio({ credits, generationEnabled, onCreditsChanged }: { 
         </>}
         <div className="video-specs" aria-label="Selected video settings"><span>{ratio}</span><span>{previewResolution}p</span><span>{STUDIO_DURATION_SECONDS} seconds</span><span>{PRODUCT.creditsPerGeneration} credit</span></div>
       </div>
-      <div className="preview-footer"><span aria-hidden="true">↓</span><p>Download your video once it’s ready.<br /><span>The video will disappear from this view when you refresh or log out.</span></p></div>
+      <div className="preview-footer"><span aria-hidden="true">↓</span><p>Download your video once it’s ready.<br /><span>Download your video before its expiry time.</span></p></div>
     </section>
   </div><RecentHistory items={history} selectedId={selectedHistory?.id ?? null} onSelect={selectHistory} /></>;
 }

@@ -125,4 +125,16 @@ async function failure(fn, code, outcome) { await assert.rejects(fn, e => e inst
   c = client(() => new Response('not video', { headers: { 'content-type': 'text/html' } }));
   await failure(() => c.downloadVideo('abc'), 'INVALID_OR_UNAVAILABLE_RESPONSE');
   console.log('PASS job states and identity; private provider fields removed; zero credit; MP4 stream; redirects denied');
+  for (const invalid of ['["https://*.supabase.co"]','["http://bwcqhtntrfntnkjokihp.supabase.co"]','["https://bwcqhtntrfntnkjokihp.supabase.co:444"]','["https://user@bwcqhtntrfntnkjokihp.supabase.co"]','["https://bwcqhtntrfntnkjokihp.supabase.co/path"]','not-json']) {
+    process.env.NEXABOT_DOWNLOAD_ORIGINS=invalid;
+    assert.throws(() => createNexabotClient({apiKey:key}), /UNSAFE_DOWNLOAD_REDIRECT/);
+  }
+  process.env.NEXABOT_DOWNLOAD_ORIGINS=JSON.stringify(['https://abcdefghijklmnopqrst.supabase.co']);
+  let extraHops=0;
+  c=client((_url,init)=>{extraHops++;if(extraHops===1)return new Response(null,{status:307,headers:{location:'https://abcdefghijklmnopqrst.supabase.co/video.mp4?token=fixture'}});
+    assert.equal(new Headers(init.headers).has('x-api-key'),false);assert.equal(new Headers(init.headers).has('authorization'),false);
+    return new Response('fixture',{headers:{'content-type':'video/mp4'}});});
+  await c.downloadVideo('abc');assert.equal(extraHops,2);delete process.env.NEXABOT_DOWNLOAD_ORIGINS;
+  console.log('PASS explicit configurable origins and invalid configuration fail closed; credentials withheld');
+
 })().catch(error => { console.error(error); process.exitCode = 1; });

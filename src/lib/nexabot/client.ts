@@ -3,12 +3,21 @@ import { GENERATION_TIMEOUTS } from '../generations/timeouts';
 import { validateImageFile, validatePrompt, VIDEO_INPUT, type VideoOrientation, type VideoResolution } from '../video/input';
 
 const BASE = 'https://nexabot.id';
-const DOWNLOAD_ORIGINS = new Set([
+const DEFAULT_DOWNLOAD_ORIGINS = [
   'https://hrekuraxzpiqymgcrjyb.supabase.co',
   'https://iosrygyeustxztewibzq.supabase.co',
   'https://gvhsnjldhfczmylcagxe.supabase.co',
   'https://bwcqhtntrfntnkjokihp.supabase.co',
-]);
+] as const;
+function downloadOrigins(): ReadonlySet<string> {
+  const raw = process.env.NEXABOT_DOWNLOAD_ORIGINS;
+  if (!raw) return new Set(DEFAULT_DOWNLOAD_ORIGINS);
+  let extra: unknown;
+  try { extra = JSON.parse(raw); } catch { throw new NexabotError('UNSAFE_DOWNLOAD_REDIRECT'); }
+  // Explicit project origins only: no wildcard, path, query, userinfo or custom port.
+  if (!Array.isArray(extra) || extra.length > 20 || extra.some(value => typeof value !== 'string' || !/^https:\/\/[a-z0-9]{20}\.supabase\.co$/.test(value))) throw new NexabotError('UNSAFE_DOWNLOAD_REDIRECT');
+  return new Set([...DEFAULT_DOWNLOAD_ORIGINS, ...extra]);
+}
 export type JobStatus = 'queued' | 'processing' | 'done' | 'failed';
 export type VideoRequest = { prompt: string; orientation: VideoOrientation; resolution: VideoResolution } &
   ({ mode: 'text'; imageDataUris?: never } | { mode: 'image' | 'ingredients'; imageDataUris: string[] });
@@ -56,6 +65,7 @@ async function payload(input: VideoRequest) {
 
 // No automatic retry: a lost POST response may still represent a charged job.
 export function createNexabotClient(options: { apiKey?: string; fetcher?: typeof fetch; timeoutMs?: number; submitTimeoutMs?: number } = {}) {
+  const DOWNLOAD_ORIGINS = downloadOrigins();
   const key = options.apiKey ?? process.env.NEXABOT_API_KEY;
   if (!key || !/^nxb_[A-Za-z0-9_-]+$/.test(key)) throw new NexabotError('MISSING_OR_INVALID_KEY', 'rejected');
   const fetcher = options.fetcher ?? fetch;

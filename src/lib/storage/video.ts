@@ -40,12 +40,13 @@ export async function readProviderVideo(response: Response, signal: AbortSignal,
     const result = Buffer.concat(chunks, total); validateMp4(result); return result;
   } finally { clearTimeout(timer); signal.removeEventListener('abort', abort); await reader.cancel().catch(() => {}); }
 }
-export function createVideoStorage() {
+export function createVideoStorage(options: { signal?: AbortSignal; guard?: () => Promise<void> } = {}) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL; const key = process.env.SUPABASE_SECRET_KEY;
   if (url !== 'https://fyqvvkpzcwrmyozxlqkw.supabase.co' || !key) throw new GenerationError('unavailable');
   const client = createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }, global: {
     fetch: async (input, init) => {
-      const response = await fetch(input, { ...init, cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(120_000) });
+      const deadline = AbortSignal.timeout(120_000);
+      const response = await fetch(input, { ...init, cache: 'no-store', redirect: 'error', signal: options.signal ? AbortSignal.any([options.signal, deadline]) : deadline });
       // Bound SDK download buffering even if an unexpected large object exists.
       if ((init?.method ?? 'GET') === 'GET' && response.body && response.ok) {
         const reader = response.body.getReader(); let total = 0;
@@ -83,7 +84,18 @@ export function createVideoStorage() {
     if (!data || data.size > VIDEO_MAX_BYTES || data.type.split(';')[0] !== 'video/mp4') throw new GenerationError('video_unavailable');
     const bytes = new Uint8Array(await data.arrayBuffer()); validateMp4(bytes); return bytes;
   }
-  return { async ensure(userId: string, id: string, signal: AbortSignal): Promise<Uint8Array> {
+  return {
+    async readStored(userId: string, id: string, signal: AbortSignal): Promise<Uint8Array> {
+      if (!UUID.test(userId) || !UUID.test(id)) throw new GenerationError('not_found', 404);
+      signal.throwIfAborted();
+      const current = await info('read', userId, id);
+      if (!current.stored) throw new GenerationError('not_ready', 409);
+      const bytes = await download(current.objectPath, id);
+      signal.throwIfAborted(); unexpired(current.expiresAt);
+      if (!bytes || bytes.length !== current.sizeBytes) throw new GenerationError('video_unavailable');
+      return bytes;
+    },
+    async ensure(userId: string, id: string, signal: AbortSignal): Promise<Uint8Array> {
     if (!UUID.test(userId) || !UUID.test(id)) throw new GenerationError('not_found', 404);
     let stage = 'video_metadata_read';
     const started = performance.now();
@@ -103,6 +115,7 @@ export function createVideoStorage() {
         bytes = await readProviderVideo(response, signal, current.expiresAt);
         unexpired(current.expiresAt); if (signal.aborted) throw new GenerationError('video_unavailable');
         stage = 'video_storage_upload';
+        await options.guard?.();
         const { error } = await bucket.upload(current.objectPath, bytes, { contentType: 'video/mp4', cacheControl: '0', upsert: false });
         if (error) {
           const diagnostic = error as { status?: number; statusCode?: string };
@@ -113,6 +126,7 @@ export function createVideoStorage() {
       }
       if (signal.aborted) throw new GenerationError('video_unavailable');
       stage = current.stored ? 'video_metadata_read' : 'video_metadata_mark';
+      await options.guard?.();
       const final = await info(current.stored ? 'read' : 'mark', userId, id, bytes.length);
       if (!final.stored || final.sizeBytes !== bytes.length) throw new GenerationError('video_unavailable');
       return bytes;
