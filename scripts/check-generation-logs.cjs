@@ -30,6 +30,18 @@ const secret='PRIVATE-SENTINEL-prompt-api-key-email-image';
  assert.equal(records.at(-1).sqlState,'42501');assert.equal(records.at(-1).storageCode,undefined);
  generationLog('playback_request',{requestId:id,httpStatus:200});
  assert.equal(records.at(-1).result,'ok');assert.equal(records.at(-1).httpStatus,200);
+ const blocked='abcdefghijklmnopqrst.supabase.co';
+ const redirected=createNexabotClient({apiKey:'nxb_PRIVATE',fetcher:async()=>new Response(null,{status:307,headers:{location:'https://'+blocked+'/private-path?token='+secret}})});
+ await assert.rejects(observeGeneration('video_provider_download',id,()=>redirected.downloadVideo('fixture')),e=>e.code==='UNSAFE_DOWNLOAD_REDIRECT');
+ assert.equal(records.at(-1).redirectHost,blocked);assert.equal(records.at(-1).redirectFromHost,'nexabot.id');assert.equal(records.at(-1).redirectReason,'unapproved_origin');assert.equal(records.at(-1).redirectHop,1);
+ const malformed=new NexabotError('UNSAFE_DOWNLOAD_REDIRECT','read',{kind:'invalid_response',redirect:{reason:'unapproved_origin',fromHost:'nexabot.id/'+secret,toHost:'https://'+blocked+'/?token='+secret,hop:9,url:secret}});
+ generationLog('video_finalize',{requestId:id,error:malformed});assert.equal(records.at(-1).redirectHost,undefined);assert.equal(records.at(-1).redirectFromHost,undefined);assert.equal(records.at(-1).redirectHop,undefined);
+ for(const toHost of ['nexabot.id\n','nexabot.id:443','nexabot.id?token='+secret,'nexabot.id/'+secret]){generationLog('video_finalize',{error:new NexabotError('UNSAFE_DOWNLOAD_REDIRECT','read',{kind:'invalid_response',redirect:{reason:'unapproved_origin',toHost}})});assert.equal(records.at(-1).redirectHost,undefined);}
+ const badReason=new NexabotError('UNSAFE_DOWNLOAD_REDIRECT','read',{kind:'invalid_response',redirect:{reason:secret,fromHost:'nexabot.id',toHost:blocked,hop:1}});
+ generationLog('video_finalize',{requestId:id,error:badReason});assert.equal(records.at(-1).redirectReason,undefined);assert.equal(records.at(-1).redirectHost,undefined);
+ process.env.NEXABOT_DOWNLOAD_ORIGINS=secret;
+ try{createNexabotClient({apiKey:'nxb_PRIVATE'});}catch(e){generationLog('video_finalize',{error:e});}finally{delete process.env.NEXABOT_DOWNLOAD_ORIGINS;}
+ assert.equal(records.at(-1).redirectReason,'invalid_origin_config');assert.equal(records.at(-1).redirectHost,undefined);
  assert.ok(!JSON.stringify(records).includes(secret));assert.ok(!JSON.stringify(records).includes('private-user'));assert.ok(!JSON.stringify(records).includes('nxb_PRIVATE'));
  console.info=()=>{throw new Error('log sink unavailable');};assert.equal(await observeGeneration('provider_credit',id,async()=>42,true),42);await assert.rejects(observeGeneration('provider_submit',id,async()=>{throw unknownError;}),e=>e===unknownError);
-}finally{console.info=original;}console.log('PASS generation logs: actual provider timeout/network/HTTP/invalid response; request correlation; unknown transition; accepted job survives persistence failure; no POST retry; redaction; failing log sink preserves outcome');})().catch(e=>{console.info=original;console.error(e);process.exitCode=1;});
+}finally{console.info=original;}console.log('PASS generation logs: provider errors, request correlation, no POST retry, redacted redirect hosts/reasons/hops, invalid diagnostic rejection and failing log sink preserves outcome');})().catch(e=>{console.info=original;console.error(e);process.exitCode=1;});

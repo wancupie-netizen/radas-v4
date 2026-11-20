@@ -75,7 +75,7 @@ export function startFinalization() {
       const runner = createFinalizationRunner({ client: createFinalizationClient(), provider: createNexabotClient(), store: createGenerationStore(),
         storage: (signal, guard) => createVideoStorage({ signal, guard }) });
       await runner.tick();
-    } catch { generationLog('video_finalize', { error: new GenerationError('unavailable') }); }
+    } catch (error) { generationLog('video_finalize', { error }); }
     finally { const timer = setTimeout(tick, 4000); timer.unref(); }
   };
   const timer = setTimeout(tick, 1000); timer.unref();

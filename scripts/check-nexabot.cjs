@@ -137,4 +137,18 @@ async function failure(fn, code, outcome) { await assert.rejects(fn, e => e inst
   await c.downloadVideo('abc');assert.equal(extraHops,2);delete process.env.NEXABOT_DOWNLOAD_ORIGINS;
   console.log('PASS explicit configurable origins and invalid configuration fail closed; credentials withheld');
 
+  const approved='https://bwcqhtntrfntnkjokihp.supabase.co',unapproved='https://abcdefghijklmnopqrst.supabase.co',privateQuery='?token=PRIVATE_SIGNED_QUERY';
+  for(const [location,reason] of [[unapproved+'/file'+privateQuery,'unapproved_origin'],['http://bwcqhtntrfntnkjokihp.supabase.co/file','non_https'],['https://user:password@bwcqhtntrfntnkjokihp.supabase.co/file','credentials'],[approved+':444/file','custom_port'],['https://[invalid','invalid_location'],[null,'missing_location']]){
+    let count=0;const test=client(()=>{count++;return new Response(null,{status:307,headers:location?{location}:{}});});
+    await assert.rejects(test.downloadVideo('abc'),e=>e.code==='UNSAFE_DOWNLOAD_REDIRECT'&&e.diagnostic.redirect.reason===reason&&e.diagnostic.redirect.fromHost==='nexabot.id'&&e.diagnostic.redirect.hop===1&&!JSON.stringify(e.diagnostic).includes('PRIVATE_SIGNED_QUERY')&&!JSON.stringify(e.diagnostic).includes('password'));
+    assert.equal(count,1,'A rejected destination must never be fetched');
+  }
+  let count=0;const escape=client((_url,init)=>{count++;if(count>1)assert.equal(new Headers(init.headers).has('x-api-key'),false);return new Response(null,{status:count===1?307:302,headers:{location:(count===1?approved:unapproved)+'/file'+privateQuery}});});
+  await assert.rejects(escape.downloadVideo('abc'),e=>e.diagnostic.redirect.hop===2&&e.diagnostic.redirect.fromHost===new URL(approved).hostname&&e.diagnostic.redirect.toHost===new URL(unapproved).hostname&&e.diagnostic.httpStatus===302&&e.diagnostic.transport.httpStatus===302);assert.equal(count,2);
+  count=0;const loop=client(()=>{count++;return new Response(null,{status:307,headers:{location:approved+'/loop'+privateQuery}});});
+  await assert.rejects(loop.downloadVideo('abc'),e=>e.code==='UNSAFE_DOWNLOAD_REDIRECT'&&e.diagnostic.redirect.reason==='redirect_limit'&&e.diagnostic.redirect.hop===3);assert.equal(count,4,'At most three redirects after the original request');
+  process.env.NEXABOT_DOWNLOAD_ORIGINS='invalid-json';assert.throws(()=>createNexabotClient({apiKey:key}),e=>e.diagnostic.redirect.reason==='invalid_origin_config');delete process.env.NEXABOT_DOWNLOAD_ORIGINS;
+  count=0;await failure(()=>client(()=>{count++;return reply({error:'expired'},410);}).downloadVideo('abc'),'HTTP_410','read');assert.equal(count,1);
+  console.log('PASS redacted redirect reasons/hostnames/hops, malformed Location, three-hop limit and GET-only expired result; no rejected destination fetch or paid POST retry');
+
 })().catch(error => { console.error(error); process.exitCode = 1; });

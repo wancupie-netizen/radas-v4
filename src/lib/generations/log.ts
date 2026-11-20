@@ -2,6 +2,8 @@ import 'server-only';
 import { NexabotError, type TransportDiagnostic } from '../nexabot/client';
 import { GenerationError } from './input';
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const HOSTNAME = /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)*[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/;
+const redirectReasons = new Set(['invalid_origin_config','missing_location','invalid_location','credentials','non_https','custom_port','unapproved_origin','redirect_limit']);
 const stages = new Set(['video_finalize','request_auth','request_input','request_submit','request_status','database_read','database_reserve','database_claim','database_cancel','database_transition','database_poll','database_reconcile','provider_transport','provider_credit','provider_submit','provider_poll','generation_outcome','playback_request','video_metadata_read','video_storage_read','video_generation_read','video_provider_download','video_provider_body','video_storage_upload','video_metadata_mark']);
 const codes = new Set(['video_unavailable','not_ready','unavailable','unauthorized','forbidden','generation_disabled','rate_limited','invalid_input','invalid_image','image_too_large','insufficient_credits','active_generation','request_conflict','not_found','expired','provider_unavailable','TIMEOUT','INVALID_INPUT','MISSING_OR_INVALID_KEY','INVALID_OR_UNAVAILABLE_RESPONSE','UNSAFE_DOWNLOAD_REDIRECT']);
 type Entry = { requestId?: string; error?: unknown; durationMs?: number; providerJobId?: string | null; status?: string; sqlState?: string; transport?: TransportDiagnostic; httpStatus?: number; storageCode?: string };
@@ -26,6 +28,13 @@ export function generationLog(stage: string, entry: Entry = {}) {
       if (error.diagnostic) {
         if (['timeout','network','http','invalid_response'].includes(error.diagnostic.kind)) record.kind = error.diagnostic.kind;
         if (Number.isInteger(error.diagnostic.httpStatus) && error.diagnostic.httpStatus! >= 100 && error.diagnostic.httpStatus! <= 599) record.httpStatus = error.diagnostic.httpStatus!;
+        const redirect = error.diagnostic.redirect;
+        if (error.code === 'UNSAFE_DOWNLOAD_REDIRECT' && redirect && redirectReasons.has(redirect.reason)) {
+          record.redirectReason = redirect.reason;
+          if (typeof redirect.fromHost === 'string' && redirect.fromHost === redirect.fromHost.trim() && HOSTNAME.test(redirect.fromHost)) record.redirectFromHost = redirect.fromHost;
+          if (typeof redirect.toHost === 'string' && redirect.toHost === redirect.toHost.trim() && HOSTNAME.test(redirect.toHost)) record.redirectHost = redirect.toHost;
+          if (Number.isInteger(redirect.hop) && redirect.hop! >= 1 && redirect.hop! <= 3) record.redirectHop = redirect.hop!;
+        }
       }
     } else if (error) record.code = 'unavailable';
     if (Number.isInteger(entry.httpStatus) && entry.httpStatus! >= 100 && entry.httpStatus! <= 599) record.httpStatus = entry.httpStatus!;

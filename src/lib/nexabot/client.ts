@@ -13,17 +13,18 @@ function downloadOrigins(): ReadonlySet<string> {
   const raw = process.env.NEXABOT_DOWNLOAD_ORIGINS;
   if (!raw) return new Set(DEFAULT_DOWNLOAD_ORIGINS);
   let extra: unknown;
-  try { extra = JSON.parse(raw); } catch { throw new NexabotError('UNSAFE_DOWNLOAD_REDIRECT'); }
+  try { extra = JSON.parse(raw); } catch { throw new NexabotError('UNSAFE_DOWNLOAD_REDIRECT', 'read', { kind: 'invalid_response', redirect: { reason: 'invalid_origin_config' } }); }
   // Explicit project origins only: no wildcard, path, query, userinfo or custom port.
-  if (!Array.isArray(extra) || extra.length > 20 || extra.some(value => typeof value !== 'string' || !/^https:\/\/[a-z0-9]{20}\.supabase\.co$/.test(value))) throw new NexabotError('UNSAFE_DOWNLOAD_REDIRECT');
+  if (!Array.isArray(extra) || extra.length > 20 || extra.some(value => typeof value !== 'string' || !/^https:\/\/[a-z0-9]{20}\.supabase\.co$/.test(value))) throw new NexabotError('UNSAFE_DOWNLOAD_REDIRECT', 'read', { kind: 'invalid_response', redirect: { reason: 'invalid_origin_config' } });
   return new Set([...DEFAULT_DOWNLOAD_ORIGINS, ...extra]);
 }
 export type JobStatus = 'queued' | 'processing' | 'done' | 'failed';
 export type VideoRequest = { prompt: string; orientation: VideoOrientation; resolution: VideoResolution } &
   ({ mode: 'text'; imageDataUris?: never } | { mode: 'image' | 'ingredients'; imageDataUris: string[] });
 export type TransportDiagnostic = { phase: 'before_headers' | 'response_body' | 'complete'; payloadBytes: number; imageCount: number; imageBytes: number[]; mode?: 't2v' | 'sfv' | 'i2v'; headerMs?: number; httpStatus?: number };
+export type RedirectDiagnostic = { reason: 'invalid_origin_config' | 'missing_location' | 'invalid_location' | 'credentials' | 'non_https' | 'custom_port' | 'unapproved_origin' | 'redirect_limit'; fromHost?: string; toHost?: string; hop?: number };
 export class NexabotError extends Error {
-  constructor(public readonly code: string, public readonly outcome: 'rejected' | 'unknown' | 'read' = 'read', public diagnostic?: { kind: 'timeout' | 'network' | 'http' | 'invalid_response'; httpStatus?: number; transport?: TransportDiagnostic }) {
+  constructor(public readonly code: string, public readonly outcome: 'rejected' | 'unknown' | 'read' = 'read', public diagnostic?: { kind: 'timeout' | 'network' | 'http' | 'invalid_response'; httpStatus?: number; transport?: TransportDiagnostic; redirect?: RedirectDiagnostic }) {
     super(`NexaBot: ${code}`); this.name = 'NexabotError';
   }
 }
@@ -82,26 +83,40 @@ export function createNexabotClient(options: { apiKey?: string; fetcher?: typeof
     let received = false;
     const timer = setTimeout(() => controller.abort(), method === 'POST' ? submitTimeoutMs : timeoutMs);
     try {
-      let response = await fetcher(BASE + path, { method, cache: 'no-store', redirect: 'manual', signal: controller.signal,
+      let currentUrl = BASE + path;
+      let response = await fetcher(currentUrl, { method, cache: 'no-store', redirect: 'manual', signal: controller.signal,
         headers: { 'x-api-key': key!, ...(body ? { 'Content-Type': 'application/json' } : {}) },
         ...(body ? { body: serialized } : {}) });
       received = true; responseStatus = response.status;
       transport.phase = 'response_body'; transport.headerMs = Math.round(performance.now() - started); transport.httpStatus = response.status;
       // Only NexaBot receives the API key, including on download redirects.
       if (method === 'GET' && path.endsWith('/download')) {
+        const unsafe = (reason: RedirectDiagnostic['reason'], hop: number, target?: URL): never => {
+          // Keep only hostnames and a fixed reason. Never retain Location, path, query or userinfo.
+          throw new NexabotError('UNSAFE_DOWNLOAD_REDIRECT', 'read', { kind: 'invalid_response', httpStatus: response.status,
+            redirect: { reason, fromHost: new URL(currentUrl).hostname, ...(target?.hostname ? { toHost: target.hostname } : {}), hop } });
+        };
         for (let hop = 0; response.status >= 300 && response.status < 400 && hop < 3; hop++) {
           const location = response.headers.get('location');
           await response.body?.cancel();
-          if (!location) throw new NexabotError('UNSAFE_DOWNLOAD_REDIRECT');
-          const target = new URL(location, response.url || BASE + path);
+          if (!location) return unsafe('missing_location', hop + 1);
+          let target: URL;
+          try { target = new URL(location, currentUrl); } catch { return unsafe('invalid_location', hop + 1); }
+          if (target.username || target.password) unsafe('credentials', hop + 1, target);
+          if (target.protocol !== 'https:') unsafe('non_https', hop + 1, target);
+          if (target.port) unsafe('custom_port', hop + 1, target);
           const isNexabot = target.origin === BASE;
-          if ((!isNexabot && !DOWNLOAD_ORIGINS.has(target.origin)) || target.username || target.password) {
-            throw new NexabotError('UNSAFE_DOWNLOAD_REDIRECT');
-          }
-          response = await fetcher(target.href, {
+          if (!isNexabot && !DOWNLOAD_ORIGINS.has(target.origin)) unsafe('unapproved_origin', hop + 1, target);
+          currentUrl = target.href;
+          response = await fetcher(currentUrl, {
             method: 'GET', cache: 'no-store', redirect: 'manual', signal: controller.signal,
             headers: isNexabot ? { 'x-api-key': key! } : undefined,
           });
+          responseStatus = response.status; transport.httpStatus = response.status;
+        }
+        if (response.status >= 300 && response.status < 400) {
+          await response.body?.cancel();
+          unsafe('redirect_limit', 3);
         }
       }
       if (!response.ok) {
