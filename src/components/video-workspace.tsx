@@ -7,6 +7,7 @@ import type { AuthState } from '@/lib/auth/input';
 import { parseSnapshot, type CreditSnapshot } from '@/lib/credits/types';
 import { VideoStudio } from '@/components/video-studio';
 import { PaymentPanel } from '@/components/payment-panel';
+import { HooksPromptsPanel } from '@/components/hooks-prompts-panel';
 import { DashboardPanel } from '@/components/dashboard-panel';
 import { AffiliatePanel } from '@/components/affiliate-panel';
 import { requestJson, RequestError } from '@/lib/errors/client';
@@ -48,13 +49,13 @@ export function VideoWorkspace({ accountEmail, accountName = '', initialCredits,
   return <div className="app-shell" lang="en">
     <aside className="sidebar" aria-label="Main navigation">
       <Brand href="/studio" english/>
-      <div className="nav-group"><span className="eyebrow">WORKSPACE</span><button className={`nav-item ${tab==='dashboard'?'active':''}`} aria-pressed={tab==='dashboard'} onClick={()=>setTab('dashboard')}><span aria-hidden="true">⌂</span>Dashboard</button><button className={`nav-item ${tab==='video'?'active':''}`} aria-pressed={tab==='video'} onClick={()=>setTab('video')}><span aria-hidden="true">▣</span>Create Video</button><button className={`nav-item ${tab==='affiliate'?'active':''}`} aria-pressed={tab==='affiliate'} onClick={()=>setTab('affiliate')}><span aria-hidden="true">◇</span>Affiliate Products</button></div>
+      <div className="nav-group"><span className="eyebrow">WORKSPACE</span><button className={`nav-item ${tab==='dashboard'?'active':''}`} aria-pressed={tab==='dashboard'} onClick={()=>setTab('dashboard')}><span aria-hidden="true">⌂</span>Dashboard</button><button className={`nav-item ${tab==='video'?'active':''}`} aria-pressed={tab==='video'} onClick={()=>setTab('video')}><span aria-hidden="true">▣</span>Create Video</button><button className={`nav-item ${tab==='affiliate'?'active':''}`} aria-pressed={tab==='affiliate'} onClick={()=>setTab('affiliate')}><span aria-hidden="true">◇</span>Affiliate Products</button><button className={`nav-item ${tab==='hooks-prompts'?'active':''}`} aria-pressed={tab==='hooks-prompts'} onClick={()=>setTab('hooks-prompts')}><span aria-hidden="true">▤</span>Hook &amp; Prompt</button></div>
       <div className="nav-group"><a className="nav-item" href="/updates"><span aria-hidden="true">◉</span>Updates &amp; Support</a></div><div className="nav-group"><span className="eyebrow">ACCOUNT</span><button className="nav-item" onClick={() => creditDialog.current?.showModal()}><span aria-hidden="true">◈</span>Credits</button><button className="nav-item" onClick={topUp}><span aria-hidden="true">＋</span>Top Up</button></div>
       <div className="sidebar-bottom"><div className="package-card"><span className="eyebrow">START WITH RM8</span><strong>60 video credits</strong><p>Top up whenever you need.</p><button onClick={topUp}>Top Up Credits</button></div><button className="nav-item" onClick={() => profile.current?.showModal()}>Profile</button><form action={logoutAction}><button className="nav-item" type="submit" disabled={logoutPending}>{logoutPending ? "Logging out…" : "Logout"}</button></form></div>
     </aside>
     <main>
-      <header className="topbar"><span>{tab==='dashboard'?'Dashboard':tab==='video'?'Create Video':"Affiliate Products"}</span><div className="header-actions"><span className="balance">Credits: <strong>{credits.status === 'ready' ? credits.balance : '—'}</strong></span><button className="primary small" onClick={topUp}>Top Up</button></div></header>
-      <nav className="mobile-workspace-nav" aria-label="Workspace"><button className="secondary" aria-pressed={tab==='dashboard'} onClick={()=>setTab('dashboard')}>Dashboard</button><button className="secondary" aria-pressed={tab==='video'} onClick={()=>setTab('video')}>Create Video</button><button className="secondary" aria-pressed={tab==='affiliate'} onClick={()=>setTab('affiliate')}>Affiliate Products</button><a className="secondary" href="/updates">Updates &amp; Support</a></nav>
+      <header className="topbar"><span>{tab==='dashboard'?'Dashboard':tab==='video'?'Create Video':tab==='hooks-prompts'?'Hook & Prompt':"Affiliate Products"}</span><div className="header-actions"><span className="balance">Credits: <strong>{credits.status === 'ready' ? credits.balance : '—'}</strong></span><button className="primary small" onClick={topUp}>Top Up</button></div></header>
+      <nav className="mobile-workspace-nav" aria-label="Workspace"><button className="secondary" aria-pressed={tab==='dashboard'} onClick={()=>setTab('dashboard')}>Dashboard</button><button className="secondary" aria-pressed={tab==='video'} onClick={()=>setTab('video')}>Create Video</button><button className="secondary" aria-pressed={tab==='affiliate'} onClick={()=>setTab('affiliate')}>Affiliate Products</button><button className="secondary" aria-pressed={tab==='hooks-prompts'} onClick={()=>setTab('hooks-prompts')}>Hook &amp; Prompt</button><a className="secondary" href="/updates">Updates &amp; Support</a></nav>
       <div className="mobile-account"><button onClick={() => profile.current?.showModal()}>Profile</button><form action={logoutAction}><button type="submit" disabled={logoutPending}>{logoutPending ? "Logging out…" : "Logout"}</button></form></div>
       <div className="workspace">
         <div className="studio-motion" hidden={tab!=='video'}>
@@ -62,6 +63,7 @@ export function VideoWorkspace({ accountEmail, accountName = '', initialCredits,
         <VideoStudio credits={credits} generationEnabled={generationEnabled} onCreditsChanged={refreshCredits} />
         </div>
         {tab==='dashboard' && <DashboardPanel/>}
+        {tab==='hooks-prompts' && <HooksPromptsPanel/>}
         {tab==='affiliate' && <AffiliatePanel accountName={accountName}/>}
         {logoutState.error && <p className="notice" role="alert">{logoutState.error}</p>}
         <footer className="workspace-footer"><span>RADAS AI VIDEO</span><span>RM8 / 60 credits · 1 credit / generation</span></footer>

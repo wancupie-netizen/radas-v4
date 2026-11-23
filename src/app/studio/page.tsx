@@ -8,7 +8,7 @@ import { hasSupabaseConfig } from '@/lib/supabase/settings';
 type Search = Promise<{ [key:string]:string|string[]|undefined }>;
 export async function generateMetadata({ searchParams }: { searchParams:Search }): Promise<Metadata> {
   const {tab}=await searchParams;
-  return {title:tab==='dashboard'?'RADAS — Dashboard':tab==='affiliate'?'RADAS — Affiliate Products':'RADAS — Create Video'};
+  return {title:tab==='dashboard'?'RADAS — Dashboard':tab==='affiliate'?'RADAS — Affiliate Products':tab==='hooks-prompts'?'RADAS — Hook & Prompt':'RADAS — Create Video'};
 }
 export const dynamic = 'force-dynamic';
 export default async function Page({searchParams}: {searchParams:Search}) {
@@ -22,6 +22,6 @@ export default async function Page({searchParams}: {searchParams:Search}) {
   if (!user) redirect('/login');
   const credits = await getCreditSnapshot(supabase);
   const {tab}=await searchParams;
-  const initialTab=tab==='dashboard'||tab==='affiliate'?tab:'video';
+  const initialTab=tab==='dashboard'||tab==='affiliate'||tab==='hooks-prompts'?tab:'video';
   return <VideoWorkspace initialTab={initialTab} accountEmail={user.email || ''} accountName={accountDisplayName(user.user_metadata?.name)} initialCredits={credits} generationEnabled={process.env.RADAS_GENERATION_ENABLED === 'true'} />;
 }

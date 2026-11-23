@@ -1,10 +1,10 @@
 export type CatalogLocation = { page: number; query: string; category: string; onlyDrafts: boolean };
 export const CATALOG_PAGE_SIZE = 9;
-export type StudioTab = 'video' | 'affiliate' | 'dashboard';
+export type StudioTab = 'video' | 'affiliate' | 'dashboard' | 'hooks-prompts';
 
 export function readStudioTab(url: URL): StudioTab {
  const tab=url.searchParams.get('tab');
- return tab === 'affiliate' || tab === 'dashboard' ? tab : 'video';
+ return tab === 'affiliate' || tab === 'dashboard' || tab === 'hooks-prompts' ? tab : 'video';
 }
 
 export function writeStudioTab(url: URL, tab: StudioTab): string {
