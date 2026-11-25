@@ -3,6 +3,7 @@ let states=[],cursor=0;
 function load(file){file=path.resolve(file);const m=new Module(file);m.filename=file;const native=Module.createRequire(file);m.require=name=>{
  if(name==='react')return {...native(name),useEffect:()=>{},useState:initial=>[states[cursor++]??initial,()=>{}]};
  if(name.endsWith('.css'))return {};
+ if(name==='./generation-timer')return {GenerationTimer:()=>null};
  if(name==='./generation-wait')return {GenerationWait:()=>null};
  if(name==='@/lib/generations/types')return load('src/lib/generations/types.ts');
  return native(name);

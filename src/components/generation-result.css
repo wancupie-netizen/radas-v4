@@ -14,3 +14,6 @@
 .generation-wait ol { margin: 0; padding-inline-start: 1.5rem; text-align: left; line-height: 1.6; }
 .generation-wait li + li { margin-top: 0.5rem; }
 .generation-wait code { overflow-wrap: anywhere; }
+
+.generation-elapsed { margin: 12px auto; font-size: 0.95rem; color: var(--muted, #a0bbc0); }
+.generation-elapsed [role="timer"] { display: inline-block; min-width: 3.6em; font-variant-numeric: tabular-nums; font-weight: 600; color: var(--accent, #00c5bd); }

@@ -5,6 +5,8 @@ import Image from 'next/image';
 import './ingredients.css';
 import { requestJson, RequestError, generationIssue } from '@/lib/errors/client';
 import { GenerationResult } from './generation-result';
+import {GenerationTimer} from './generation-timer';
+import {parseTiming,type GenerationClock} from '@/lib/generations/timing';
 import { RecentHistory } from './recent-history';
 import { pruneRecent, rememberRecent, type RecentDetails, type RecentVideo } from '@/lib/history/recent';
 import { emptyAttemptSummary, observeAttempt } from '@/lib/generations/guidance';
@@ -66,12 +68,17 @@ export function VideoStudio({ credits, generationEnabled, onCreditsChanged }: { 
     return () => { clearTimeout(timer); document.removeEventListener('visibilitychange', visible); };
   }, [history]);
   const [generation, setGeneration] = useState<Generation | null>(null);
+  const [restorePhase,setRestorePhase]=useState<'loading'|'ready'|'error'>('loading');
+  const [restoreAttempt,setRestoreAttempt]=useState(0);
+  const [initialClock,setInitialClock]=useState<GenerationClock|undefined>(undefined);
+  const [requestClock,setRequestClock]=useState<{id:string;started:number}|null>(null);
+  const currentGeneration=useRef(generation);currentGeneration.current=generation;
   const [submitting, setSubmitting] = useState(false);
   const [flowError, setFlowError] = useState('');
   const [pollAttempt, setPollAttempt] = useState(0);
   const pending = useRef<{ id: string; form: FormData; attempted: boolean } | null>(null);
   const submittingNow = useRef(false);
-  const locked = submitting || Boolean(pending.current) || Boolean(generation && !canGenerateAgain(generation));
+  const locked = restorePhase!=='ready' || submitting || Boolean(pending.current) || Boolean(generation && !canGenerateAgain(generation));
   const [mode, setMode] = useState<VideoMode>('text');
   const [orientation, setOrientation] = useState<VideoOrientation>('portrait');
   const [resolution, setResolution] = useState<VideoResolution>('720');
@@ -98,6 +105,22 @@ export function VideoStudio({ credits, generationEnabled, onCreditsChanged }: { 
     if (!item || Date.parse(item.generation.expiresAt) <= Date.now()) { setHistory(previous => pruneRecent(previous, Date.now())); return; }
     setSelectedHistoryId(id); previewPanel.current?.scrollIntoView({ block: 'nearest' });
   }
+
+  useEffect(()=>{
+    if(!generationEnabled){setRestorePhase('ready');return;}
+    const controller=new AbortController();let alive=true;setRestorePhase('loading');
+    void(async()=>{try{
+      const item=parseTiming(await requestJson('/api/generations/timing',{signal:controller.signal}));
+      if(!alive)return;
+      if(item&&!submittingNow.current&&!pending.current&&!currentGeneration.current){
+        details.current={id:item.id,prompt:item.prompt,mode:item.mode,orientation:item.orientation,resolution:item.resolution};
+        setMode(item.mode);setOrientation(item.orientation);setResolution(item.resolution);setPrompts(previous=>({...previous,[item.mode]:item.prompt}));
+        setInitialClock(item.clock);setGeneration(item.generation);
+      }
+      setRestorePhase('ready');
+    }catch(error){if(!alive)return;if(error instanceof RequestError&&error.status===401){window.location.assign('/login');return;}setRestorePhase('error');}})();
+    return()=>{alive=false;controller.abort();};
+  },[generationEnabled,restoreAttempt]);
 
   useEffect(() => () => { selection.current += 1; }, []);
   const refreshCredits = useRef(onCreditsChanged);
@@ -137,7 +160,7 @@ export function VideoStudio({ credits, generationEnabled, onCreditsChanged }: { 
   }, [generation?.id, generation?.status, generation?.releasedAt]);
 
   async function generate() {
-    if (submittingNow.current || !generationEnabled || (generation && !canGenerateAgain(generation))) return;
+    if (restorePhase!=='ready' || submittingNow.current || !generationEnabled || (generation && !canGenerateAgain(generation))) return;
     if (!pending.current) {
       setTouched(previous => ({ ...previous, [mode]: true }));
       if (validatePrompt(prompt) || readingImage || (mode !== 'text' && images.length === 0)) return;
@@ -147,6 +170,7 @@ export function VideoStudio({ credits, generationEnabled, onCreditsChanged }: { 
       form.set('orientation', orientation); form.set('resolution', resolution);
       if (mode !== 'text') for (const image of images) form.append('image', image.file);
       pending.current = { id, form, attempted: false };
+      setRequestClock({id,started:performance.now()});setInitialClock(undefined);
     }
     submittingNow.current = true; setSubmitting(true); setFlowError(''); setGeneration(null); setSelectedHistoryId(null);
     try {
@@ -170,7 +194,7 @@ export function VideoStudio({ credits, generationEnabled, onCreditsChanged }: { 
     finally { submittingNow.current = false; setSubmitting(false); }
   }
 
-  function again() { setSelectedHistoryId(null); details.current = null; setGeneration(null); pending.current = null; setFlowError(''); }
+  function again() { setRequestClock(null);setInitialClock(undefined);setSelectedHistoryId(null); details.current = null; setGeneration(null); pending.current = null; setFlowError(''); }
 
   useEffect(() => () => { for (const image of [...imagesRef.current.image, ...imagesRef.current.ingredients]) URL.revokeObjectURL(image.url); }, []);
 
@@ -263,8 +287,10 @@ export function VideoStudio({ credits, generationEnabled, onCreditsChanged }: { 
         <p id="prompt-help" className="input-help">{mode === 'image' ? "Describe the subject and camera movement." : mode === 'ingredients' ? "Describe each image’s role, the setting and the movement you want." : 'Describe the subject, setting and camera movement.'}</p>
         {promptError && <p id="prompt-error" className="input-error" role="alert">{promptError}</p>}
         </fieldset>
-        <button className="primary generate" type="submit" disabled={!generationEnabled || submitting || Boolean(generation && !canGenerateAgain(generation)) || (!pending.current && (credits.status !== 'ready' || credits.balance < 1 || Boolean(validatePrompt(prompt)) || readingImage || (mode !== 'text' && images.length === 0)))} aria-describedby="generation-note">{submitting ? 'Preparing…' : pending.current ? "Check request again" : 'Generate Video'} <span>· {PRODUCT.creditsPerGeneration} Credit</span></button>
+        <button className="primary generate" type="submit" disabled={!generationEnabled || restorePhase!=='ready' || submitting || Boolean(generation && !canGenerateAgain(generation)) || (!pending.current && (credits.status !== 'ready' || credits.balance < 1 || Boolean(validatePrompt(prompt)) || readingImage || (mode !== 'text' && images.length === 0)))} aria-describedby="generation-note">{submitting ? 'Preparing…' : pending.current ? "Check request again" : 'Generate Video'} <span>· {PRODUCT.creditsPerGeneration} Credit</span></button>
         <p id="generation-note" className="phase-note">{generationEnabled ? 'Each generation uses 1 credit. Download your video once it’s ready.' : "Video generation is not enabled. No credits have been used."}</p>
+        {restorePhase==='loading'&&<p className="phase-note" role="status">Checking your current video request…</p>}
+        {restorePhase==='error'&&<div className="input-error" role="status">Your current request could not be checked. Check it before starting another video.<button type="button" className="secondary" onClick={()=>setRestoreAttempt(value=>value+1)}>Check current request</button></div>}
         {flowError && <div className="input-error" role="alert">{flowError}{pending.current && <p>Request reference: <code>{pending.current.id}</code></p>}{generation && <button type="button" className="secondary" onClick={() => { setFlowError(''); setPollAttempt(previous => previous + 1); }}>Check status again</button>}</div>}
         {credits.status === 'unavailable' ? <p className="phase-note">Your balance is currently unavailable. Please check again in Credits.</p> : credits.balance === 0 ? <p className="phase-note">Your balance is 0 credits.</p> : null}
       </form>
@@ -273,7 +299,7 @@ export function VideoStudio({ credits, generationEnabled, onCreditsChanged }: { 
     <section ref={previewPanel} className="preview panel" aria-label="Video preview">
       <div className="panel-heading"><span className="step">02</span><h2>Preview</h2><span className="preview-meta">{ratio} · {previewResolution}p</span></div>
       <div className="preview-stage">
-        {previewGeneration ? <GenerationResult key={previewGeneration.id} generation={previewGeneration} consecutiveUnknown={attemptSummary.consecutiveUnknown} usesImages={previewDetails?.mode !== 'text'} onAgain={selectedHistory ? () => setSelectedHistoryId(null) : again} againLabel={selectedHistory ? "Close history preview" : 'Generate Again'} /> : mode !== 'text' && images.length > 0 ? <>
+        {previewGeneration ? <GenerationResult key={previewGeneration.id} generation={previewGeneration} initialClock={previewGeneration.id===generation?.id?initialClock:undefined} provisionalStartedAt={requestClock?.id===previewGeneration.id?requestClock.started:undefined} consecutiveUnknown={attemptSummary.consecutiveUnknown} usesImages={previewDetails?.mode !== 'text'} onAgain={selectedHistory ? () => setSelectedHistoryId(null) : again} againLabel={selectedHistory ? "Close history preview" : 'Generate Again'} /> : pending.current ? <div className="generation-result"><h3>{submitting?'Preparing…':'Checking request…'}</h3><GenerationTimer key={pending.current.id} id={pending.current.id} provisionalStartedAt={requestClock?.id===pending.current.id?requestClock.started:undefined} /></div> : mode !== 'text' && images.length > 0 ? <>
           <div className={mode === 'image' ? `source-preview ${orientation}` : 'ingredients-preview'}>{mode === 'image' ? <Image src={images[0].url} alt="Source image preview" fill unoptimized sizes="(max-width: 820px) 85vw, 440px" /> : images.map((image, index) => <figure key={image.url}><div className="ingredient-preview-image"><Image src={image.url} alt={`Reference image preview ${index + 1}`} fill unoptimized sizes="(max-width: 820px) 28vw, 150px" /></div><figcaption>Img {index + 1}</figcaption></figure>)}</div>
           <h3>{mode === 'image' ? 'Image preview' : 'Ingredients preview'}</h3><p>{images.length} reference images for your video.</p>
         </> : <>

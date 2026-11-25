@@ -1,9 +1,11 @@
 'use client';
 import './generation-result.css';
+import {GenerationTimer} from './generation-timer';
+import type {GenerationClock} from '@/lib/generations/timing';
 import { GenerationWait } from './generation-wait';
 import { useEffect, useState } from 'react';
 import { canGenerateAgain, type Generation } from '@/lib/generations/types';
-export function GenerationResult({ generation, onAgain, againLabel = 'Generate Again', consecutiveUnknown = 1, usesImages = true }: { generation: Generation; onAgain: () => void; againLabel?: string; consecutiveUnknown?: number; usesImages?: boolean }) {
+export function GenerationResult({ generation, onAgain, againLabel = 'Generate Again', consecutiveUnknown = 1, usesImages = true, initialClock, provisionalStartedAt }: { generation: Generation; onAgain: () => void; againLabel?: string; consecutiveUnknown?: number; usesImages?: boolean; initialClock?:GenerationClock; provisionalStartedAt?:number }) {
   const [url, setUrl] = useState(''); const [playable, setPlayable] = useState(false); const [error, setError] = useState(''); const [attempt, setAttempt] = useState(0); const [expired, setExpired] = useState(false);
   useEffect(() => {
     setExpired(false);
@@ -49,6 +51,7 @@ export function GenerationResult({ generation, onAgain, againLabel = 'Generate A
   return <div className="generation-result" aria-busy={working}>
     {working && <div className="generation-working" aria-hidden="true"><div className="generation-working-ring"><span>▷</span></div></div>}
     <h3 aria-live="polite">{generation.slotReleasedAt ? "Request expired" : unavailable ? "Video expired" : labels[generation.status]}</h3>
+    <GenerationTimer key={generation.id} id={generation.id} generation={generation} initial={initialClock} provisionalStartedAt={provisionalStartedAt} />
     {working && <div className="generation-working-track" aria-hidden="true"><span /></div>}
     {generation.status === 'done' && (unavailable ? <p>This video has expired and is no longer available to download.</p> : url ? <>
       <video controls playsInline src={url} onLoadedData={() => setPlayable(true)} onError={() => { setPlayable(false); setError("The video could not be played. Please reload it."); }} aria-label="Generated video preview" />
