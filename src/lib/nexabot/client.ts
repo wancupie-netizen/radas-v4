@@ -1,4 +1,5 @@
 import 'server-only';
+import {isStorageUrl,pinnedStorageGet,StoragePolicyError} from './storage-download';
 import { GENERATION_TIMEOUTS } from '../generations/timeouts';
 import { validateImageFile, validatePrompt, VIDEO_INPUT, type VideoOrientation, type VideoResolution } from '../video/input';
 
@@ -22,7 +23,7 @@ export type JobStatus = 'queued' | 'processing' | 'done' | 'failed';
 export type VideoRequest = { prompt: string; orientation: VideoOrientation; resolution: VideoResolution } &
   ({ mode: 'text'; imageDataUris?: never } | { mode: 'image' | 'ingredients'; imageDataUris: string[] });
 export type TransportDiagnostic = { phase: 'before_headers' | 'response_body' | 'complete'; payloadBytes: number; imageCount: number; imageBytes: number[]; mode?: 't2v' | 'sfv' | 'i2v'; headerMs?: number; httpStatus?: number };
-export type RedirectDiagnostic = { reason: 'invalid_origin_config' | 'missing_location' | 'invalid_location' | 'credentials' | 'non_https' | 'custom_port' | 'unapproved_origin' | 'redirect_limit'; fromHost?: string; toHost?: string; hop?: number };
+export type RedirectDiagnostic = { reason: 'invalid_origin_config' | 'missing_location' | 'invalid_location' | 'credentials' | 'non_https' | 'custom_port' | 'unapproved_origin' | 'redirect_limit' | 'invalid_download_policy' | 'provider_path' | 'storage_origin_changed' | 'invalid_storage_path' | 'unsafe_address'; fromHost?: string; toHost?: string; hop?: number };
 export class NexabotError extends Error {
   constructor(public readonly code: string, public readonly outcome: 'rejected' | 'unknown' | 'read' = 'read', public diagnostic?: { kind: 'timeout' | 'network' | 'http' | 'invalid_response'; httpStatus?: number; transport?: TransportDiagnostic; redirect?: RedirectDiagnostic }) {
     super(`NexaBot: ${code}`); this.name = 'NexabotError';
@@ -67,6 +68,8 @@ async function payload(input: VideoRequest) {
 // No automatic retry: a lost POST response may still represent a charged job.
 export function createNexabotClient(options: { apiKey?: string; fetcher?: typeof fetch; timeoutMs?: number; submitTimeoutMs?: number } = {}) {
   const DOWNLOAD_ORIGINS = downloadOrigins();
+  const policy=process.env.NEXABOT_DOWNLOAD_POLICY??'exact';
+  if(!['exact','provider-redirect'].includes(policy))throw new NexabotError('UNSAFE_DOWNLOAD_REDIRECT','read',{kind:'invalid_response',redirect:{reason:'invalid_download_policy'}});
   const key = options.apiKey ?? process.env.NEXABOT_API_KEY;
   if (!key || !/^nxb_[A-Za-z0-9_-]+$/.test(key)) throw new NexabotError('MISSING_OR_INVALID_KEY', 'rejected');
   const fetcher = options.fetcher ?? fetch;
@@ -96,6 +99,7 @@ export function createNexabotClient(options: { apiKey?: string; fetcher?: typeof
           throw new NexabotError('UNSAFE_DOWNLOAD_REDIRECT', 'read', { kind: 'invalid_response', httpStatus: response.status,
             redirect: { reason, fromHost: new URL(currentUrl).hostname, ...(target?.hostname ? { toHost: target.hostname } : {}), hop } });
         };
+        let storageOrigin:string|null=null;
         for (let hop = 0; response.status >= 300 && response.status < 400 && hop < 3; hop++) {
           const location = response.headers.get('location');
           await response.body?.cancel();
@@ -106,12 +110,21 @@ export function createNexabotClient(options: { apiKey?: string; fetcher?: typeof
           if (target.protocol !== 'https:') unsafe('non_https', hop + 1, target);
           if (target.port) unsafe('custom_port', hop + 1, target);
           const isNexabot = target.origin === BASE;
-          if (!isNexabot && !DOWNLOAD_ORIGINS.has(target.origin)) unsafe('unapproved_origin', hop + 1, target);
-          currentUrl = target.href;
-          response = await fetcher(currentUrl, {
-            method: 'GET', cache: 'no-store', redirect: 'manual', signal: controller.signal,
-            headers: isNexabot ? { 'x-api-key': key! } : undefined,
-          });
+          if(policy==='provider-redirect'){
+            if(storageOrigin&&target.origin!==storageOrigin)unsafe('storage_origin_changed',hop+1,target);
+            if(isNexabot){if(target.pathname!==path)unsafe('provider_path',hop+1,target);}
+            else {
+              if(!isStorageUrl(target))unsafe('invalid_storage_path',hop+1,target);
+              if(!storageOrigin&&new URL(currentUrl).origin!==BASE)unsafe('unapproved_origin',hop+1,target);
+              storageOrigin??=target.origin;
+            }
+          }else if(!isNexabot&&!DOWNLOAD_ORIGINS.has(target.origin))unsafe('unapproved_origin',hop+1,target);
+          try{
+            response = policy==='provider-redirect'&&!isNexabot&&!options.fetcher
+              ? await pinnedStorageGet(target,controller.signal)
+              : await fetcher(target.href,{method:'GET',cache:'no-store',redirect:'manual',signal:controller.signal,headers:isNexabot?{'x-api-key':key!}:undefined});
+          }catch(error){if(error instanceof StoragePolicyError)unsafe(error.reason,hop+1,target);throw error;}
+          currentUrl=target.href;
           responseStatus = response.status; transport.httpStatus = response.status;
         }
         if (response.status >= 300 && response.status < 400) {

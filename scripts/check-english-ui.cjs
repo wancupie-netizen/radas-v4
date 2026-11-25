@@ -12,7 +12,7 @@ const protectedFiles={
   "src/lib/config.ts": "fc6cb3e4f8fd21fc6b9a7306560e4fac51a1154ca2555a91c16ce822e02a7c2f",
   "src/lib/payments/packages.ts": "b2f032af9ecd14845a1eb480c6dd54b17c1fef92cd9ddf65ea3b00d7ce04b916",
   "src/lib/payments/telegram.ts": "dfe306653d6de884eba872222483765ffa8eebeb31aa271dd753f963d65a5d7a",
-  "src/lib/nexabot/client.ts": "b30e6dda4085e70d8da7567b8479856dc332f9d25136fa4612f907ae55999832",
+  "src/lib/nexabot/client.ts": "f169184ed95d3e7e35fea9ed3c814dc545b53cd4cd9e817991acf03196d86a46",
   "src/lib/generations/flow.ts": "02d20fd5f637c9d36a579dc867c525b5fb98fbfe9d8884669a010f40828530c5",
   "src/lib/storage/video.ts": "c0f5c4e2a5e8f967261c07367b1a912e4bbb03142c258bd96505016eccd89702"
 };

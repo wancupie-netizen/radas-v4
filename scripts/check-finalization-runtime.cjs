@@ -2,6 +2,7 @@
 const assert=require('node:assert/strict'),http=require('node:http'),fs=require('node:fs'),os=require('node:os'),path=require('node:path'),{spawn}=require('node:child_process');
 const {mp4}=require('./storage-fixture.cjs');
 (async()=>{
+ const delegated=process.argv.includes('--provider-policy'),storageHost=delegated?'aaaaaaaaaaaaaaaaaaaa.supabase.co':'bwcqhtntrfntnkjokihp.supabase.co',storagePath=delegated?'/storage/v1/object/sign/fixture/video.mp4?token=fixture':'/fixture.mp4?token=fixture';
  let object=null,marked=false,ready=false,claims=0,downloaded=0,uploaded=0;
  const uid='11111111-1111-4111-8111-111111111111',id='33333333-3333-4333-8333-333333333333',objectPath=uid+'/'+id+'.mp4';
  const gateway=http.createServer(async(req,res)=>{try{
@@ -22,15 +23,15 @@ const {mp4}=require('./storage-fixture.cjs');
   if(req.url==='/supabase/storage/v1/object/radas-v4-videos/'+objectPath){
    if(req.method==='POST'){assert.equal(req.headers['x-upsert'],'false');assert.deepEqual(body,mp4);assert.equal(object,null);object=body;uploaded++;return json(200,{Key:'radas-v4-videos/'+objectPath});}
   }
-  if(req.url.includes('/storage/v1/object/')&&req.method==='GET'){
+  if(req.url.startsWith('/supabase/storage/v1/object/')&&req.method==='GET'){
    if(!object)return json(404,{statusCode:'404',error:'not_found',message:'fixture'});
    res.setHeader('content-type','video/mp4');res.end(object);return;
   }
   if(req.url==='/provider/api/v1/jobs/fixture-job/download'){
-   assert.equal(req.method,'GET');assert.equal(req.headers['x-api-key'],'nxb_FIXTURE');res.statusCode=307;res.setHeader('location','https://bwcqhtntrfntnkjokihp.supabase.co/fixture.mp4?token=fixture');res.end();return;
+   assert.equal(req.method,'GET');assert.equal(req.headers['x-api-key'],'nxb_FIXTURE');res.statusCode=307;res.setHeader('location','https://'+storageHost+storagePath);res.end();return;
   }
-  if(req.url==='/redirect/fixture.mp4?token=fixture'){
-   assert.equal(req.headers['x-api-key'],undefined);assert.equal(req.headers.authorization,undefined);downloaded++;res.setHeader('content-type','video/mp4');res.setHeader('content-length',mp4.length);res.end(mp4);return;
+  if(req.url==='/redirect'+storagePath){
+   assert.equal(req.headers['x-api-key'],undefined);assert.equal(req.headers.authorization,undefined);assert.equal(req.headers.cookie,undefined);if(delegated)assert.equal(req.headers['x-fixture-native'],'dns-pinned');downloaded++;res.setHeader('content-type','video/mp4');res.setHeader('content-length',mp4.length);res.end(mp4);return;
   }
   throw new Error('unexpected fixture request '+req.method+' '+req.url);
  }catch(e){console.error(e);res.statusCode=500;res.end('{}');}});
@@ -41,12 +42,21 @@ const {mp4}=require('./storage-fixture.cjs');
  const routes=[['https://fyqvvkpzcwrmyozxlqkw.supabase.co',${JSON.stringify(base+'/supabase')}],['https://nexabot.id',${JSON.stringify(base+'/provider')}],['https://bwcqhtntrfntnkjokihp.supabase.co',${JSON.stringify(base+'/redirect')}]];
  for(const [from,to] of routes)if(url.startsWith(from+'/'))return original(to+url.slice(from.length),init);
  if(url.startsWith('https:'))throw new Error('fixture denies live network');return original(input,init);};`);
- const env={...process.env,NODE_OPTIONS:'--require '+JSON.stringify(preload),NEXT_PUBLIC_SUPABASE_URL:'https://fyqvvkpzcwrmyozxlqkw.supabase.co',NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:'fixture-publishable',SUPABASE_SECRET_KEY:'fixture-server-key',NEXABOT_API_KEY:'nxb_FIXTURE',RADAS_FINALIZATION_ENABLED:'true',RADAS_GENERATION_ENABLED:'true',RADAS_CLEANUP_ENABLED:'false'};
+ if(delegated)fs.appendFileSync(preload,`
+ const assert=require('node:assert/strict'),dns=require('node:dns/promises'),https=require('node:https'),http=require('node:http');
+ dns.lookup=async(host,options)=>{assert.equal(host,${JSON.stringify(storageHost)});assert.deepEqual(options,{all:true,verbatim:true});return [{address:'104.18.2.10',family:4}];};
+ https.request=(target,options,callback)=>{
+  assert.equal(target.hostname,${JSON.stringify(storageHost)});assert.equal(options.agent,false);assert.equal(options.rejectUnauthorized,true);assert.equal(options.servername,target.hostname);
+  assert.deepEqual(options.headers,{Accept:'video/mp4','Accept-Encoding':'identity'});let pinned=false;
+  options.lookup(target.hostname,{all:true},(error,answers)=>{assert.equal(error,null);assert.deepEqual(answers,[{address:'104.18.2.10',family:4}]);pinned=true;});assert.equal(pinned,true);
+  return http.request(${JSON.stringify(base+'/redirect')}+target.pathname+target.search,{method:'GET',signal:options.signal,headers:{...options.headers,'x-fixture-native':'dns-pinned'}},callback);
+ };require('node:module').syncBuiltinESMExports();`);
+ const env={...process.env,NEXABOT_DOWNLOAD_POLICY:delegated?'provider-redirect':'exact',NEXABOT_DOWNLOAD_ORIGINS:'[]',NODE_OPTIONS:'--require '+JSON.stringify(preload),NEXT_PUBLIC_SUPABASE_URL:'https://fyqvvkpzcwrmyozxlqkw.supabase.co',NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:'fixture-publishable',SUPABASE_SECRET_KEY:'fixture-server-key',NEXABOT_API_KEY:'nxb_FIXTURE',RADAS_FINALIZATION_ENABLED:'true',RADAS_GENERATION_ENABLED:'true',RADAS_CLEANUP_ENABLED:'false'};
  const proc=spawn(process.execPath,[require.resolve('next/dist/bin/next'),'start','--hostname','127.0.0.1','--port',String(port)],{cwd:process.cwd(),env,stdio:'pipe'});let logs='';proc.stdout.on('data',d=>logs+=d);proc.stderr.on('data',d=>logs+=d);
  try{
   for(let i=0;i<300&&!ready;i++){if(proc.exitCode!==null)throw new Error('production server stopped '+logs);await new Promise(r=>setTimeout(r,100));}
   assert.equal(ready,true,logs);assert.equal(downloaded,1);assert.equal(uploaded,1);assert.ok(claims>=1);assert.ok(marked);
-  console.log('PASS actual next start instrumentation finalizes with no browser HTTP request; actual SDK download/upload/metadata/readback; 307 credentials isolated; live network blocked');
+  console.log((delegated?'DELEGATED DNS-PINNED POLICY: ':'EXACT POLICY: ')+'PASS actual next start instrumentation finalizes with no browser HTTP request; actual SDK download/upload/metadata/readback; 307 credentials isolated; live network blocked');
  }finally{
   if(proc.exitCode===null){const stopped=new Promise(r=>proc.once('exit',r));if(process.platform==='win32'){const killer=spawn('taskkill',['/PID',String(proc.pid),'/T','/F'],{stdio:'ignore'});await new Promise(r=>killer.once('exit',r));}else proc.kill();await stopped;}
   await new Promise(r=>gateway.close(r));fs.rmSync(temp,{recursive:true,force:true});
