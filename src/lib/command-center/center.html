@@ -756,6 +756,9 @@
     .isteri-video-head{display:flex;justify-content:space-between;align-items:start;gap:14px;flex-wrap:wrap}
     .isteri-video-main{min-width:0;flex:1 1 220px}
     .isteri-video-title{font-size:15px;font-weight:700;overflow-wrap:anywhere;margin:7px 0}
+    .video-posting{display:flex;flex-wrap:wrap;align-items:center;gap:4px 14px;margin-top:8px;font-size:13px}
+    .video-posting label{display:inline-flex;align-items:center;gap:5px;min-height:28px;cursor:pointer}
+    .video-posting input{width:16px;height:16px;margin:0;accent-color:var(--navy)}
     .isteri-video-url{font-size:12px;color:var(--muted);overflow-wrap:anywhere}
     .isteri-video-actions{display:flex;gap:7px;flex-wrap:wrap;align-items:center}
     .isteri-video-actions a{text-decoration:none}
@@ -970,7 +973,7 @@
           <div><div class="eyebrow">Isteri Malam Video Workspace</div><h2>Video List</h2></div>
           <button type="button" class="btn btn-primary" id="isteriVideoAdd">+ Add Video</button>
         </div>
-        <p class="isteri-video-help" style="margin:0 0 16px">Save YouTube, Facebook Reel or other video links. Preview availability depends on the source. The list is stored in this browser only.</p>
+        <p class="isteri-video-help" style="margin:0 0 16px">Save YouTube, Facebook Reel or other video links. Preview availability depends on the source. Tick each platform after posting.</p>
         <p id="isteriVideoMessage" role="status" aria-live="polite"></p>
         <div id="isteriVideoList" class="isteri-video-list"></div>
       </div>
@@ -3443,6 +3446,33 @@
       isteriVideoDialog.showModal();
     }
 
+    function videoPostingControls(item){
+      const group = document.createElement("div");
+      group.className = "video-posting";
+      group.setAttribute("role","group");
+      group.setAttribute("aria-label","Dah post di");
+      const caption = document.createElement("span");
+      caption.textContent = "Dah post di";
+      group.append(caption);
+      for(const [key,name] of [["facebook","FB"],["instagram","Insta"],["youtube","YouTube"],["threads","Threads"]]){
+        const label = document.createElement("label");
+        const input = document.createElement("input");
+        input.type = "checkbox";
+        input.checked = item.postedTo?.[key] === true;
+        input.addEventListener("change",()=>{
+          const next = state.isteriVideos.map(video=>video?.id === item.id
+            ? {...video,postedTo:{...video.postedTo,[key]:input.checked}} : video);
+          if(!persistIsteriVideos(next)){
+            input.checked = !input.checked;
+            document.getElementById("isteriVideoMessage").textContent = "Posting status could not be saved. Please try again.";
+          }
+        });
+        label.append(input,name);
+        group.append(label);
+      }
+      return group;
+    }
+
     function renderIsteriVideos(){
       closeIsteriVideoPreview();
       const list = document.getElementById("isteriVideoList"); list.replaceChildren();
@@ -3459,7 +3489,7 @@
         const badge = document.createElement("span"); badge.className = "tag"; badge.textContent = info.label;
         const title = document.createElement("h3"); title.className = "isteri-video-title"; title.textContent = item.title || info.fallback;
         const url = document.createElement("div"); url.className = "isteri-video-url"; url.textContent = info.url;
-        main.append(badge,title,url);
+        main.append(badge,title,url,videoPostingControls(item));
         const actions = document.createElement("div"); actions.className = "isteri-video-actions";
         const preview = document.createElement("button"); preview.type = "button"; preview.className = "icon-btn";
         preview.textContent = "Preview"; preview.setAttribute("aria-expanded","false");
@@ -3472,7 +3502,7 @@
         const remove = document.createElement("button"); remove.type = "button"; remove.className = "icon-btn"; remove.textContent = "Delete";
         remove.addEventListener("click",()=>{
           if(!window.confirm("Remove this video link from the list?")) return;
-          if(!persistIsteriVideos(state.isteriVideos.filter(video=>video !== item))){
+          if(!persistIsteriVideos(state.isteriVideos.filter(video=>video?.id !== item.id))){
             document.getElementById("isteriVideoMessage").textContent = "Your changes have not been saved. Browser storage may be full or unavailable."; return;
           }
           document.getElementById("isteriVideoMessage").textContent = "Video link removed from the list.";
